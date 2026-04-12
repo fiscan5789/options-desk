@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filter Test</title>
+<style>
+body { font-family: monospace; font-size: 12px; padding: 16px; background: #1a1a1a; color: #e0e0e0; }
+button { font-size: 14px; padding: 10px 20px; margin: 4px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+.box { margin: 12px 0; border: 1px solid #444; border-radius: 6px; padding: 12px; }
+.title { color: #aaa; font-size: 10px; text-transform: uppercase; margin-bottom: 8px; }
+.row { margin: 3px 0; }
+.g { color: #86efac; } .r { color: #fca5a5; } .y { color: #fde68a; } .b { color: #7dd3fc; }
+pre { white-space: pre-wrap; word-break: break-all; font-size: 10px; color: #ccc; max-height: 200px; overflow-y: auto; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h2 style="color:#fff;margin-bottom:12px">Strike Filter Test</h2>
+<p style="color:#aaa;margin-bottom:12px;font-size:12px">Tests whether strike_price.gte/lte filter works on Options Starter</p>
+
+<button onclick="runTest()">Run Filter Test</button>
+
+<div id="out"></div>
+
+<script>
+const KEY = '8YxfViBiNRATU2HQwZTSUaJatTsFI0yh';
+
+function toET(d) { return new Date(d.toLocaleString('en-US',{timeZone:'America/New_York'})); }
+
+async function runTest() {
+  const out = document.getElementById('out');
+  out.innerHTML = '<div style="color:#aaa;margin:8px 0">Running...</div>';
+
+  // Step 1: get live spot from minute bars
+  let spySpot = 0, gldSpot = 0;
+  const etNow = toET(new Date());
+  for (let d=1; d<=5; d++) {
+    const dt = new Date(etNow); dt.setDate(dt.getDate()-d);
+    if (dt.getDay()===0||dt.getDay()===6) continue;
+    const ds = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    if (spySpot===0) {
+      const j = await fetch(`https://api.polygon.io/v2/aggs/ticker/SPY/range/1/minute/${ds}/${ds}?adjusted=true&sort=desc&limit=1&apiKey=${KEY}`).then(r=>r.json()).catch(()=>({}));
+      spySpot = j.results?.[0]?.c ?? 0;
+    }
+    if (gldSpot===0) {
+      const j = await fetch(`https://api.polygon.io/v2/aggs/ticker/GLD/range/1/minute/${ds}/${ds}?adjusted=true&sort=desc&limit=1&apiKey=${KEY}`).then(r=>r.json()).catch(()=>({}));
+      gldSpot = j.results?.[0]?.c ?? 0;
+    }
+    if (spySpot>0 && gldSpot>0) break;
+  }
+
+  // Step 2: compute date window
+  const et = toET(new Date()); et.setHours(12,0,0,0);
+  function etPlus(n) {
+    const d = new Date(et); d.setDate(d.getDate()+n);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  const from = etPlus(10), to = etPlus(23);
+
+  let html = '';
+  html += `<div class="box"><div class="title">Spot Prices (Minute Bars)</div>`;
+  html += `<div class="row">SPY: <span class="${spySpot>0?'g':'r'}">${spySpot||'FAILED'}</span></div>`;
+  html += `<div class="row">GLD: <span class="${gldSpot>0?'g':'r'}">${gldSpot||'FAILED'}</span></div>`;
+  html += `<div class="row">Date window: <span class="b">${from} → ${to}</span></div></div>`;
+
+  // Step 3: test filtered chain for each ticker
+  for (const [ticker, spot] of [['SPY', spySpot||680], ['GLD', gldSpot||437]]) {
+    const lo = (spot * 0.88).toFixed(2);
+    const hi = (spot * 1.12).toFixed(2);
+    const atmTarget = spot.toFixed(2);
+
+    html += `<div class="box"><div class="title">${ticker} — Filtered Chain Test (spot=$${spot}, window=$${lo}–$${hi})</div>`;
+
+    // Test A: filtered ASC
+    const urlA = `https://api.polygon.io/v3/snapshot/options/${ticker}?expiration_date.gte=${from}&expiration_date.lte=${to}&strike_price.gte=${lo}&strike_price.lte=${hi}&limit=10&sort=strike_price&order=asc&apiKey=${KEY}`;
+    const rA = await fetch(urlA);
+    const jA = await rA.json();
+    html += `<div class="row">ASC status: <span class="${rA.ok?'g':'r'}">${rA.status}</span> — ${(jA.results??[]).length} results</div>`;
+    (jA.results??[]).slice(0,5).forEach(c => {
+      const strike = c.details?.strike_price;
+      const diff = Math.abs(strike - spot);
+      const cls = diff < 3 ? 'g' : diff < 10 ? 'y' : 'b';
+      html += `<div class="row" style="margin-left:12px"><span class="${cls}">$${strike} ${c.details?.contract_type} exp:${c.details?.expiration_date} OI:${c.open_interest} IV:${c.implied_volatility?.toFixed(4)??'null'}</span></div>`;
+    });
+
+    // Test B: filtered DESC
+    const urlD = `https://api.polygon.io/v3/snapshot/options/${ticker}?expiration_date.gte=${from}&expiration_date.lte=${to}&strike_price.gte=${lo}&strike_price.lte=${hi}&limit=10&sort=strike_price&order=desc&apiKey=${KEY}`;
+    const rD = await fetch(urlD);
+    const jD = await rD.json();
+    html += `<div class="row" style="margin-top:6px">DESC status: <span class="${rD.ok?'g':'r'}">${rD.status}</span> — ${(jD.results??[]).length} results</div>`;
+    (jD.results??[]).slice(0,5).forEach(c => {
+      const strike = c.details?.strike_price;
+      const diff = Math.abs(strike - spot);
+      const cls = diff < 3 ? 'g' : diff < 10 ? 'y' : 'b';
+      html += `<div class="row" style="margin-left:12px"><span class="${cls}">$${strike} ${c.details?.contract_type} exp:${c.details?.expiration_date} OI:${c.open_interest} IV:${c.implied_volatility?.toFixed(4)??'null'}</span></div>`;
+    });
+
+    // Find nearest to spot across both
+    const allC = [...(jA.results??[]), ...(jD.results??[])];
+    if (allC.length > 0) {
+      const nearest = allC.reduce((a,b) =>
+        Math.abs((a.details?.strike_price??0)-spot) <= Math.abs((b.details?.strike_price??0)-spot) ? a : b
+      );
+      html += `<div class="row" style="margin-top:8px;color:#fde68a">Nearest to $${atmTarget}: $${nearest.details?.strike_price} ${nearest.details?.contract_type} IV:${nearest.implied_volatility?.toFixed(4)??'null'}</div>`;
+    } else {
+      html += `<div class="row" style="margin-top:8px;color:#fca5a5">NO CONTRACTS RETURNED — filter may not be supported</div>`;
+    }
+
+    html += `</div>`;
+  }
+
+  out.innerHTML = html;
+}
+</script>
+</body>
+</html>
