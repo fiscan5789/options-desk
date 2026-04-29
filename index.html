@@ -1,0 +1,2996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Options Desk">
+<title>Options Desk</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  font-size: 14px; color: #1a1a1a; background: #f2f2f0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.app { max-width: 680px; margin: 0 auto; padding: 0 0 2rem; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(242,242,240,0.93);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  padding: 12px 16px 10px; border-bottom: 0.5px solid #d8d8d6;
+}
+.topbar-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.topbar h1 { font-size: 15px; font-weight: 600; letter-spacing: -.2px; }
+.topbar-time { font-size: 11px; color: #888; }
+.run-btns { display: flex; gap: 6px; }
+
+.btn {
+  font-size: 12px; font-weight: 500; padding: 6px 12px;
+  border: 0.5px solid #c8c8c6; border-radius: 8px;
+  background: #fff; color: #1a1a1a; cursor: pointer;
+  white-space: nowrap; -webkit-user-select: none; user-select: none;
+}
+.btn:active { opacity: .6; }
+.btn:disabled { opacity: .35; pointer-events: none; }
+.btn-active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+.sbar { display: flex; gap: 6px; align-items: center; overflow-x: auto; padding: 0 16px 2px; scrollbar-width: none; }
+.sbar::-webkit-scrollbar { display: none; }
+.pill { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; border: 0.5px solid #d0d0ce; color: #888; background: #e8e8e6; white-space: nowrap; flex-shrink: 0; }
+.pill.on  { background: #fff; border-color: #888; color: #1a1a1a; }
+.pill.nxt { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.pill.ptr { cursor: pointer; }
+.cd { font-size: 10px; color: #aaa; margin-left: auto; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+.tabs { display: flex; overflow-x: auto; padding: 0 16px; border-bottom: 0.5px solid #d8d8d6; background: #f2f2f0; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { font-size: 13px; font-weight: 500; padding: 10px 16px; border: none; background: transparent; color: #999; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -0.5px; white-space: nowrap; flex-shrink: 0; }
+.tab.on { color: #1a1a1a; border-bottom-color: #1a1a1a; }
+
+.content { padding: 14px 16px 0; }
+
+.alert { border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.55; margin-bottom: 12px; }
+.alert-err  { background: #fee2e2; color: #b91c1c; border: 0.5px solid #fca5a5; }
+.alert-warn { background: #fef3c7; color: #92400e; border: 0.5px solid #fde68a; }
+.alert-info { background: #eff6ff; color: #1e40af; border: 0.5px solid #bfdbfe; }
+
+.sh { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: #999; margin: 18px 0 8px; padding-bottom: 5px; border-bottom: 0.5px solid #d8d8d6; }
+.sh:first-child { margin-top: 4px; }
+
+.price-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.price-card { background: #fff; border-radius: 12px; padding: 12px 12px 10px; border: 0.5px solid #e0e0de; }
+.pc-ticker { font-size: 11px; font-weight: 600; color: #888; letter-spacing: .04em; margin-bottom: 3px; }
+.pc-price  { font-size: 19px; font-weight: 600; letter-spacing: -.5px; line-height: 1; margin-bottom: 4px; }
+.pc-chg    { font-size: 11px; font-weight: 500; }
+.pc-iv     { font-size: 10px; color: #aaa; margin-top: 3px; }
+.up { color: #16a34a; } .dn { color: #dc2626; } .mu { color: #888; }
+
+.metric-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.metric-card { background: #fff; border-radius: 10px; padding: 10px 10px 8px; border: 0.5px solid #e0e0de; min-width: 0; }
+.mc-l { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #aaa; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-v { font-size: 16px; font-weight: 600; line-height: 1.1; }
+.mc-s { font-size: 10px; color: #999; margin-top: 2px; }
+
+/* Term structure card */
+.ts-card { background: #fff; border-radius: 12px; border: 0.5px solid #e0e0de; overflow: hidden; margin-bottom: 8px; }
+.ts-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px; border-bottom: 0.5px solid #f0f0ee; }
+.ts-ticker { font-size: 13px; font-weight: 600; }
+.ts-body   { padding: 10px 14px; }
+.ts-row    { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.ts-row:last-child { margin-bottom: 0; }
+.ts-label  { font-size: 11px; color: #888; }
+.ts-val    { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Term structure slope bar */
+.ts-slope-wrap { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid #f0f0ee; }
+.ts-slope-labels { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-bottom: 5px; }
+.ts-slope-track { position: relative; height: 8px; background: #f0f0ee; border-radius: 4px; overflow: hidden; }
+.ts-slope-near  { position: absolute; left: 0; top: 0; height: 100%; background: #dc2626; border-radius: 4px 0 0 4px; opacity: .8; }
+.ts-slope-far   { position: absolute; left: 0; top: 0; height: 100%; background: #1d4ed8; border-radius: 4px 0 0 4px; opacity: .6; }
+
+/* RV card */
+.rv-card { background: #fff; border-radius: 12px; border: 0.5px solid #e0e0de; overflow: hidden; margin-bottom: 8px; }
+.rv-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px; border-bottom: 0.5px solid #f0f0ee; }
+.rv-ticker { font-size: 13px; font-weight: 600; }
+.rv-body   { padding: 10px 14px; }
+.rv-row    { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.rv-row:last-child { margin-bottom: 0; }
+.rv-label  { font-size: 11px; color: #888; }
+.rv-val    { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.vrp-bar-wrap { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid #f0f0ee; }
+.vrp-bar-label { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-bottom: 4px; }
+.sparkline { display: flex; align-items: flex-end; gap: 2px; height: 28px; margin-top: 8px; }
+.spark-bar { flex: 1; border-radius: 2px; min-height: 2px; }
+
+.exec-card { background: #fff; border-radius: 12px; border: 0.5px solid #e0e0de; padding: 12px 14px; margin-bottom: 8px; }
+.exec-top  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.exec-ticker { font-size: 15px; font-weight: 600; }
+.exec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+.exec-label { font-size: 10px; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 1px; }
+.exec-val   { font-size: 12px; font-weight: 500; }
+
+.badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; white-space: nowrap; }
+.bg { background: #dcfce7; color: #15803d; }
+.br { background: #fee2e2; color: #b91c1c; }
+.ba { background: #fef3c7; color: #b45309; }
+.bb { background: #dbeafe; color: #1d4ed8; }
+.bp { background: #f3e8ff; color: #7c3aed; }
+.bx { background: #f0f0ee; color: #666; }
+
+.list-card { background: #fff; border-radius: 12px; border: 0.5px solid #e0e0de; overflow: hidden; }
+.list-row { display: flex; align-items: center; padding: 10px 14px; border-bottom: 0.5px solid #f0f0ee; gap: 8px; }
+.list-row:last-child { border-bottom: none; }
+.list-label { font-size: 12px; color: #666; flex: 1; min-width: 0; }
+.list-val   { font-size: 12px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.list-badge { flex-shrink: 0; }
+
+.trade-card { background: #fff; border-radius: 12px; border: 0.5px solid #e0e0de; padding: 12px 14px; margin-bottom: 8px; }
+.trade-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+.trade-title { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.trade-type-pill { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 6px; flex-shrink: 0; }
+.trade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; margin-bottom: 10px; }
+.tg-l { font-size: 10px; color: #aaa; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 1px; }
+.tg-v { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.trade-thesis { font-size: 11px; color: #444; line-height: 1.55; padding-top: 9px; border-top: 0.5px solid #f0f0ee; }
+.trade-risk   { font-size: 11px; color: #dc2626; margin-top: 4px; line-height: 1.45; }
+
+.skew-visual { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.skew-track  { flex: 1; height: 4px; background: #e8e8e6; border-radius: 2px; position: relative; overflow: hidden; }
+.skew-fill   { height: 100%; border-radius: 2px; position: absolute; top: 0; left: 0; }
+.skew-pts    { font-size: 10px; color: #aaa; flex-shrink: 0; font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
+
+.wall-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wall-chip  { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 8px; border: 0.5px solid #e0e0de; background: #f8f8f6; display: flex; align-items: center; gap: 5px; }
+.wc-type    { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; }
+.wc-call .wc-type { background: #dbeafe; color: #1d4ed8; }
+.wc-put  .wc-type { background: #fee2e2; color: #b91c1c; }
+
+.state-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 55vh; gap: 14px; text-align: center; padding: 24px; }
+.spin { width: 24px; height: 24px; border: 2px solid #e0e0de; border-top-color: #1a1a1a; border-radius: 50%; animation: sp .8s linear infinite; }
+@keyframes sp { to { transform: rotate(360deg); } }
+.state-title { font-size: 15px; font-weight: 600; }
+.state-sub   { font-size: 12px; color: #aaa; max-width: 260px; line-height: 1.5; }
+
+.footer-ts { font-size: 10px; color: #c0c0be; text-align: center; margin-top: 20px; padding: 0 16px; line-height: 1.8; }
+
+@media (min-width: 560px) {
+  .topbar { padding: 14px 24px 12px; }
+  .content { padding: 16px 24px 0; }
+  .sbar   { padding: 0 24px 2px; }
+  .tabs   { padding: 0 24px; }
+  .metric-row { grid-template-columns: repeat(6,1fr); }
+  .exec-grid  { grid-template-columns: repeat(3,1fr); }
+  .pc-price   { font-size: 22px; }
+}
+
+/* Override inputs */
+.ov-row { display:flex; gap:5px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+.ov-field { display:flex; flex-direction:column; flex:1; min-width:48px; }
+.ov-label { font-size:9px; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+.ov-input {
+  font-size:12px; font-weight:500;
+  padding:4px 6px; border-radius:6px;
+  border:0.5px solid #d0d0ce; background:#fff;
+  color:#1a1a1a; width:100%; text-align:center;
+  font-variant-numeric:tabular-nums;
+  -webkit-appearance:none;
+}
+.ov-input::placeholder { color:#ccc; }
+.ov-input:focus { outline:none; border-color:#888; }
+.ov-input.has-val { border-color:#f59e0b; background:#fffbeb; color:#92400e; font-weight:600; }
+
+/* AI Briefing */
+.ai-card { background:#fff; border:0.5px solid #e0e0de; border-radius:12px; padding:14px; margin-bottom:12px; }
+.ai-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.ai-title { font-size:12px; font-weight:700; letter-spacing:-.1px; }
+.ai-badge { font-size:9px; font-weight:600; padding:2px 7px; border-radius:5px; background:#f3e8ff; color:#7c3aed; }
+.ai-body { font-size:12px; line-height:1.65; color:#333; white-space:pre-wrap; }
+.ai-section { font-size:11px; font-weight:700; color:#1a1a1a; margin:10px 0 4px; text-transform:uppercase; letter-spacing:.04em; }
+.ai-divider { border:none; border-top:0.5px solid #e8e8e6; margin:10px 0; }
+.ai-btn { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:8px 14px; border-radius:8px; border:0.5px solid #d0d0ce; background:#fff; cursor:pointer; color:#1a1a1a; }
+.ai-btn:active { background:#f0f0ee; }
+.ai-btn-purple { background:#7c3aed; color:#fff; border-color:#7c3aed; }
+.ai-spin { width:12px; height:12px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:sp .8s linear infinite; display:inline-block; }
+</style>
+</head>
+<body>
+<div class="topbar" id="static-topbar">
+  <div class="topbar-row1"><h1>Options Desk</h1><div class="topbar-time" id="clock-display"></div></div>
+  <div class="ov-row" style="margin-bottom:4px">
+    <div class="ov-field" style="max-width:28px;min-width:28px;justify-content:flex-end"><div class="ov-label" style="color:#bbb;font-size:8px">TODAY</div></div>
+    <div class="ov-field"><div class="ov-label">VIX</div><input id="ov-vix" class="ov-input" type="number" step="0.01" min="0" placeholder="—" oninput="setOV('vix',this.value)" onfocus="this.select()"></div>
+    <div class="ov-field"><div class="ov-label">VVIX</div><input id="ov-vvix" class="ov-input" type="number" step="0.01" min="0" placeholder="—" oninput="setOV('vvix',this.value)" onfocus="this.select()"></div>
+    <div class="ov-field"><div class="ov-label">MOVE</div><input id="ov-move" class="ov-input" type="number" step="0.01" min="0" placeholder="—" oninput="setOV('move',this.value)" onfocus="this.select()"></div>
+    <div class="ov-field"><div class="ov-label">DXY</div><input id="ov-dxy" class="ov-input" type="number" step="0.01" min="0" placeholder="—" oninput="setOV('dxy',this.value)" onfocus="this.select()"></div>
+    <div class="ov-field"><div class="ov-label">10Y</div><div style="position:relative"><input id="ov-tnx" class="ov-input" type="number" step="0.001" min="0" max="20" placeholder="—" oninput="setOV('tnx',this.value)" onfocus="this.select()" style="padding-right:14px"><span id="ov-tnx-pct" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;color:#ccc;pointer-events:none">%</span></div></div>
+    <div class="ov-field"><div class="ov-label">10Y real</div><div style="position:relative"><input id="ov-ry" class="ov-input" type="number" step="0.001" min="-5" max="20" placeholder="—" oninput="setOV('ry',this.value)" onfocus="this.select()" style="padding-right:14px"><span id="ov-ry-pct" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;color:#ccc;pointer-events:none">%</span></div></div>
+    <div class="ov-field"><div class="ov-label">VIX3M</div><input id="ov-vix3m" class="ov-input" type="number" step="0.01" min="0" placeholder="—" oninput="setOV('vix3m',this.value)" onfocus="this.select()"></div>
+    <div class="ov-field" style="min-width:32px;max-width:36px"><div class="ov-label">&nbsp;</div><button class="btn" style="padding:4px 6px;font-size:11px;border-radius:6px" onclick="clearOV()" title="Clear all">✕</button></div>
+  </div>
+  <div class="ov-row">
+    <div class="ov-field" style="max-width:28px;min-width:28px;justify-content:flex-end"><div class="ov-label" style="color:#bbb;font-size:8px">PREV</div></div>
+    <div class="ov-field"><input id="ov-vix1" class="ov-input" type="number" step="0.01" min="0" placeholder="—" oninput="setOV('vix1',this.value)" onfocus="this.select()" style="border-style:dashed"></div>
+    <div class="ov-field"><input id="ov-vvix1" class="ov-input" type="number" step="0.01" min="0" placeholder="—" oninput="setOV('vvix1',this.value)" onfocus="this.select()" style="border-style:dashed"></div>
+    <div class="ov-field"><input id="ov-move1" class="ov-input" type="number" step="0.01" min="0" placeholder="—" oninput="setOV('move1',this.value)" onfocus="this.select()" style="border-style:dashed"></div>
+    <div class="ov-field"><input id="ov-dxy1" class="ov-input" type="number" step="0.01" min="0" placeholder="—" oninput="setOV('dxy1',this.value)" onfocus="this.select()" style="border-style:dashed"></div>
+    <div class="ov-field"><div style="position:relative"><input id="ov-tnx1" class="ov-input" type="number" step="0.001" min="0" max="20" placeholder="—" oninput="setOV('tnx1',this.value)" onfocus="this.select()" style="padding-right:14px;border-style:dashed"><span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;color:#ccc;pointer-events:none">%</span></div></div>
+    <div class="ov-field"><div style="position:relative"><input id="ov-ry1" class="ov-input" type="number" step="0.001" min="-5" max="20" placeholder="—" oninput="setOV('ry1',this.value)" onfocus="this.select()" style="padding-right:14px;border-style:dashed"><span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;color:#ccc;pointer-events:none">%</span></div></div>
+    <div class="ov-field"><input class="ov-input" type="text" placeholder="—" disabled style="border-style:dashed;opacity:0.3;cursor:default"></div>
+    <div class="ov-field" style="min-width:32px;max-width:36px"></div>
+  </div>
+  <div class="run-btns" id="run-btns-container"></div>
+</div>
+<div class="app" id="root"></div>
+<script>
+const KEY = '8YxfViBiNRATU2HQwZTSUaJatTsFI0yh';
+
+// Shared spot prices used by optionChain() to anchor the strike window.
+// Populated in runBriefing() before chain fetches execute.
+let _chainSpots = {};
+
+// Forex bar fetch via Polygon Starter — returns [{date,value}] newest-first.
+// Used for EUR/USD → DXY proxy: DXY ≈ 96.5 / EURUSD (directionally accurate).
+async function polyForex(pair, limit=3) {
+  const to=ymd(toET(new Date())), from=dBack(limit*3);
+  const url=`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(pair)}/range/1/day/${from}/${to}?sort=desc&limit=${limit}&apiKey=${KEY}`;
+  try {
+    const r = await fetch(url);
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok || j.status==='ERROR') {
+      const out=[]; out._err=`${pair}: ${j.error||j.message||r.status}`; return out;
+    }
+    const bars = j.results ?? [];
+    if (!bars.length) { const out=[]; out._err=`${pair}: no data`; return out; }
+    return bars.map(b=>({ date:new Date(b.t).toISOString().slice(0,10), value:b.c }));
+  } catch(e) {
+    const out=[]; out._err=`${pair}: ${e.message}`; return out;
+  }
+}
+
+const SESSIONS = [
+  { id:'pre',   label:'Pre-market',   hhmm:'08:00', short:'8 AM',   startM:480,  endM:630  },
+  { id:'mid1',  label:'Mid-morning',  hhmm:'10:30', short:'10:30',  startM:630,  endM:780  },
+  { id:'mid2',  label:'Midday',       hhmm:'13:00', short:'1 PM',   startM:780,  endM:930  },
+  { id:'late',  label:'Late session', hhmm:'15:30', short:'3:30 PM',startM:930,  endM:1215 },
+  { id:'post',  label:'After-close',  hhmm:'20:15', short:'8:15 PM',startM:1215, endM:1440 },
+];
+
+let S = { sid:null, tab:'overview', briefs:{}, loading:false, errs:[], warns:[], now:new Date() };
+let OV = { vix:'', vix1:'', vvix:'', vvix1:'', move:'', move1:'', dxy:'', dxy1:'', tnx:'', tnx1:'', ry:'', ry1:'', vix3m:'' }; // manual overrides (empty = use proxy)
+
+/* ── Time ── */
+const toET  = d => new Date(d.toLocaleString('en-US',{timeZone:'America/New_York'}));
+const ymd   = d => d.toISOString().slice(0,10);
+const dBack = n => { const d=new Date(toET(new Date())); d.setDate(d.getDate()-n); return ymd(d); };
+
+function isMarketHours() {
+  const et=toET(new Date()), h=et.getHours(), m=et.getMinutes(), day=et.getDay();
+  if (day===0||day===6) return false;
+  return (h*60+m)>=570 && (h*60+m)<960;
+}
+function sessStatus(s, now) {
+  const et=toET(now), m=et.getHours()*60+et.getMinutes();
+  if (m>=s.startM&&m<s.endM) return 'on';
+  if (m<s.startM&&s.startM-m<=30) return 'nxt';
+  return '';
+}
+function countdown(now) {
+  const et=toET(now), cur=et.getHours()*60+et.getMinutes(), sec=et.getSeconds();
+  for (const s of SESSIONS) {
+    if (cur<s.startM) {
+      const d=(s.startM-cur)*60-sec, h=Math.floor(d/3600), m=Math.floor((d%3600)/60), s2=d%60;
+      return `next in ${h?h+'h ':''}${m}m ${String(s2).padStart(2,'0')}s`;
+    }
+  }
+  const d=(1440-cur+480)*60-sec;
+  return `8AM in ${Math.floor(d/3600)}h ${Math.floor((d%3600)/60)}m`;
+}
+
+/* ── API ── */
+async function apiFetch(url, lbl) {
+  const r=await fetch(url);
+  const j=await r.json().catch(()=>({}));
+  if (!r.ok||j.status==='ERROR') throw new Error(`${lbl}: ${j.error||j.message||r.status}`);
+  return j;
+}
+
+async function stockBarsLong(ticker, days=35) {
+  const to=ymd(toET(new Date())), from=dBack(days);
+  const j=await apiFetch(
+    `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/day/${from}/${to}?adjusted=true&sort=desc&limit=40&apiKey=${KEY}`,
+    `rv-bars/${ticker}`);
+  return (j.results??[]).reverse();
+}
+
+async function stockPrev(ticker) {
+  const j=await apiFetch(
+    `https://api.polygon.io/v2/aggs/ticker/${ticker}/prev?adjusted=true&apiKey=${KEY}`,
+    `prev/${ticker}`);
+  return j.results?.[0]??null;
+}
+
+async function indexBars(sym, days=5) {
+  const to=ymd(toET(new Date())), from=dBack(days);
+  const url=`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(sym)}/range/1/day/${from}/${to}?sort=desc&limit=5&apiKey=${KEY}`;
+  try {
+    const r = await fetch(url);
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok || j.status==='ERROR') {
+      // Capture the actual HTTP status and Polygon error message for diagnostics
+      const err = j.error || j.message || `HTTP ${r.status}`;
+      const bars = [];
+      bars._err = `${sym}: ${r.status} — ${err}`;
+      return bars;
+    }
+    return j.results ?? [];
+  } catch(e) {
+    const bars = [];
+    bars._err = `${sym}: network error — ${e.message}`;
+    return bars;
+  }
+}
+
+
+// Options chain with configurable DTE window
+async function optionChain(ticker, dteLow, dteHigh, spot) {
+  // spot is passed in explicitly from runBriefing after the snapshot fetch completes.
+  // This avoids any dependency on _chainSpots timing.
+  function etDatePlusDays(n) {
+    const et = toET(new Date());
+    et.setHours(12, 0, 0, 0);
+    et.setDate(et.getDate() + n);
+    const y = et.getFullYear();
+    const m = String(et.getMonth()+1).padStart(2,'0');
+    const d = String(et.getDate()).padStart(2,'0');
+    return y+'-'+m+'-'+d;
+  }
+  const from = etDatePlusDays(dteLow);
+  const to   = etDatePlusDays(dteHigh);
+  const liveSpot = spot ?? 0;
+  // SPY has $1 strike spacing so needs a tighter window to stay within limit=250.
+  // GLD ($5 spacing) and TLT ($0.50 spacing) are fine with a wider window.
+  const pct = ticker === 'SPY' ? 0.03 : 0.08;
+  const lo = (liveSpot * (1 - pct * 0.5)).toFixed(2);
+  const hi = (liveSpot * (1 + pct * 1.5)).toFixed(2);
+  if (!liveSpot) S.warns?.push(`${ticker} chain: spot=0, window will be wrong`);
+  const j = await apiFetch(
+    `https://api.polygon.io/v3/snapshot/options/${ticker}`
+    + `?expiration_date.gte=${from}&expiration_date.lte=${to}`
+    + `&strike_price.gte=${lo}&strike_price.lte=${hi}`
+    + `&limit=250&sort=strike_price&order=asc&apiKey=${KEY}`,
+    `chain/${ticker}/${dteLow}-${dteHigh}d`
+  );
+  const results = j.results ?? [];
+  results._dateFrom = from;
+  results._dateTo   = to;
+  return results;
+}
+
+/* ── RV Calculator ── */
+function calcRV(bars, window=20) {
+  if (!bars||bars.length<window+1) return null;
+  const recent=bars.slice(-(window+1));
+  const closes=recent.map(b=>b.c).filter(c=>c>0);
+  if (closes.length<window+1) return null;
+  const returns=[];
+  for (let i=1;i<closes.length;i++) returns.push(Math.log(closes[i]/closes[i-1]));
+  if (returns.length<window) return null;
+  const mean=returns.reduce((s,r)=>s+r,0)/returns.length;
+  const variance=returns.reduce((s,r)=>s+Math.pow(r-mean,2),0)/returns.length;
+  return { rv:Math.sqrt(variance*252), returns, nDays:returns.length, closes };
+}
+
+/* ── Chain analysis ── */
+function analyseChain(contracts, spot, dateFrom, dateTo, liveSpotParam, ticker='GLD') {
+  if (!contracts.length||!spot) return null;
+  // liveSpot: use pre-fetched minute bar price passed as liveSpotParam.
+  // Do NOT use underlying_asset.price from contracts — it can be stale or
+  // reflect a different quote than what was used to build the strike window.
+  // During market hours, underlying_asset.price on the contracts is real-time and
+  // more current than the minute bar. Use it if it looks plausible (within 5% of liveSpotParam).
+  const chainSpot = contracts.find(c=>c.underlying_asset?.price>0)?.underlying_asset?.price ?? 0;
+  const liveSpot = (chainSpot>0 && liveSpotParam>0 && Math.abs(chainSpot-liveSpotParam)/liveSpotParam<0.05)
+    ? chainSpot                          // chain price is fresh and sane — use it
+    : (liveSpotParam && liveSpotParam>0)
+      ? liveSpotParam                    // fall back to minute bar
+      : spot;                            // last resort: bar close
+  // Sanity guard: discard contracts whose strike is >20% from live spot.
+  const plausible=contracts.filter(c=>{const k=c.details?.strike_price??0;return k>0&&Math.abs(k-liveSpot)/liveSpot<0.10;});
+  if (plausible.length<4) return null;
+  // Replace passed-in spot with the live value for all downstream calculations
+  spot = liveSpot;
+  const calls=plausible.filter(c=>c.details?.contract_type==='call');
+  const puts =plausible.filter(c=>c.details?.contract_type==='put');
+  if (!calls.length||!puts.length) return null;
+
+  // Find the single strike nearest to spot, then get the call and put AT THAT SAME STRIKE.
+  // This prevents the call and put being selected from different strikes, which inflates
+  // the ATM IV average when the chain has wide strike spacing (e.g. GLD at $5-$10 intervals).
+  // Use plausible (already filtered) contracts for strike list so ATM is anchored to live spot
+  const allStrikes = [...new Set(plausible.map(c=>c.details?.strike_price).filter(Boolean))].sort((a,b)=>a-b);
+  const atmStrikeVal = allStrikes.reduce((a,b)=>Math.abs(a-spot)<=Math.abs(b-spot)?a:b, allStrikes[0]??spot);
+  const atmC = calls.find(c=>c.details?.strike_price===atmStrikeVal) ?? calls.reduce((a,b)=>Math.abs((a.details?.strike_price??0)-spot)<=Math.abs((b.details?.strike_price??0)-spot)?a:b);
+  const atmP = puts.find( c=>c.details?.strike_price===atmStrikeVal) ?? puts.reduce( (a,b)=>Math.abs((a.details?.strike_price??0)-spot)<=Math.abs((b.details?.strike_price??0)-spot)?a:b);
+  // Average call and put IV at the same strike for a clean ATM mid
+  const atmCallIV = atmC?.implied_volatility??0;
+  const atmPutIV  = atmP?.implied_volatility??0;
+  const atmIV = (atmCallIV>0 && atmPutIV>0) ? (atmCallIV+atmPutIV)/2 : (atmCallIV||atmPutIV||0);
+
+  const expDate=atmC?.details?.expiration_date;
+  const dte=expDate?Math.max(1,Math.round((new Date(expDate)-toET(new Date()))/86400000)):15;
+
+  // 25Δ with correct sign convention + BS fallback
+  function find25IV(arr, targetDelta) {
+    // Live greeks path (market hours only — Polygon only populates delta 9:30-4PM ET)
+    const withG=arr.filter(c=>c.greeks?.delta!=null);
+    if (withG.length>=3) {
+      const best=withG.reduce((a,b)=>{
+        const da=Math.abs(a.greeks.delta-targetDelta), db=Math.abs(b.greeks.delta-targetDelta);
+        return da<=db?a:b;
+      });
+      return best?.implied_volatility??null;
+    }
+    // Outside market hours: greeks unavailable, return null (show — in UI)
+    return null;
+  }
+
+  const iv25C=find25IV(calls,+0.25)??0;
+  const iv25P=find25IV(puts, -0.25)??0;
+  let skew25=(iv25P&&iv25C)?iv25P-iv25C:null;
+  let skewSource='greeks';
+
+  // Fallback skew estimation from chain prices (used outside market hours)
+  // Method: find equidistant OTM put and call strikes ~5-8% from ATM,
+  // compare their implied vols. Put IV > Call IV = positive (put) skew.
+  // Less precise than 25Δ greeks but directionally reliable.
+  if (skew25 === null && atmIV > 0) {
+    const targetPct = 0.05; // ~5% OTM target
+    const putTarget  = spot * (1 - targetPct);
+    const callTarget = spot * (1 + targetPct);
+    const nearPut  = puts.reduce( (a,b)=>Math.abs((a.details?.strike_price??0)-putTarget) <=Math.abs((b.details?.strike_price??0)-putTarget) ?a:b, puts[0]);
+    const nearCall = calls.reduce((a,b)=>Math.abs((a.details?.strike_price??0)-callTarget)<=Math.abs((b.details?.strike_price??0)-callTarget)?a:b, calls[0]);
+    const putIVfb  = nearPut?.implied_volatility  ?? 0;
+    const callIVfb = nearCall?.implied_volatility ?? 0;
+    // Only use fallback if both strikes are meaningfully OTM (>1% from ATM) and IV is plausible
+    const putDist  = nearPut?.details?.strike_price  ? Math.abs(nearPut.details.strike_price  - spot)/spot : 0;
+    const callDist = nearCall?.details?.strike_price ? Math.abs(nearCall.details.strike_price - spot)/spot : 0;
+    if (putIVfb > 0 && callIVfb > 0 && putDist > 0.01 && callDist > 0.01) {
+      skew25 = putIVfb - callIVfb;
+      skewSource = 'price-implied';
+    }
+  }
+
+  const callOI=calls.reduce((s,c)=>s+(c.open_interest??0),0);
+  const putOI =puts.reduce( (s,c)=>s+(c.open_interest??0),0);
+  const pcRatio=callOI?(putOI/callOI).toFixed(2):'—';
+
+  // Zone-based wall selection — guarantees representation from three distance bands:
+  //   Pin zone    (0–1.5%):  1–2 walls — active gamma pinning strikes for this week
+  //   S/R zone    (1.5–6%):  2–3 walls — meaningful support/resistance price can reach in 15D
+  //   Tail zone   (6–10%):   1 wall    — regime marker, key level if vol expands
+  // Within each zone, sort by raw OI (no distance weighting) so the largest strike cluster wins.
+  // Deduplicate by strike+side across expiries first: aggregate OI, keep nearest DTE.
+  const wallMap = new Map(); // key: `${strike}-${type}`
+  plausible
+    .filter(c=>(c.open_interest??0)>0)
+    .forEach(c=>{
+      const k=c.details?.strike_price??0;
+      const type=c.details?.contract_type;
+      const oi=c.open_interest??0;
+      const expDate=c.details?.expiration_date;
+      const wallDte=expDate?Math.max(1,Math.round((new Date(expDate)-toET(new Date()))/86400000)):null;
+      const key=`${k}-${type}`;
+      if (wallMap.has(key)) {
+        const existing=wallMap.get(key);
+        existing.oi+=oi;
+        if (wallDte!=null&&(existing.dte==null||wallDte<existing.dte)) existing.dte=wallDte;
+      } else {
+        const distPct=spot>0?Math.abs(k-spot)/spot:1;
+        wallMap.set(key,{strike:k,type,oi,distPct,dte:wallDte});
+      }
+    });
+
+  // Assign each deduplicated wall to a zone, sort by OI within zone
+  const allDeduped=[...wallMap.values()].sort((a,b)=>b.oi-a.oi);
+  const pinZone   =allDeduped.filter(w=>w.distPct<=0.015);
+  const srZone    =allDeduped.filter(w=>w.distPct>0.015&&w.distPct<=0.06);
+  const tailZone  =allDeduped.filter(w=>w.distPct>0.06);
+
+  // Pick from each zone: up to 2 pin, up to 3 S/R (prefer different strikes both sides), 1 tail
+  // For S/R prefer one put-side and one call-side if available
+  const srCalls = srZone.filter(w=>w.type==='call');
+  const srPuts  = srZone.filter(w=>w.type==='put');
+  const srPicked = [];
+  // Interleave: best call, best put, second best call, etc. up to 3
+  const srMax = 3;
+  for (let i=0; srPicked.length<srMax; i++) {
+    const c=srCalls[i], p=srPuts[i];
+    if (!c&&!p) break;
+    if (c) srPicked.push(c);
+    if (srPicked.length<srMax&&p) srPicked.push(p);
+  }
+
+  const walls=[
+    ...pinZone.slice(0,2),
+    ...srPicked,
+    ...tailZone.slice(0,1),
+  ]
+  // Attach zone label for display
+  .map(w=>({
+    ...w,
+    zone: w.distPct<=0.015?'pin':w.distPct<=0.06?'sr':'tail',
+  }))
+  // Final dedup: if pin zone somehow got same strike as sr, keep only pin entry
+  .filter((w,i,arr)=>arr.findIndex(x=>x.strike===w.strike&&x.type===w.type)===i)
+  .slice(0,6); // safety cap
+
+  const midOf=c=>c?.day?.close??0;
+  const straddleMid=midOf(atmC)+midOf(atmP);
+  const greeksLive=calls.filter(c=>c.greeks?.delta!=null).length>=3;
+
+  // ATM strike for calendar leg reference
+  const atmStrike=atmStrikeVal??atmC?.details?.strike_price??spot;
+
+  // ── Dealer Gamma Exposure (GEX) ──
+  // Convention: dealers are assumed short the options customers buy.
+  // Net GEX = Σ_calls(OI × gamma × spot² × 0.01) − Σ_puts(OI × gamma × spot² × 0.01)
+  // Positive GEX → dealers net long gamma → countercyclical (buy dips, sell rips) → dampens moves
+  // Negative GEX → dealers net short gamma → procyclical (amplifies moves) → trend continuation
+  // Units: dollars of delta per 1% move in spot (normalized to millions for display)
+  //
+  // Gamma source priority:
+  //   1. Live greeks.gamma from Polygon (market hours only)
+  //   2. BS-estimated gamma: N'(d1) / (spot × iv × √T)  (outside market hours)
+  function bsGamma(s, k, iv, dte) {
+    if (!iv || !dte || !s || !k) return 0;
+    const T = Math.max(dte, 1) / 365;
+    const d1 = (Math.log(s/k) + 0.5*iv*iv*T) / (iv*Math.sqrt(T));
+    const pdf = Math.exp(-0.5*d1*d1) / Math.sqrt(2*Math.PI); // standard normal PDF
+    return pdf / (s * iv * Math.sqrt(T));
+  }
+
+  let gexRaw = 0;
+  let gexSource = 'none';
+  const gexContracts = plausible.filter(c => (c.open_interest??0) > 0 && (c.implied_volatility??0) > 0);
+
+  if (gexContracts.length >= 4) {
+    const hasLiveGamma = gexContracts.some(c => c.greeks?.gamma != null);
+    gexSource = hasLiveGamma ? 'live' : 'bs-estimated';
+
+    for (const con of gexContracts) {
+      const oi  = con.open_interest ?? 0;
+      const k   = con.details?.strike_price ?? 0;
+      const iv  = con.implied_volatility ?? 0;
+      const conDte = con.details?.expiration_date
+        ? Math.max(1, Math.round((new Date(con.details.expiration_date) - toET(new Date())) / 86400000))
+        : dte;
+      const gamma = (hasLiveGamma && con.greeks?.gamma != null)
+        ? con.greeks.gamma
+        : bsGamma(spot, k, iv, conDte);
+      if (!gamma || !k) continue;
+      // GEX contribution: OI × gamma × spot² × 0.01 × 100 (contract multiplier)
+      const contribution = oi * gamma * spot * spot * 0.01 * 100;
+      if (con.details?.contract_type === 'call') gexRaw += contribution;
+      else                                        gexRaw -= contribution; // puts subtract
+    }
+  }
+
+  // Normalize GEX to a −100→+100 score using asset-specific reference scales.
+  // Each scale is set so that ±1× the reference ≈ ±100 score at typical peak GEX.
+  // SPY: peak GEX ~$2–5B on opex weeks → $2B reference gives resolution across the range.
+  // TLT: smaller options market, peak ~$200–500M → $200M reference.
+  // GLD: smallest of the three, peak ~$50–150M → $50M reference.
+  const GEX_REFS = { SPY: 2_000_000_000, TLT: 200_000_000, GLD: 50_000_000 };
+  const GEX_REF = GEX_REFS[ticker] ?? 50_000_000;
+  const gexScore = Math.max(-100, Math.min(100, Math.round(gexRaw / GEX_REF * 100)));
+  // GEX in millions for display
+  const gexM = parseFloat((gexRaw / 1_000_000).toFixed(1));
+
+  const debug={atmStrikeUsed:atmStrikeVal,spot:spot,liveSpotUsed:liveSpot,atmCallIV_raw:atmC?.implied_volatility??null,atmPutIV_raw:atmP?.implied_volatility??null,atmCallTicker:atmC?.ticker??null,atmPutTicker:atmP?.ticker??null,atmCallDelta:atmC?.greeks?.delta??null,atmPutDelta:atmP?.greeks?.delta??null,contractsInWindow:plausible.length,allStrikesRaw:allStrikes.slice(0,5),dateFrom,dateTo};
+  return {atmIV,iv25C,iv25P,skew25,skewSource,callOI,putOI,pcRatio,walls,straddleMid,dte,greeksLive,atmStrike,gexRaw,gexM,gexScore,gexSource,debug};
+}
+
+/* ── Term structure analysis ── */
+// tsRatio = nearIV / farIV
+// > 1.05 → contango (near rich vs far)  → calendar/diagonal favored
+// < 0.95 → backwardation (far rich)     → vertical spreads favored
+// 0.95–1.05 → flat → slight lean vertical
+function termStructureRegime(tsRatio) {
+  if (!tsRatio) return { label:'Unknown', regime:'flat', source:'none' };
+  if (tsRatio > 1.10) return { label:'Steep contango', regime:'contango', ratio:tsRatio };
+  if (tsRatio > 1.05) return { label:'Mild contango',  regime:'contango', ratio:tsRatio };
+  if (tsRatio < 0.92) return { label:'Backwardation',  regime:'backwardation', ratio:tsRatio };
+  return { label:'Flat', regime:'flat', ratio:tsRatio };
+}
+
+/* ── Strategy selection ── */
+// Returns { type, label, rationale } per asset
+// Types: 'credit_spread' | 'calendar' | 'diagonal' | 'debit_spread'
+function selectStrategy(asset, { vrp, tsInfo, skewCond, volReg, changePct, dnt }) {
+  const vrpPos = vrp > 0;
+  const vrpStrong = vrp > 3;       // IV meaningfully above RV
+  const vrpNeg  = vrp < -1;
+  const isDirectional = Math.abs(changePct) > 0.5;
+  const tsRegime = tsInfo?.regime ?? 'flat';
+
+  // No short premium if VRP negative
+  if (vrpNeg || dnt==='HOLD') {
+    return {
+      type:'debit_spread',
+      label:'Debit spread',
+      rationale:`Negative VRP (IV < RV) — avoid selling vol. Use debit structure to limit short premium exposure.`
+    };
+  }
+
+  // Contango: near IV > far IV → calendars and diagonals capture theta differential
+  if (tsRegime==='contango' && vrpPos) {
+    if (isDirectional) {
+      return {
+        type:'diagonal',
+        label:'Diagonal spread',
+        rationale:`Near IV rich vs far IV (ratio ${tsInfo?.ratio?.toFixed(2)}) + directional bias → sell rich near-term strike, buy far-term ATM for vega exposure.`
+      };
+    }
+    return {
+      type:'calendar',
+      label:'Calendar spread',
+      rationale:`Near IV rich vs far IV (ratio ${tsInfo?.ratio?.toFixed(2)}) + range-bound + positive VRP → sell near-term decay, own far-term gamma. Classic calendar setup.`
+    };
+  }
+
+  // Backwardation or flat: far IV ≥ near IV → vertical spreads capture outright premium
+  if (tsRegime==='backwardation' || tsRegime==='flat') {
+    if (vrpStrong) {
+      return {
+        type:'credit_spread',
+        label:'Credit spread',
+        rationale:`${tsRegime==='backwardation'?'Backwardation (far IV elevated)':'Flat term structure'} + strong positive VRP (${vrp.toFixed(1)}pts) → collect outright premium via vertical spread.`
+      };
+    }
+    return {
+      type:'credit_spread',
+      label:'Credit spread',
+      rationale:`Flat term structure + positive VRP → vertical spread preferred over calendar. Near and far IV not sufficiently differentiated to justify time spread.`
+    };
+  }
+
+  return { type:'credit_spread', label:'Credit spread', rationale:'Default: flat regime, positive VRP.' };
+}
+
+/* ── Math ── */
+function ndCDF(x){
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const sg=x<0?-1:1; x=Math.abs(x);
+  const t=1/(1+p*x),y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return 0.5*(1+sg*y);
+}
+function pOTM(spot,strike,iv,dte,type='put'){
+  if(!iv||!dte) return 0.78;
+  const t=dte/365,d2=(Math.log(spot/strike)-0.5*iv*iv*t)/(iv*Math.sqrt(t));
+  return type==='put'?ndCDF(d2):(1-ndCDF(d2));
+}
+function emCalc(spot,iv,dte){ return spot*(iv||0)*Math.sqrt(dte/365); }
+
+/* ── Formatting ── */
+const f  =(n,d=2)=>isNaN(n)||n==null?'—':Number(n).toFixed(d);
+const f$ =n=>'$'+f(n);
+const fp =(n,d=1)=>(!n&&n!==0)||isNaN(n)?'—':(n*100).toFixed(d)+'%';
+const sgn=n=>parseFloat(n)>=0?'+':'';
+const cc =n=>parseFloat(n)>=0?'up':'dn';
+
+/* ── Build briefing ── */
+function buildBriefing({stocks,rvData,indices,chainsNear,chainsFar,tnx10}) {
+  const sp=stocks.SPY, gl=stocks.GLD, tl=stocks.TLT;
+  // Previous-day closes for change calculation
+  const spyPr=sp?.prevClose??sp?.price??0;
+  const gldPr=gl?.prevClose??gl?.price??0;
+  const tltPr=tl?.prevClose??tl?.price??0;
+  const chg=(c,p)=>p?{ch:f(c-p),pct:f((c-p)/p*100)}:{ch:'0.00',pct:'0.00'};
+
+  const CA=chainsNear.SPY, CB=chainsNear.GLD, CC=chainsNear.TLT;
+  const FA=chainsFar.SPY,  FB=chainsFar.GLD,  FC=chainsFar.TLT;
+
+  // Live spot: prefer underlying_asset.price from chain (real-time), fall back to bar close.
+  const spyP2 = (_chainSpots.SPY > 0 ? _chainSpots.SPY : sp?.price) ?? 0;
+  const gldP2 = (_chainSpots.GLD > 0 ? _chainSpots.GLD : gl?.price) ?? 0;
+  const tltP2 = (_chainSpots.TLT > 0 ? _chainSpots.TLT : tl?.price) ?? 0;
+
+  const vixFallback=(indices.vix??22)/100;
+  const spyIV=CA?.atmIV||vixFallback;
+  const gldIV=CB?.atmIV||0.24;
+  const tltIV=CC?.atmIV||0.175;
+
+  // Far IV for term structure
+  const spyFarIV=FA?.atmIV||null;
+  const gldFarIV=FB?.atmIV||null;
+  const tltFarIV=FC?.atmIV||null;
+
+  // Term structure ratios (near/far)
+  // If chain-based ratio unavailable, fall back to VIX/VIX3M
+  const vix3m = indices.vix3m ?? null;
+  const vixRatioFallback = (indices.vix && vix3m) ? indices.vix/vix3m : null;
+
+  const mkTsRatio = (nearIV, farIV, fallback) => {
+    if (nearIV && farIV && farIV>0) return { ratio:nearIV/farIV, source:'chain' };
+    if (fallback) return { ratio:fallback, source:'VIX/VIX3M' };
+    return null;
+  };
+
+  const spyTsRaw = mkTsRatio(spyIV, spyFarIV, vixRatioFallback);
+  const gldTsRaw = mkTsRatio(gldIV, gldFarIV, null);
+  const tltTsRaw = mkTsRatio(tltIV, tltFarIV, null);
+
+  const spyTs = spyTsRaw ? { ...termStructureRegime(spyTsRaw.ratio), source:spyTsRaw.source, nearIV:spyIV, farIV:spyFarIV } : null;
+  const gldTs = gldTsRaw ? { ...termStructureRegime(gldTsRaw.ratio), source:gldTsRaw.source, nearIV:gldIV, farIV:gldFarIV } : null;
+  const tltTs = tltTsRaw ? { ...termStructureRegime(tltTsRaw.ratio), source:tltTsRaw.source, nearIV:tltIV, farIV:tltFarIV } : null;
+
+  // Live RV
+  const FBRV={spy:0.185,gld:0.28,tlt:0.14};
+  const spyRV=rvData.SPY?.rv??FBRV.spy;
+  const gldRV=rvData.GLD?.rv??FBRV.gld;
+  const tltRV=rvData.TLT?.rv??FBRV.tlt;
+  const rvLive=!!(rvData.SPY?.rv&&rvData.GLD?.rv&&rvData.TLT?.rv);
+
+  const spyVRP=((spyIV-spyRV)*100);
+  const gldVRP=((gldIV-gldRV)*100);
+  const tltVRP=((tltIV-tltRV)*100);
+
+  const vix  =indices.vix  ??spyIV*100;
+  const vvix =indices.vvix ??94;
+  // MOVE proxy: I:MOVE is an ICE proprietary index not available on Polygon.
+  // Use TLT ATM IV × 450 as a proxy — historically MOVE ≈ TLT_IV × 100 × 4.5.
+  // This captures the same regime signal (calm / stressed bond vol) directionally.
+  const moveProxy = tltIV ? parseFloat((tltIV * 450).toFixed(1)) : null;
+  const move = indices.move ?? moveProxy;
+  const dxy  =indices.dxy  ??99.6;
+  const tnx  =tnx10??indices.tnx??4.34;
+  const vixPct =Math.round(Math.max(0,Math.min(100,(vix-13.38)/(60.13-13.38)*100)));
+  const vvixPct=Math.round(Math.max(0,Math.min(100,(vvix-60)/(180-60)*100)));
+
+  const skewCond=s=>{if(s==null)return'N/A';return s>0.04?'Elevated':s<-0.01?'Inverted':'Normal';};
+  const volR=iv=>iv>0.30?'Expansion':iv>0.18?'Transition':'Compression';
+  const moveReg=move==null?'N/A':move>110?'Expansion':move>80?'Transition':'Compression';
+  const moveIsProxy=!indices.move&&moveProxy!=null;
+  const vixReg =vix>30?'Expansion':vix>18?'Transition':'Compression';
+  const regime =vix>30||move>120?'High':vix>20||move>90?'Moderate':'Low';
+
+  const dnt={
+    spy: spyVRP<0||vix>28||spyIV<0.15 ? 'HOLD':'PROCEED',
+    gld: gldVRP<0||gldIV<0.14         ? 'HOLD':'PROCEED',
+    tlt: tltVRP<0||tltIV<0.10||(move!=null&&move>120) ? 'HOLD':'PROCEED',
+  };
+
+  // Strategy selection per asset
+  const changes={spy:chg(spyP2,spyPr),gld:chg(gldP2,gldPr),tlt:chg(tltP2,tltPr)};
+  const spyStrat=selectStrategy('spy',{vrp:spyVRP,tsInfo:spyTs,skewCond:skewCond(CA?.skew25??null),volReg:volR(spyIV),changePct:parseFloat(changes.spy.pct),dnt:dnt.spy});
+  const gldStrat=selectStrategy('gld',{vrp:gldVRP,tsInfo:gldTs,skewCond:skewCond(CB?.skew25??null),volReg:volR(gldIV),changePct:parseFloat(changes.gld.pct),dnt:dnt.gld});
+  const tltStrat=selectStrategy('tlt',{vrp:tltVRP,tsInfo:tltTs,skewCond:skewCond(CC?.skew25??null),volReg:volR(tltIV),changePct:parseFloat(changes.tlt.pct),dnt:dnt.tlt});
+
+  // Strike finder for vertical legs
+  const findStrike=(spot,iv,side)=>{
+    if(!spot||!iv) return {k:side==='put'?spot*.973:spot*1.027,p:78};
+    let best=null,bestD=1;
+    for(let pct=0.5;pct<=25;pct+=0.25){
+      const k=side==='put'?spot*(1-pct/100):spot*(1+pct/100);
+      const p=pOTM(spot,k,iv,15,side);
+      const d=Math.abs(p-0.78);
+      if(d<bestD){bestD=d;best={k:parseFloat(f(k,2)),p:parseFloat(f(p*100,0))};}
+    }
+    return best??{k:side==='put'?parseFloat(f(spot*.973,2)):parseFloat(f(spot*1.027,2)),p:78};
+  };
+
+  const spySS=findStrike(spyP2,spyIV,'put');
+  const gldSS=findStrike(gldP2,gldIV,'call');
+  const tltSS=findStrike(tltP2,tltIV,'call');
+
+  // ── Trade Generation Engine v2 ──
+  // Spread widths by asset (dollar-wide)
+  const WIDTHS = { SPY:5, GLD:2.5, TLT:2 };
+
+  // BS credit estimator for a vertical spread
+  function bsSpreadCredit(spot, shortK, longK, iv, dte, side) {
+    // Approximate: difference in BS option prices using simplified model
+    const T = dte/365;
+    if (!T||!iv) return 0;
+    function bsPrice(K, type) {
+      const d1=(Math.log(spot/K)+(0.5*iv*iv)*T)/(iv*Math.sqrt(T));
+      const d2=d1-iv*Math.sqrt(T);
+      if(type==='call') return spot*ndCDF(d1)-K*Math.exp(-0.04*T)*ndCDF(d2);
+      return K*Math.exp(-0.04*T)*ndCDF(-d2)-spot*ndCDF(-d1);
+    }
+    const shortP = bsPrice(shortK, side);
+    const longP  = bsPrice(longK,  side);
+    return Math.max(0, shortP - longP);
+  }
+
+  // Find short strike in target P(OTM) zone
+  // Returns {k, potm, aggressive, reason}
+  function findShortStrike(spot, iv, dte, side, zoneLo=0.70, zoneHi=0.85) {
+    let candidates=[];
+    for (let pct=0.25; pct<=35; pct+=0.25) {
+      const k = side==='put' ? spot*(1-pct/100) : spot*(1+pct/100);
+      const p = pOTM(spot,k,iv,dte,side);
+      candidates.push({k:parseFloat(f(k,2)), potm:p});
+    }
+    // Best in zone
+    const inZone = candidates.filter(c=>c.potm>=zoneLo&&c.potm<=zoneHi);
+    if (inZone.length) {
+      const best = inZone.reduce((a,b)=>Math.abs(a.potm-0.775)<=Math.abs(b.potm-0.775)?a:b);
+      return {k:best.k, potm:best.potm*100, aggressive:false, reason:null};
+    }
+    // Best near zone (65–70% or 85–90%)
+    const nearZone = candidates.filter(c=>c.potm>=0.65&&c.potm<zoneLo);
+    if (nearZone.length) {
+      const best = nearZone.reduce((a,b)=>b.potm>=a.potm?b:a);
+      return {k:best.k, potm:best.potm*100, aggressive:true,
+        reason:`Short strike P(OTM) ${(best.potm*100).toFixed(0)}% is below the 70% target zone — IV structure does not support a tighter strike at ≥70% P(OTM) for this expiration.`};
+    }
+    return null; // exclude — below 65%
+  }
+
+  // CVaR budgets — max acceptable 5% tail loss in dollars per trade, per asset
+  // Calibrated to ~2% of capital allocation: SPY=40K → $800, GLD/TLT=20K → $400
+  const CVAR_BUDGETS = { SPY: 800, GLD: 400, TLT: 400 };
+
+  // CVaR-based trade sizer.
+  // Pass cvarPerContract=null on first-pass (before MC runs); will use heuristic.
+  // Call again after tradePayoff() returns a per-unit CVaR to get final contract count.
+  function sizeToCVaR(cvarPerContract, vrp, regimeStr, dntSig, label) {
+    if (dntSig==='HOLD') return 0;
+    const regBase = regimeStr==='High' ? 1 : regimeStr==='Low' ? 4 : 3;
+    const vrpAdj  = vrp < 0 ? -1 : vrp > 8 ? 1 : 0;
+    const heuristic = Math.max(1, Math.min(6, regBase + vrpAdj));
+    if (!cvarPerContract || cvarPerContract <= 0) return heuristic;
+    // Asset-specific budget (label is 'SPY', 'GLD', or 'TLT')
+    const budget = CVAR_BUDGETS[label] ?? 800;
+    // How many contracts fit inside the budget?
+    const budgetContracts = Math.floor(budget / cvarPerContract);
+    // Conservative: min of budget-derived and regime-heuristic, clamped 1–6
+    return Math.max(1, Math.min(6, budgetContracts, heuristic));
+  }
+
+  // Legacy shim — heuristic only, used in HOLD debit path before CVaR is known
+  function contractCount(vrp, regimeStr, dntSig) {
+    return sizeToCVaR(null, vrp, regimeStr, dntSig);
+  }
+
+  // Skew alignment check — spread direction should favor the rich side
+  // Returns true if direction aligns with skew
+  function skewAligned(side, skCond) {
+    if (skCond==='Elevated') return side==='put'; // put skew rich → sell puts
+    if (skCond==='Inverted') return side==='call'; // call skew rich → sell calls
+    return true; // neutral skew — either side ok
+  }
+
+
+  // ── CVaR calculation ──
+  // Estimates 5% CVaR for each trade structure using analytical approximations.
+  // Returns { cvar: dollar amount, label: string } per trade.
+  // CVaR = Expected loss in the worst 5% of scenarios at expiry.
+  // Uses log-normal return distribution with IV as annualized vol.
+
+  function tradePayoff(type, spot, legs, iv, dte, width, credit, contracts) {
+    const T = dte / 365;
+    const sigma = iv * Math.sqrt(T);
+    const N = 2000; // Monte Carlo paths
+    const pnls = [];
+
+    for (let i = 0; i < N; i++) {
+      // Box-Muller normal sample
+      const u1 = Math.random(), u2 = Math.random();
+      const z = Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2);
+      const sT = spot * Math.exp(-0.5*iv*iv*T + sigma*z);
+
+      let payoff = 0;
+
+      if (type === 'credit' || type === 'debit') {
+        // Vertical spread: parse legs for strikes and side
+        // legs[0] = short, legs[1] = long (credit) or reverse (debit)
+        const leg0 = legs[0], leg1 = legs[1];
+        const side = (leg0+leg1).toLowerCase().includes('put') ? 'put' : 'call';
+        const k0 = parseFloat((leg0.match(/\$([\d.]+)/)||[])[1]??0);
+        const k1 = parseFloat((leg1.match(/\$([\d.]+)/)||[])[1]??0);
+        if (credit) {
+          // Short vertical: collect premium, cap gain at credit, max loss = width - credit
+          const shortK = Math.max(k0,k1) * (side==='put'?1:0) || Math.min(k0,k1);
+          const longK  = side==='put' ? Math.min(k0,k1) : Math.max(k0,k1);
+          const shortPayoff = side==='put' ? Math.max(0, shortK-sT) : Math.max(0, sT-shortK);
+          const longPayoff  = side==='put' ? Math.max(0, longK-sT)  : Math.max(0, sT-longK);
+          payoff = -(shortPayoff - longPayoff); // P&L from short spread perspective
+        } else {
+          // Long vertical: pay debit, max profit = width - debit
+          const longK  = side==='put' ? Math.max(k0,k1) : Math.min(k0,k1);
+          const shortK = side==='put' ? Math.min(k0,k1) : Math.max(k0,k1);
+          const longPayoff  = side==='put' ? Math.max(0, longK-sT)  : Math.max(0, sT-longK);
+          const shortPayoff = side==='put' ? Math.max(0, shortK-sT) : Math.max(0, sT-shortK);
+          payoff = longPayoff - shortPayoff;
+        }
+      } else if (type === 'calendar') {
+        // Calendar: approximate P&L as function of near expiry move
+        // Profit zone: near-term strike ± 0.5×EM, loses on large moves
+        const em = spot * iv * Math.sqrt(T);
+        const dist = Math.abs(sT - spot);
+        payoff = dist < em*0.5 ? width*0.15 : -(dist - em*0.5) * 0.3;
+        payoff = Math.max(-width*0.4, Math.min(width*0.2, payoff));
+      } else if (type === 'diagonal') {
+        // Diagonal: similar to calendar but with slight directional tilt
+        const em = spot * iv * Math.sqrt(T);
+        const move = sT - spot;
+        const favorable = (legs[0]||'').toLowerCase().includes('put') ? move > 0 : move < 0;
+        payoff = favorable ? Math.min(width*0.2, Math.abs(move)*0.1) : -Math.min(width*0.4, Math.abs(move)*0.15);
+      } else if (type === 'condor') {
+        // Iron condor: profit between short strikes, lose outside long strikes
+        const putShortK  = parseFloat(((legs[0]||'').match(/\$([\d.]+)\s+put/i)||[])[1]??spot*0.95);
+        const callShortK = parseFloat(((legs[1]||'').match(/\$([\d.]+)\s+call/i)||[])[1]??spot*1.05);
+        if (sT > putShortK && sT < callShortK) {
+          payoff = width * 0.28; // near max credit
+        } else if (sT <= putShortK) {
+          payoff = Math.max(-width, -(putShortK - sT));
+        } else {
+          payoff = Math.max(-width, -(sT - callShortK));
+        }
+      } else if (type === 'bwb') {
+        // BWB: parse body strike from legs
+        const bodyK = parseFloat(((legs[1]||'').match(/\$([\d.]+)/)||[])[1]??spot);
+        const side = (legs[0]||'').toLowerCase().includes('put') ? 'put' : 'call';
+        const move = side==='put' ? spot - sT : sT - spot;
+        if (move < 0) payoff = width * 0.15; // expires worthless, keep credit
+        else if (move < width) payoff = width*0.15 - move*0.5;
+        else if (move < width*2) payoff = -(move - width)*1.0;
+        else payoff = -width * 0.9; // near max loss
+      }
+
+      pnls.push(payoff * contracts);
+    }
+
+    // Sort ascending, take worst 5%
+    pnls.sort((a,b) => a-b);
+    const cutoff = Math.floor(N * 0.05);
+    const tail = pnls.slice(0, cutoff);
+    const cvar = tail.reduce((s,v) => s+v, 0) / tail.length;
+    return Math.abs(cvar);
+  }
+
+  // Generate trades for one asset × one DTE
+  function genTrades(label, spot, iv, farIV, rv, dntSig, tsInfo, biasObj, skCond, dte) {
+    if (!spot||!iv) return [];
+    const a = label.toLowerCase();
+    const vrpPts = a==='spy'?spyVRP : a==='gld'?gldVRP : tltVRP;
+    const vrp = parseFloat(vrpPts);
+    const width = WIDTHS[label];
+    const tsReg = tsInfo?.regime ?? 'flat';
+    const tsRatio = tsInfo?.ratio ?? 1;
+    const bullish = biasObj.bull > biasObj.bear;
+    const directional = Math.abs(biasObj.bull - biasObj.bear) > 20;
+    const contracts = contractCount(vrp, regime, dntSig);
+    const atmChain = a==='spy'?CA : a==='gld'?CB : CC;
+    const atmK = atmChain?.atmStrike ?? spot;
+    const em = emCalc(spot, iv, dte);
+    const results = [];
+
+    // ── HOLD: always propose one debit trade with justification ──
+    if (dntSig==='HOLD') {
+      const side = bullish ? 'call' : 'put';
+      const longK = parseFloat(f(atmK,2));
+      const shortK = side==='call' ? parseFloat(f(longK+width*2,2)) : parseFloat(f(longK-width*2,2));
+      const potm = pOTM(spot,shortK,iv,dte,side)*100;
+      if (potm<50) return []; // truly untradeable
+      const aggressive = potm<70||potm>85;
+      const debitEst = Math.max(0.10, bsSpreadCredit(spot,longK,shortK,iv,dte,side));
+      // CVaR sizing: run MC at 1 contract, then size to budget
+      const cvar1 = tradePayoff('debit',spot,[`Buy  ${f$(longK)} ${side}`, `Sell ${f$(shortK)} ${side}`],iv,dte,width,false,1);
+      const finalContracts = Math.max(1, sizeToCVaR(cvar1, vrp, regime, dntSig, label));
+      const finalCvar = cvar1 * finalContracts;
+      results.push({
+        type:'debit', label, dte, dntSig, contracts:finalContracts,
+        cvarPerUnit: cvar1, cvarBudget: CVAR_BUDGETS[label]??800,
+        strat: side==='call'?'Bull call debit spread':'Bear put debit spread',
+        structure: `${width*2}-wide debit — HOLD flag, long premium only`,
+        expiry: `${dte} DTE (single expiration)`,
+        legs: [`Buy  ${f$(longK)} ${side}`, `Sell ${f$(shortK)} ${side}`],
+        potm: potm.toFixed(0)+'%', aggressive,
+        premTarget: `$${f(debitEst,2)} db (estimated)`,
+        credit: false,
+        rationale: `${label} flagged HOLD — short premium prohibited. ${side==='call'?'Bullish':'Bearish'} debit proposed: directional bias (${biasObj.bull}%/${biasObj.bear}%) justifies limited long premium. VRP ${vrp.toFixed(1)}pts.${aggressive?' ⚠ Aggressive: P(OTM) outside 70–85% zone.':''}`,
+        regimeNote: `Regime: ${regime} vol. VRP ${vrp>=0?'+':''}${vrp.toFixed(1)}pts. Skew: ${skCond}.`,
+        risk: 'Full debit lost if expires OTM. Time decay headwind. Max risk = debit paid.',
+        score: Math.max(1, Math.abs(vrp)) * (potm/100) * 5,
+        cvar: finalCvar,
+      });
+      return results;
+    }
+
+    // ── PROCEED assets: generate all applicable structures ──
+
+    // 1. Calendar — when farIV available and range-bound or positive VRP
+    if (farIV && (tsReg==='contango' || (!directional && vrp>0))) {
+      const farDTE = dte+30;
+      const netDebit = Math.max(0.3, Math.abs(iv-farIV)*spot*0.04 + 0.3);
+      const strikeWidth = width*4;
+      const maxDebit = strikeWidth*0.40;
+      const debitOk = netDebit <= maxDebit;
+      results.push({
+        type:'calendar', label, dte, farDTE, dntSig, contracts,
+        strat:'Calendar spread',
+        structure:`ATM calendar — sell ${dte}D / buy ${farDTE}D`,
+        expiry:`${dte} DTE (near) / ${farDTE} DTE (far)`,
+        legs:[`Sell ${f$(atmK)} (${dte} DTE)`, `Buy  ${f$(atmK)} (${farDTE} DTE)`],
+        potm:'≥70% (near expires worthless)',
+        premTarget:`~$${f(netDebit,2)} db (${debitOk?'≤':'⚠ >'} 40% of $${strikeWidth} width)`,
+        aggressive: !debitOk,
+        credit:false,
+        tsRatio: tsRatio.toFixed(3),
+        rationale:`${tsReg==='contango'?'Contango (ratio '+tsRatio.toFixed(2)+')':'+VRP and range-bound bias'} supports ATM calendar. Near IV ${fp(iv)} vs far IV ${fp(farIV)}. Net debit ~$${f(netDebit,2)} ${debitOk?'within':'may exceed'} 40% of $${strikeWidth} width.${!debitOk?' ⚠ Aggressive.':''}`,
+        regimeNote:`Regime: ${regime} vol. TS: ${tsReg} (${tsRatio.toFixed(2)}). Skew: ${skCond}.`,
+        risk:'Sharp move compresses spread. Assignment risk on near short.',
+        score: Math.max(1,vrp) * (tsReg==='contango'?tsRatio:1) * (directional?7:11),
+      });
+      { const t=results[results.length-1]; const c1=tradePayoff('calendar',spot,t.legs,iv,dte,width,false,1); const fc=sizeToCVaR(c1,vrp,regime,dntSig,label); t.contracts=fc; t.cvar=c1*fc; t.cvarPerUnit=c1; t.cvarBudget=CVAR_BUDGETS[label]??800; }
+    }
+
+    // 2. Diagonal — term structure trade with directional tilt.
+    // Rationale: near IV > far IV (contango) → sell near premium, own far vega.
+    // STRIKE FIX: both legs OTM so net delta is near-neutral or slightly directional.
+    //   Near short: 75–85% P(OTM) OTM strike (same as before).
+    //   Far long: one increment further OTM than the near short — NOT ATM.
+    //   This keeps net delta from going negative on a bullish diagonal (or positive on bearish).
+    // Bias label removed from rationale — the diagonal is a TS trade, not a directional trade.
+    if (farIV && directional) {
+      const side = bullish ? 'put' : 'call';
+      const ss = findShortStrike(spot, iv, dte, side);
+      if (ss) {
+        // Far long: one standard width increment further OTM than near short.
+        // Bullish put diagonal: long put BELOW near short (more OTM, less negative delta).
+        // Bearish call diagonal: long call ABOVE near short (more OTM, less positive delta).
+        const farLongK = bullish
+          ? parseFloat(f(ss.k - width, 2))      // further OTM put (lower strike)
+          : parseFloat(f(ss.k + width, 2));      // further OTM call (higher strike)
+        const strikeWidth = Math.abs(farLongK - ss.k);
+        const netDebit = Math.max(0.3, bsSpreadCredit(spot, farLongK, ss.k, farIV, dte+30, side));
+        const maxDebit = strikeWidth * 0.40;
+        // Net delta estimate: near short + far long (both OTM → net delta near zero, slight directional lean)
+        const nearDelta = bullish ? +(1 - ss.potm/100).toFixed(2) : -(1 - ss.potm/100).toFixed(2);
+        const netDeltaApprox = bullish ? '+small' : '−small';
+        results.push({
+          type:'diagonal', label, dte, farDTE:dte+30, dntSig, contracts,
+          strat:'Diagonal spread',
+          structure:`OTM ${side} near / OTM ${side} far (both legs OTM)`,
+          expiry:`${dte} DTE (near) / ${dte+30} DTE (far)`,
+          legs:[`Sell ${f$(ss.k)} ${side} (${dte} DTE)`, `Buy  ${f$(farLongK)} ${side} (${dte+30} DTE)`],
+          potm: ss.potm.toFixed(0)+'%',
+          premTarget:`~$${f(Math.min(netDebit,maxDebit),2)} db (≤ 40% of $${f(strikeWidth,2)} width)`,
+          aggressive: ss.aggressive,
+          credit:false,
+          tsRatio: tsRatio.toFixed(3),
+          netDelta: netDeltaApprox,
+          rationale:`Term structure (TS ratio ${tsRatio.toFixed(3)}, near IV ${fp(iv)} > far IV ${fp(farIV)}) → sell near premium, own far vega. Both legs OTM: near short ${f$(ss.k)} at ${ss.potm.toFixed(0)}% P(OTM), far long ${f$(farLongK)} further OTM. ${bullish?'Bullish':'Bearish'} lean from bias (${biasObj.bull}/${biasObj.bear}) sets ${side} side.${ss.aggressive?' ⚠ '+ss.reason:''}`,
+          regimeNote:`Regime: ${regime} vol. VRP ${vrp>=0?'+':''}${vrp.toFixed(1)}pts. Net Δ ≈ ${netDeltaApprox}.`,
+          risk:`Adverse move through near short. Near IV collapse faster than far. Both legs OTM — max loss = net debit paid.`,
+          score: Math.max(1,vrp) * (ss.aggressive?6:9),
+        });
+        { const t=results[results.length-1]; const c1=tradePayoff('diagonal',spot,t.legs,iv,dte,width,false,1); const fc=sizeToCVaR(c1,vrp,regime,dntSig,label); t.contracts=fc; t.cvar=c1*fc; t.cvarPerUnit=c1; t.cvarBudget=CVAR_BUDGETS[label]??800; }
+      }
+    }
+
+    // 3. Iron condor — default PROCEED structure for all bias levels.
+    // Symmetric when neutral. Leaning when directional: tighten the short strike on the
+    // directional side (closer to ATM = higher premium) and widen the other (more room).
+    // Both sides remain fully defined — no uncapped tail exposure.
+    if (vrp > 0) {
+      // Strike zones by directional lean
+      // Tight side: 0.72–0.82 P(OTM) — short strike closer to ATM, collects more premium
+      // Wide side:  0.78–0.88 P(OTM) — short strike further OTM, less premium but more room
+      // Neutral:    both sides 0.75–0.85
+      const tightZone = [0.72, 0.82];
+      const wideZone  = [0.78, 0.88];
+      const neutZone  = [0.75, 0.85];
+      let callZone, putZone, leanLabel;
+      if (directional && bullish) {
+        // Bullish lean: tighten put side (collect more put premium = directional bet),
+        //              widen call side (give room for upside move)
+        putZone  = tightZone; callZone = wideZone;
+        leanLabel = 'bullish lean — put side tightened';
+      } else if (directional && !bullish) {
+        // Bearish lean: tighten call side, widen put side
+        callZone = tightZone; putZone  = wideZone;
+        leanLabel = 'bearish lean — call side tightened';
+      } else {
+        putZone = neutZone; callZone = neutZone;
+        leanLabel = 'neutral';
+      }
+      const callSS = findShortStrike(spot, iv, dte, 'call', callZone[0], callZone[1]);
+      const putSS  = findShortStrike(spot, iv, dte, 'put',  putZone[0],  putZone[1]);
+      if (callSS && putSS) {
+        const callLong = parseFloat(f(callSS.k+width,2));
+        const putLong  = parseFloat(f(putSS.k-width,2));
+        const callCr = bsSpreadCredit(spot,callSS.k,callLong,iv,dte,'call');
+        const putCr  = bsSpreadCredit(spot,putSS.k,putLong,iv,dte,'put');
+        const total  = callCr+putCr;
+        const tLo=width*0.20, tHi=width*0.35;
+        // IC score: boosted above credit spread to reflect consistency preference.
+        // Directional lean gets full score; neutral slightly lower (less conviction).
+        const icScore = vrp * Math.min(callSS.potm,putSS.potm)/100 * (directional ? 16 : 14);
+        results.push({
+          type:'condor', label, dte, dntSig, contracts,
+          strat: directional ? `${bullish?'Bullish':'Bearish'}-leaning iron condor` : 'Iron condor',
+          structure:`${width}-wide wings both sides — ${leanLabel}`,
+          expiry:`${dte} DTE (single expiration)`,
+          legs:[
+            `Sell ${f$(putSS.k)} put / Buy ${f$(putLong)} put`,
+            `Sell ${f$(callSS.k)} call / Buy ${f$(callLong)} call`,
+          ],
+          potm:`Put ${putSS.potm.toFixed(0)}% / Call ${callSS.potm.toFixed(0)}%`,
+          premTarget:`$${f(total,2)} total cr · target $${f(tLo,2)}–$${f(tHi,2)} per wing`,
+          aggressive: callSS.aggressive||putSS.aggressive,
+          credit:true,
+          netDelta: directional ? (bullish ? '+small (put wing tighter)' : '−small (call wing tighter)') : '≈0 (symmetric)',
+          rationale:`VRP +${vrp.toFixed(1)}pts → IC preferred for consistency (both sides defined). ${directional?`${bullish?'Bullish':'Bearish'} bias (${biasObj.bull}/${biasObj.bear}) — ${leanLabel}.`:'Neutral bias — symmetric strikes.'} Put ${putSS.potm.toFixed(0)}% / Call ${callSS.potm.toFixed(0)}% P(OTM). EM ±$${f(em,0)} at ${dte}D.`,
+          regimeNote:`Regime: ${regime} vol. EM ±$${f(em,0)} at ${dte}D. Skew: ${skCond}.`,
+          risk:'Directional break through either short strike. Max loss = width − credit. Both sides fully defined.',
+          score: icScore,
+        });
+        { const t=results[results.length-1]; const c1=tradePayoff('condor',spot,t.legs,iv,dte,width,true,1); const fc=sizeToCVaR(c1,vrp,regime,dntSig,label); t.contracts=fc; t.cvar=c1*fc; t.cvarPerUnit=c1; t.cvarBudget=CVAR_BUDGETS[label]??800; }
+      }
+    }
+
+    // 4. BWB — high conviction + elevated skew only (asymmetric tail, use sparingly)
+    if (skCond==='Elevated' && Math.abs(biasObj.bull-biasObj.bear)>30) {
+      const side = bullish ? 'put' : 'call';
+      const body = findShortStrike(spot, iv, dte, side, 0.68, 0.84);
+      if (body) {
+        const nearK = side==='put' ? parseFloat(f(body.k+width,2)) : parseFloat(f(body.k-width,2));
+        const skipK = side==='put' ? parseFloat(f(body.k-width*2,2)): parseFloat(f(body.k+width*2,2));
+        const cr = Math.max(0, bsSpreadCredit(spot,nearK,body.k,iv,dte,side)*2
+                           - bsSpreadCredit(spot,body.k,skipK,iv,dte,side));
+        const tLo=width*0.25, tHi=width*0.33;
+        results.push({
+          type:'bwb', label, dte, dntSig, contracts,
+          strat:'Broken-wing butterfly',
+          structure:`${side.toUpperCase()} BWB ×1/×2/×1 skip ${bullish?'downside':'upside'} wing (single expiration)`,
+          expiry:`${dte} DTE (single expiration)`,
+          legs:[
+            `Buy  ${f$(nearK)} ${side} ×1`,
+            `Sell ${f$(body.k)} ${side} ×2`,
+            `Buy  ${f$(skipK)} ${side} ×1 (skip wing)`,
+          ],
+          potm: body.potm.toFixed(0)+'%',
+          premTarget:`$${f(cr,2)} cr (target $${f(tLo,2)}–$${f(tHi,2)} per unit)`,
+          aggressive: body.aggressive,
+          credit:true,
+          rationale:`Elevated ${side} skew (${skCond}) + ${bullish?'bullish':'bearish'} bias (${biasObj.bull}/${biasObj.bear}) → BWB nets credit while expressing direction. Body ${f$(body.k)} at ${body.potm.toFixed(0)}% P(OTM). Skip wing on ${bullish?'downside':'upside'}.${body.aggressive?' ⚠ '+body.reason:''}`,
+          regimeNote:`Regime: ${regime} vol. Skew ${skCond}.`,
+          risk:`Move through body doubles short. ${bullish?'Downside':'Upside'} uncapped beyond skip wing.`,
+          score: Math.max(1,vrp) * body.potm/100 * 12,
+        });
+        { const t=results[results.length-1]; const c1=tradePayoff('bwb',spot,t.legs,iv,dte,width,true,1); const fc=sizeToCVaR(c1,vrp,regime,dntSig,label); t.contracts=fc; t.cvar=c1*fc; t.cvarPerUnit=c1; t.cvarBudget=CVAR_BUDGETS[label]??800; }
+      }
+    }
+
+    // 5. Credit spread — generated for ALL PROCEED assets regardless of other conditions
+    //    This is the baseline guaranteed trade for every PROCEED asset × DTE
+    {
+      const creditSide = bullish ? 'put' : 'call';
+      const ss = findShortStrike(spot, iv, dte, creditSide);
+      if (ss) {
+        const shortK = ss.k;
+        const longK  = creditSide==='put' ? parseFloat(f(shortK-width,2)) : parseFloat(f(shortK+width,2));
+        const cr = bsSpreadCredit(spot,shortK,longK,iv,dte,creditSide);
+        const tLo=width*0.25, tHi=width*0.33;
+        const premOk = cr>=tLo;
+        const outsideEM = creditSide==='put' ? shortK<spot-em : shortK>spot+em;
+        const aligned = skewAligned(creditSide, skCond);
+        const aggr = ss.aggressive || !outsideEM;
+        results.push({
+          type:'credit', label, dte, dntSig, contracts: Math.max(1,contracts),
+          strat: creditSide==='put'?'Bull put spread':'Bear call spread',
+          structure:`${width}-wide ${creditSide==='put'?'bull put':'bear call'} (single expiration)`,
+          expiry:`${dte} DTE (single expiration)`,
+          legs:[`Sell ${f$(shortK)} ${creditSide}`, `Buy  ${f$(longK)} ${creditSide}`],
+          potm: ss.potm.toFixed(0)+'%',
+          premTarget:`$${f(cr,2)} cr · target $${f(tLo,2)}–$${f(tHi,2)} (${premOk?'✓ within range':'⚠ below 25% floor'})`,
+          aggressive: aggr,
+          credit:true,
+          rationale:`${vrp>=0?'VRP +'+vrp.toFixed(1)+'pts — premium elevated vs RV.':'IV near RV — modest premium.'} ${bullish?'Bullish':'Bearish'} bias → ${creditSide} spread. Strike ${f$(shortK)} at ${ss.potm.toFixed(0)}% P(OTM), ${outsideEM?'outside':'inside'} ${dte}D EM (±$${f(em,0)}). ${aligned?'Skew '+skCond+' aligns.':'Neutral skew.'} Credit $${f(cr,2)} vs $${f(tLo,2)}–$${f(tHi,2)} target.${ss.aggressive?' ⚠ '+ss.reason:''}${!outsideEM?' ⚠ Aggressive: strike inside EM.':''}`,
+          regimeNote:`Regime: ${regime} vol. EM ±$${f(em,0)} at ${dte}D. Skew: ${skCond}.`,
+          risk:`Gap ${creditSide==='put'?'below':'above'} ${f$(shortK)}. Max loss $${f(width-Math.max(0,cr),2)} per spread.`,
+          score: Math.max(0.5,vrp) * ss.potm/100 * (aligned?7:5) * (outsideEM?1:0.7),
+        });
+        { const t=results[results.length-1]; const c1=tradePayoff('credit',spot,t.legs,iv,dte,width,true,1); const fc=sizeToCVaR(c1,vrp,regime,dntSig,label); t.contracts=fc; t.cvar=c1*fc; t.cvarPerUnit=c1; t.cvarBudget=CVAR_BUDGETS[label]??800; }
+      }
+    }
+
+    return results;
+  }
+
+  // ── Data-driven directional bias ──
+  // Uses price momentum (5D vs 20D close), OI skew, VIX trend, DXY, yield direction.
+  // Output: bull/bear as % summing to 100, conf as 'Low'|'Medium'|'High'
+
+  function calcBias(closes, pcRatio, skew, extraSignals, rv, asset) {
+    // closes: array oldest→newest (from rvData which reverses to oldest-first)
+    // rv: annualized realized vol (decimal) for overextension z-score calculation
+    // asset: 'spy' | 'gld' | 'tlt' — used for asset-specific PC ratio baselines
+    // Start at 50/50 and apply signals as adjustments
+    let score = 0; // positive = bullish, negative = bearish
+    const signals = [];
+
+    if (closes && closes.length >= 6) {
+      // 5-day momentum: last close vs close 5 days ago
+      // Threshold raised 1%→2% to filter choppy/mean-reverting noise
+      const mom5 = (closes.at(-1) - closes.at(-6)) / closes.at(-6);
+      let mom5Score = 0;
+      if (mom5 > 0.02)       { mom5Score = +15; signals.push('5D momentum +'); }
+      else if (mom5 < -0.02) { mom5Score = -15; signals.push('5D momentum −'); }
+
+      // Signal B: Momentum exhaustion check
+      // If 5D momentum fired bearish but the most recent 2-day return is positive
+      // (move already stabilizing), halve the momentum penalty.
+      // Symmetric: if momentum fired bullish but 2-day return is negative, halve the bonus.
+      if (mom5Score !== 0 && closes.length >= 3) {
+        const ret2d = (closes.at(-1) - closes.at(-3)) / closes.at(-3);
+        if (mom5Score < 0 && ret2d > 0) {
+          mom5Score = Math.round(mom5Score / 2);
+          signals.push('momentum exhaustion (stabilizing)');
+        } else if (mom5Score > 0 && ret2d < 0) {
+          mom5Score = Math.round(mom5Score / 2);
+          signals.push('momentum exhaustion (fading)');
+        }
+      }
+      score += mom5Score;
+
+      // 20-day trend: last close vs 20-day SMA
+      // Threshold raised 0.5%→1% to avoid firing on near-ATM price action
+      if (closes.length >= 21) {
+        const sma20 = closes.slice(-21,-1).reduce((s,c)=>s+c,0) / 20;
+        if (closes.at(-1) > sma20 * 1.010)       { score += 10; signals.push('above 20D SMA'); }
+        else if (closes.at(-1) < sma20 * 0.990)  { score -= 10; signals.push('below 20D SMA'); }
+
+        // Signal A: Overextension detector
+        // Measures how far price is from SMA20 in units of normal vol-adjusted range.
+        // extension = (price - SMA20) / (20D RV × price × sqrt(20/252))
+        // Fires when price is >1.5σ from SMA — indicates likely mean-reversion candidate.
+        // Asymmetric: downside overshoots snap back faster → stronger bullish signal.
+        if (rv && rv > 0) {
+          const price = closes.at(-1);
+          const normalRange = rv * price * Math.sqrt(20/252);
+          const extension = normalRange > 0 ? (price - sma20) / normalRange : 0;
+          if (extension < -1.5) {
+            score += 10;
+            signals.push(`overextended low (${extension.toFixed(1)}σ)`);
+          } else if (extension > 1.5) {
+            score -= 8;
+            signals.push(`overextended high (+${extension.toFixed(1)}σ)`);
+          }
+        }
+      }
+    }
+
+    // Put/call OI ratio — asset-specific z-score vs structural baseline
+    // Fixed thresholds fail because each asset has different structural PC ratios:
+    //   SPY: institutional hedging drives structurally high put demand (~1.50 mean)
+    //   GLD: different hedger composition, lower put bias (~0.85 mean)
+    //   TLT: rate-driven, intermediate (~1.10 mean)
+    // Signal scales continuously with σ deviation: max ±10-12pts at ±2σ
+    const PC_BASELINES = {
+      spy: { mean: 1.50, std: 0.35 },
+      gld: { mean: 0.85, std: 0.25 },
+      tlt: { mean: 1.10, std: 0.30 },
+    };
+    if (pcRatio && pcRatio !== '—') {
+      const pc = parseFloat(pcRatio);
+      const baseline = PC_BASELINES[asset] ?? PC_BASELINES.spy;
+      const zScore = (pc - baseline.mean) / baseline.std;
+      if (zScore > 1.0) {
+        // Put-heavy vs structural norm → bearish signal, scaled by σ, max −12 at 2σ
+        const adj = -Math.round(Math.min(12, 6 * zScore));
+        score += adj;
+        signals.push(`put OI elevated (+${zScore.toFixed(1)}σ)`);
+      } else if (zScore < -1.0) {
+        // Call-heavy vs structural norm → bullish signal, scaled by σ, max +10 at −2σ
+        const adj = Math.round(Math.min(10, 5 * Math.abs(zScore)));
+        score += adj;
+        signals.push(`call OI elevated (${zScore.toFixed(1)}σ)`);
+      }
+    }
+
+    // ── Skew signal ──
+    // Elevated put skew and inverted skew are treated differently:
+    //   Put skew: unconditional bearish signal (market paying for downside protection)
+    //   Inverted skew: conditional — only bullish when confirmed by trend + dealer positioning.
+    //     Without confirmation it's likely complacency or late-stage exhaustion, not bullish conviction.
+
+    // Pre-compute context needed for inverted skew confirmation
+    let inUptrend = false;
+    const overextendedLow  = closes && closes.length >= 21 && rv && rv > 0
+      ? (() => {
+          const sma20 = closes.slice(-21,-1).reduce((s,c)=>s+c,0)/20;
+          const normalRange = rv * closes.at(-1) * Math.sqrt(20/252);
+          return normalRange > 0 ? (closes.at(-1) - sma20) / normalRange < -1.5 : false;
+        })()
+      : false;
+    const overextendedHigh = closes && closes.length >= 21 && rv && rv > 0
+      ? (() => {
+          const sma20 = closes.slice(-21,-1).reduce((s,c)=>s+c,0)/20;
+          const normalRange = rv * closes.at(-1) * Math.sqrt(20/252);
+          return normalRange > 0 ? (closes.at(-1) - sma20) / normalRange > 1.5 : false;
+        })()
+      : false;
+    if (closes && closes.length >= 21) {
+      const sma20 = closes.slice(-21,-1).reduce((s,c)=>s+c,0)/20;
+      inUptrend = closes.at(-1) > sma20 * 1.010;
+    }
+
+    let skewAdj = 0;
+    if (skew != null) {
+
+      // ── Elevated put skew ──
+      // SPY / GLD: put skew = bearish sentiment, market paying for downside protection → −12.
+      // TLT: put skew = rational hedging against yield rises in a rate-sensitive instrument.
+      //   Not intrinsically bearish — often reflects institutional duration hedging rather than
+      //   directional conviction. Softer penalty (−5), no overbought amplification.
+      if (skew > 0.05) {
+        if (asset === 'tlt') {
+          skewAdj = -5;
+          signals.push('elevated put skew (rate hedge — softened)');
+          // Oversold offset still applies for TLT: put skew into a bond selloff = mean-reversion setup
+          if (overextendedLow) {
+            skewAdj = Math.round(skewAdj * 0.5);
+            signals.push('skew/overextension offset (bond oversold)');
+          }
+          // No overbought amplification for TLT — put skew at high bond prices is just prudent hedging
+        } else {
+          skewAdj = -12;
+          signals.push('elevated put skew');
+          // Interaction: put skew + oversold → partially offset (strong put-selling setup)
+          if (overextendedLow) {
+            skewAdj = Math.round(skewAdj * 0.5);
+            signals.push('skew/overextension offset (put-selling setup)');
+          } else if (overextendedHigh) {
+            // Put skew + overbought → compounds bearish read
+            skewAdj = Math.round(skewAdj * 1.3);
+            signals.push('skew/overextension compound (bearish)');
+          }
+        }
+
+      // ── Inverted skew ──
+      // TLT: inverted skew means OTM calls (lower yield) bid up = flight-to-quality demand.
+      //   This is a bond-specific bullish signal (bonds up, yields down) driven by risk-off
+      //   flows, not an equity squeeze setup. Treat as unconditional bullish — no equity-style
+      //   confirmation logic applies. Magnitude modest (+8) since it can also reflect rate rally
+      //   expectations that are already partially priced.
+      //
+      // SPY / GLD: conditional scoring — only bullish when confirmed by trend + dealer positioning.
+      //   Without confirmation it's likely complacency or late-stage exhaustion, not bullish conviction.
+      } else if (skew < -0.01) {
+        if (asset === 'tlt') {
+          // TLT inverted skew = calls bid up = market pricing yield decline = bond bullish
+          skewAdj = +8;
+          signals.push('inverted skew (flight-to-quality demand)');
+        } else {
+          // SPY / GLD — confirmation-required framework
+          const gex = extraSignals?.gexScore ?? null;
+          const dealerShortGamma = gex !== null && gex <= -20;
+          const dealerLongGamma  = gex !== null && gex >= +20;
+          const confirmCount = (inUptrend ? 1 : 0) + (dealerShortGamma ? 1 : 0);
+
+          if (overextendedHigh) {
+            // Late-stage exhaustion: inverted skew at overbought levels → bearish fade signal
+            skewAdj = -4;
+            signals.push('inverted skew (late-stage exhaustion — bearish)');
+          } else if (dealerLongGamma && !inUptrend) {
+            // Long gamma + no trend + inverted skew = complacency / suppressed move
+            skewAdj = +2;
+            signals.push('inverted skew (complacency — muted, dealer long gamma)');
+          } else if (confirmCount === 0) {
+            // No confirmation — treat as noise, very weak signal
+            skewAdj = +3;
+            signals.push('inverted skew (unconfirmed — weak)');
+          } else if (confirmCount === 1) {
+            // One confirmation — moderate bullish
+            skewAdj = +6;
+            const conf1 = inUptrend ? 'uptrend' : 'dealer short gamma';
+            signals.push(`inverted skew + ${conf1}`);
+          } else {
+            // Both confirmations: uptrend + dealer short gamma → squeeze setup, full signal
+            skewAdj = +14;
+            signals.push('inverted skew + uptrend + dealer short gamma (squeeze setup)');
+          }
+        }
+      }
+    }
+    score += skewAdj;
+
+    // Asset-specific extra signals
+    if (extraSignals) {
+      // SPY: VIX momentum — continuous scaling with move magnitude.
+      // Noise filter: <5% ignored. Asymmetric caps: rising penalizes more than falling rewards.
+      // Rising: 5–10% → −6, 10–20% → −10, 20–35% → −14, >35% → −18 cap.
+      // Falling: 5–10% → +5, 10–20% → +8, 20–35% → +11, >35% → +14 cap.
+      // Conflict check: VIX falling while VVIX rising = second leg risk.
+      //   Post-spike mean reversion with nervous options market underneath.
+      //   Suppress the bullish VIX signal and replace with caution score.
+      if (extraSignals.vixMomPct != null) {
+        const vm = extraSignals.vixMomPct;
+        const absVm = Math.abs(vm);
+        const vvmp = extraSignals.vvixMomPct ?? null;
+        const vvixRising = vvmp !== null && vvmp > 5;
+        const vvixSpiking = vvmp !== null && vvmp > 10;
+        if (absVm >= 5) {
+          if (vm > 0) {
+            // Rising VIX — VVIX amplification already handled in VVIX block below
+            const vixMomAdj = absVm >= 35 ? -18
+                            : absVm >= 20 ? -14
+                            : absVm >= 10 ? -10
+                            : -6;
+            score += vixMomAdj;
+            signals.push(`VIX rising ${absVm.toFixed(1)}% (${vixMomAdj})`);
+          } else {
+            // Falling VIX — check for VVIX conflict before awarding bullish score
+            if (vvixSpiking) {
+              // VIX falling but VVIX spiking — strong second leg risk, suppress bullish signal
+              score -= 6;
+              signals.push(`VIX falling but VVIX spiking (second leg risk — −6)`);
+            } else if (vvixRising) {
+              // VIX falling but VVIX rising — mild second leg risk, suppress and caution
+              score -= 3;
+              signals.push(`VIX falling but VVIX rising (second leg risk — −3)`);
+            } else {
+              // Clean VIX compression — no conflict, award full bullish score
+              const vixMomAdj = absVm >= 35 ? +14
+                              : absVm >= 20 ? +11
+                              : absVm >= 10 ? +8
+                              : +5;
+              score += vixMomAdj;
+              signals.push(`VIX falling ${absVm.toFixed(1)}% (+${vixMomAdj})`);
+            }
+          }
+        }
+      }
+      // SPY: VIX level — continuous scaling. No signal in neutral zone (15–24).
+      // Elevated: 24–28 → −4, 28–35 → −8, 35–45 → −12, >45 → −16 cap.
+      // Low vol: 12–15 → +5 (grind-higher regime), <12 → +3 (complacency, tempered).
+      // Interaction: low VIX + inverted skew → +3 bonus (cleanest bullish setup for credit sellers).
+      if (extraSignals.vixLevel != null) {
+        const vl = extraSignals.vixLevel;
+        if (vl >= 45)      { score -= 16; signals.push(`VIX ${vl.toFixed(1)} (extreme — −16)`); }
+        else if (vl >= 35) { score -= 12; signals.push(`VIX ${vl.toFixed(1)} (elevated — −8)`); }
+        else if (vl >= 28) { score -= 8;  signals.push(`VIX ${vl.toFixed(1)} (elevated — −8)`); }
+        else if (vl >= 24) { score -= 4;  signals.push(`VIX ${vl.toFixed(1)} (elevated — −4)`); }
+        else if (vl < 12) {
+          // Extreme complacency — bullish lean but tempered, reversal risk rises
+          score += 3;
+          signals.push(`VIX ${vl.toFixed(1)} (complacency — +3)`);
+          // Interaction: complacency + inverted skew
+          if (skew != null && skew < -0.01) {
+            score += 3; signals.push('low VIX + inverted skew (credit seller setup +3)');
+          }
+        } else if (vl < 15) {
+          // Low vol grind-higher regime — favorable for put sellers and credit spreads
+          score += 5;
+          signals.push(`VIX ${vl.toFixed(1)} (low vol regime — +5)`);
+          // Interaction: low VIX + inverted skew = cleanest bullish setup
+          if (skew != null && skew < -0.01) {
+            score += 3; signals.push('low VIX + inverted skew (credit seller setup +3)');
+          }
+        }
+      }
+      // SPY: VVIX momentum — leading indicator for VIX spikes (vol-of-vol).
+      // Rising VVIX precedes VIX moves by 1-2 days; falling VVIX signals vol compression.
+      // Asymmetric: rising VVIX penalizes more than falling rewards (spikes faster than compression).
+      // When VVIX and VIX are both rising, amplify the VIX signal rather than double-count.
+      if (extraSignals.vvixMomPct != null) {
+        const vvmp = extraSignals.vvixMomPct;
+        const vixAlsoRising = extraSignals.vixMomPct != null && extraSignals.vixMomPct > 5;
+        if (vvmp > 10) {
+          if (vixAlsoRising) {
+            // Both VVIX and VIX rising — amplify VIX signal rather than add independently
+            score -= 4; signals.push('VVIX rising >10% (amplifies VIX signal)');
+          } else {
+            // VVIX leading — early warning before VIX has moved
+            score -= 10; signals.push('VVIX rising >10% (vol spike warning)');
+          }
+        } else if (vvmp > 5) {
+          if (vixAlsoRising) {
+            score -= 2; signals.push('VVIX rising >5% (amplifies VIX signal)');
+          } else {
+            score -= 6; signals.push('VVIX rising >5% (early vol warning)');
+          }
+        } else if (vvmp < -10) {
+          score += 6; signals.push('VVIX falling >10% (vol compression)');
+        } else if (vvmp < -5) {
+          score += 4; signals.push('VVIX falling >5% (vol calming)');
+        }
+      }
+      // SPY: VIX3M term structure — ratio of VIX/VIX3M describes vol term structure shape.
+      // Backwardation (VIX > VIX3M, ratio > 1): short-term fear elevated vs medium-term
+      //   → market expects current spike to be transient → mean reversion setup, bullish.
+      // Contango (VIX < VIX3M, ratio < 1): sustained vol expected → headwind for short premium.
+      // Interaction: steep backwardation + VIX already elevated → classic vol peak setup, +4 bonus.
+      if (asset === 'spy' && extraSignals.vix3m != null && extraSignals.vixLevel != null) {
+        const v3 = extraSignals.vix3m;
+        const vl = extraSignals.vixLevel;
+        if (v3 > 0) {
+          const tsRatio = vl / v3;
+          const vixElevated = vl >= 24;
+          if (tsRatio >= 1.15) {
+            // Steep backwardation — vol spike likely peaking
+            score += 8;
+            signals.push(`VIX/VIX3M ${tsRatio.toFixed(2)} (steep backwardation — +8)`);
+            if (vixElevated) {
+              score += 4;
+              signals.push('backwardation + elevated VIX (vol peak setup — +4)');
+            }
+          } else if (tsRatio >= 1.05) {
+            score += 4;
+            signals.push(`VIX/VIX3M ${tsRatio.toFixed(2)} (mild backwardation — +4)`);
+          } else if (tsRatio <= 0.85) {
+            // Steep contango — sustained vol expected
+            score -= 6;
+            signals.push(`VIX/VIX3M ${tsRatio.toFixed(2)} (steep contango — −6)`);
+          } else if (tsRatio <= 0.95) {
+            score -= 3;
+            signals.push(`VIX/VIX3M ${tsRatio.toFixed(2)} (mild contango — −3)`);
+          }
+          // 0.95–1.05 = flat, no signal
+        }
+      }
+
+      // GLD: DXY direction — continuous scaling with move magnitude + level conditioning.
+      // Magnitude scale: 0.3–0.5% → ±6, 0.5–1.0% → ±10, 1.0–1.5% → ±14, >1.5% → ±16 base.
+      // Level multiplier: strong dollar (DXY >103) amplifies signal; weak dollar (<98) dampens it.
+      //   >106 → 1.4×  |  103–106 → 1.2×  |  98–103 → 1.0×  |  95–98 → 0.85×  |  <95 → 0.7×
+      // Cap of ±16 applied after multiplier regardless of level.
+      if (extraSignals.dxyMomPct != null) {
+        const dm = extraSignals.dxyMomPct;
+        const absDm = Math.abs(dm);
+        if (absDm >= 0.3) {
+          // Base score from magnitude
+          let dxyAdj = absDm >= 1.5 ? 16
+                     : absDm >= 1.0 ? 14
+                     : absDm >= 0.5 ? 10
+                     : 6;
+          // Level multiplier — uses current DXY value from extraSignals
+          const dxyLevel = extraSignals.dxyLevel ?? null;
+          let levelMult = 1.0;
+          let levelLabel = '';
+          if (dxyLevel != null) {
+            if      (dxyLevel > 106) { levelMult = 1.4; levelLabel = ` @${dxyLevel.toFixed(1)} (strong $)`; }
+            else if (dxyLevel > 103) { levelMult = 1.2; levelLabel = ` @${dxyLevel.toFixed(1)}`; }
+            else if (dxyLevel < 95)  { levelMult = 0.7; levelLabel = ` @${dxyLevel.toFixed(1)} (weak $)`; }
+            else if (dxyLevel < 98)  { levelMult = 0.85; levelLabel = ` @${dxyLevel.toFixed(1)}`; }
+            else                     { levelLabel = ` @${dxyLevel.toFixed(1)}`; }
+          }
+          dxyAdj = Math.round(Math.min(16, dxyAdj * levelMult));
+          dxyAdj *= (dm > 0 ? -1 : 1); // rising DXY = bearish gold
+          score += dxyAdj;
+          signals.push(`DXY ${dm > 0 ? 'rising' : 'falling'} ${absDm.toFixed(2)}%${levelLabel} (${dxyAdj > 0 ? '+' : ''}${dxyAdj})`);
+        }
+      }
+      // GLD: real yield change — continuous scaling with move magnitude.
+      // Noise filter: <2bps ignored. Scale: 2–5bps → ±4, 5–10bps → ±8,
+      // 10–15bps → ±11, >15bps → ±13 cap.
+      if (extraSignals.realYieldChangeBps != null) {
+        const rb = extraSignals.realYieldChangeBps;
+        const absRb = Math.abs(rb);
+        if (absRb >= 2) {
+          let ryAdj = absRb >= 15 ? 13
+                    : absRb >= 10 ? 11
+                    : absRb >= 5  ? 8
+                    : 4;
+          ryAdj *= (rb > 0 ? -1 : 1); // rising real yield = bearish gold
+          score += ryAdj;
+          signals.push(`real yield ${rb > 0 ? 'rising' : 'falling'} ${absRb.toFixed(1)}bps (${ryAdj > 0 ? '+' : ''}${ryAdj})`);
+        }
+      }
+      // GLD: breakeven inflation change (nominal − real yield change) — direct inflation expectation signal.
+      // When both nominal and real yield are available, breakeven = nominal change − real change.
+      //   Rising breakeven → inflation expectations rising → bullish gold (asymmetric: inflation fear > deflation)
+      //   Falling breakeven → deflation pressure → mild bearish gold
+      // When only nominal yield available (real yield null): use as weak standalone signal.
+      //   Direction ambiguous (could be real rate or inflation) → reduced weight, labeled clearly.
+      // Noise filter: <2bps for breakeven, <3bps for nominal-only.
+      if (extraSignals.yieldChangeBps != null) {
+        const nb = extraSignals.yieldChangeBps;
+        const rb = extraSignals.realYieldChangeBps;
+        if (rb != null) {
+          // Both available — compute breakeven change
+          const be = nb - rb;
+          const absbe = Math.abs(be);
+          if (absbe >= 2) {
+            let beAdj;
+            if (be > 0) {
+              // Rising breakeven = inflation expectations rising = bullish gold
+              // Asymmetric: stronger bullish signal than falling breakeven is bearish
+              beAdj = absbe >= 12 ? +12
+                    : absbe >= 8  ? +10
+                    : absbe >= 4  ? +7
+                    : +4;
+            } else {
+              // Falling breakeven = deflation pressure = mild bearish gold
+              beAdj = absbe >= 12 ? -9
+                    : absbe >= 8  ? -7
+                    : absbe >= 4  ? -5
+                    : -3;
+            }
+            score += beAdj;
+            signals.push(`breakeven ${be > 0 ? 'rising' : 'falling'} ${absbe.toFixed(1)}bps (${beAdj > 0 ? '+' : ''}${beAdj})`);
+          }
+        } else {
+          // Nominal only — ambiguous signal, reduced weight
+          const absNb = Math.abs(nb);
+          if (absNb >= 3) {
+            const nomAdj = nb > 0 ? -4 : +4;
+            score += nomAdj;
+            signals.push(`nominal yield ${nb > 0 ? 'rising' : 'falling'} ${absNb.toFixed(1)}bps (nominal-only, ${nomAdj > 0 ? '+' : ''}${nomAdj})`);
+          }
+        }
+      }
+
+      // GLD: dealer gamma exposure (GEX)
+      // Positive score → dealers long gamma → countercyclical → mild bullish lean (dampened moves favor put sellers)
+      // Negative score → dealers short gamma → procyclical → bearish lean (amplified moves, avoid short premium)
+      // Signal scales continuously. Threshold ±20 score filters noise.
+      // VIX-conditioned multiplier: GEX dominates in low vol, gets overwhelmed in high vol.
+      //   VIX <15 → 1.5×  |  15–20 → 1.0×  |  20–28 → 0.6×  |  28–35 → 0.3×  |  >35 → 0× (suppressed)
+      // Exception: negative GEX in extreme vol (>35) keeps a small −4 — dealer short gamma
+      //   in extreme vol signals amplified disorder risk even if GEX isn't driving price.
+      if (extraSignals.gexScore != null) {
+        const gs = extraSignals.gexScore;
+        const gm = extraSignals.gexM != null ? ` ($${Math.abs(extraSignals.gexM)}M)` : '';
+
+        // Regime-conditioned multiplier — asset-specific:
+        //   SPY: conditioned on VIX (equity vol determines dealer dominance)
+        //   TLT: conditioned on MOVE (bond vol determines dealer dominance)
+        //   GLD: no regime conditioning (flat — GEX dynamics less well-studied for commodities)
+        let gexMult = 1.0;
+        let extremeVol = false;
+
+        if (asset === 'spy') {
+          const vl = extraSignals.vixLevel ?? null;
+          gexMult = vl === null ? 1.0
+                  : vl > 35    ? 0.0
+                  : vl > 28    ? 0.3
+                  : vl > 20    ? 0.6
+                  : vl < 15    ? 1.5
+                  : 1.0;
+          extremeVol = vl !== null && vl > 35;
+        } else if (asset === 'tlt') {
+          const ml = extraSignals.moveLevel ?? null;
+          gexMult = ml === null ? 1.0
+                  : ml > 150   ? 0.0
+                  : ml > 120   ? 0.3
+                  : ml > 100   ? 0.6
+                  : ml < 60    ? 1.4
+                  : ml < 80    ? 1.1
+                  : 1.0;
+          extremeVol = ml !== null && ml > 150;
+        }
+        // GLD: gexMult stays 1.0, extremeVol stays false
+
+        const extremePenalty = asset === 'tlt' ? -3 : -4; // TLT disorder risk slightly smaller
+
+        if (extremeVol && gs <= -20) {
+          score += extremePenalty;
+          signals.push(`dealer short gamma${gm} (extreme vol — disorder risk ${extremePenalty})`);
+        } else if (extremeVol) {
+          // Positive GEX in extreme vol: suppress entirely
+        } else {
+          const baseAdj = gs >= 40 ? 10
+                        : gs >= 20 ? 5
+                        : gs <= -40 ? -10
+                        : gs <= -20 ? -5
+                        : 0;
+          if (baseAdj !== 0) {
+            const adj = Math.round(baseAdj * gexMult);
+            if (adj !== 0) {
+              score += adj;
+              const multLabel = gexMult !== 1.0 ? ` ×${gexMult}` : '';
+              if (baseAdj > 0) {
+                const pinLabel = gs >= 40 ? ' (pin tendency)' : '';
+                signals.push(`dealer ${gs >= 40 ? 'long' : 'mild long'} gamma${gm}${pinLabel} (${adj > 0 ? '+' : ''}${adj}${multLabel})`);
+              } else {
+                const trendLabel = gs <= -40 ? ' (trend risk)' : '';
+                signals.push(`dealer ${gs <= -40 ? 'short' : 'mild short'} gamma${gm}${trendLabel} (${adj}${multLabel})`);
+              }
+            }
+          }
+        }
+      }
+
+      // SPY: yield change — regime-conditioned on VIX level.
+      // Rising yields in low vol = mild multiple compression. Rising yields in high vol = inflation fear.
+      // Falling yields in low vol = growth slowdown signal, ambiguous → skip.
+      // Falling yields in high vol = Fed pivot / risk-on relief → bullish.
+      // Threshold: 5bps (equities less sensitive than bonds to small yield moves).
+      if (asset === 'spy' && extraSignals.yieldChangeBps != null) {
+        const yb = extraSignals.yieldChangeBps;
+        const absYb = Math.abs(yb);
+        const highVol = extraSignals.vixLevel != null && extraSignals.vixLevel >= 20;
+        if (yb > 0 && absYb >= 5) {
+          // Rising yields — bearish, scaled by magnitude and vol regime
+          if (absYb >= 10 && highVol) {
+            score -= 12; signals.push(`yields rising ${absYb.toFixed(1)}bps (rates shock, high vol — −12)`);
+          } else if (highVol) {
+            score -= 8;  signals.push(`yields rising ${absYb.toFixed(1)}bps (inflation fear — −8)`);
+          } else {
+            score -= 4;  signals.push(`yields rising ${absYb.toFixed(1)}bps (multiple compression — −4)`);
+          }
+        } else if (yb < 0 && absYb >= 5) {
+          // Falling yields — only signal in high vol (risk-on relief); skip in low vol
+          if (absYb >= 10 && highVol) {
+            score += 10; signals.push(`yields falling ${absYb.toFixed(1)}bps (aggressive relief — +10)`);
+          } else if (highVol) {
+            score += 6;  signals.push(`yields falling ${absYb.toFixed(1)}bps (risk-on relief — +6)`);
+          }
+          // Low vol + falling yields → ambiguous (growth slowdown), no signal
+        }
+      }
+
+      // TLT: yield direction — continuous magnitude scaling + yield level conditioning.
+      // Noise filter: <3bps ignored. Base scale: 3–5bps → ±6, 5–10bps → ±10,
+      //   10–18bps → ±14, >18bps → ±18 base. Cap ±18 applied after multiplier.
+      // Level multiplier: high yields amplify signal (more room to move, policy relief larger);
+      //   low yields dampen (limited room, normalization rather than threat).
+      //   >5.0% → 1.3×  |  4.5–5.0% → 1.15×  |  3.0–4.5% → 1.0×
+      //   2.5–3.0% → 0.8×  |  <2.5% → 0.65×
+      if (asset === 'tlt' && extraSignals.yieldChangeBps != null) {
+        const yb = extraSignals.yieldChangeBps;
+        const absYb = Math.abs(yb);
+        if (absYb >= 3) {
+          // Base magnitude score
+          const yBase = absYb >= 18 ? 18
+                      : absYb >= 10 ? 14
+                      : absYb >= 5  ? 10
+                      : 6;
+          // Level multiplier
+          const yl = extraSignals.yieldLevel ?? null;
+          const yMult = yl === null ? 1.0
+                      : yl > 5.0   ? 1.3
+                      : yl > 4.5   ? 1.15
+                      : yl < 2.5   ? 0.65
+                      : yl < 3.0   ? 0.8
+                      : 1.0;
+          // Real yield modifier — adjusts for whether nominal move is real-rate or inflation-driven.
+          // Same direction: real rate move → compounds signal (×1.15).
+          // Opposite direction: inflation-driven → dampens signal (×0.80).
+          // Only fires if real yield moved meaningfully (>2bps threshold).
+          const rb = extraSignals.realYieldChangeBps ?? null;
+          let ryMod = 1.0;
+          let ryLabel = '';
+          if (rb !== null && Math.abs(rb) >= 2) {
+            const sameDir = (yb > 0 && rb > 0) || (yb < 0 && rb < 0);
+            if (sameDir) {
+              ryMod = 1.15;
+              ryLabel = ' (real rate — ×1.15)';
+            } else {
+              ryMod = 0.80;
+              ryLabel = ' (inflation-driven — ×0.80)';
+            }
+          }
+          const yAdj = Math.min(18, Math.round(yBase * yMult * ryMod));
+          const finalAdj = yb > 0 ? -yAdj : +yAdj;
+          score += finalAdj;
+          const multLabel = yMult !== 1.0 ? ` @${yl?.toFixed(2)}% ×${yMult}` : yl ? ` @${yl?.toFixed(2)}%` : '';
+          signals.push(`yields ${yb > 0 ? 'rising' : 'falling'} ${absYb.toFixed(1)}bps${multLabel}${ryLabel} (${finalAdj > 0 ? '+' : ''}${finalAdj})`);
+        }
+      }
+      // TLT: MOVE level — continuous scaling both directions.
+      // Elevated MOVE = bond vol stressed = bearish TLT. Low MOVE = calm bonds = bullish TLT.
+      // >150 → −14, 120–150 → −10, 100–120 → −6, 70–100 → 0 (neutral),
+      // 55–70 → +4, <55 → +6.
+      // Interaction: MOVE <70 + yields falling → calm vol + rate tailwind → +3 bonus.
+      if (asset === 'tlt' && extraSignals.moveLevel != null) {
+        const ml = extraSignals.moveLevel;
+        const yb = extraSignals.yieldChangeBps ?? null;
+        const yieldsFalling = yb !== null && yb < -3;
+        if (ml > 150) {
+          score -= 14; signals.push(`MOVE ${ml.toFixed(0)} (extreme — −14)`);
+        } else if (ml > 120) {
+          score -= 10; signals.push(`MOVE ${ml.toFixed(0)} (elevated — −10)`);
+        } else if (ml > 100) {
+          score -= 6;  signals.push(`MOVE ${ml.toFixed(0)} (moderately elevated — −6)`);
+        } else if (ml < 55) {
+          score += 6;  signals.push(`MOVE ${ml.toFixed(0)} (very calm — +6)`);
+          if (yieldsFalling) { score += 3; signals.push('low MOVE + yields falling (calm tailwind — +3)'); }
+        } else if (ml < 70) {
+          score += 4;  signals.push(`MOVE ${ml.toFixed(0)} (calm — +4)`);
+          if (yieldsFalling) { score += 3; signals.push('low MOVE + yields falling (calm tailwind — +3)'); }
+        }
+        // 70–100: neutral zone, no signal
+      }
+
+      // TLT: VIX flight-to-quality signal.
+      // Rising VIX → risk-off → institutional money rotates into Treasuries → bullish TLT.
+      // Falling VIX → risk-on → rotation out of bonds → mild bearish TLT.
+      // VIX level sustained above 24 → safe-haven demand ongoing → mild bullish.
+      // VIX level below 15 → risk appetite high → mild bond headwind.
+      // Asymmetric: fear-driven inflows faster and stronger than complacency-driven outflows.
+      // Interaction cap: VIX spike >20% + MOVE already elevated → cap combined at +8
+      //   (stagflation risk — stress can be bond-negative if inflation-driven).
+      if (asset === 'tlt' && extraSignals.vixMomPct != null) {
+        const vm = extraSignals.vixMomPct;
+        const absVm = Math.abs(vm);
+        const ml = extraSignals.moveLevel ?? null;
+        const moveElevated = ml !== null && ml > 100;
+        if (vm > 0 && absVm >= 5) {
+          // Rising VIX — flight-to-quality bid
+          let ftqAdj = absVm >= 20 ? 10
+                     : absVm >= 10 ? 7
+                     : 4;
+          // Cap combined score if MOVE also elevated (stagflation risk)
+          if (moveElevated && ftqAdj > 8) ftqAdj = 8;
+          score += ftqAdj;
+          signals.push(`VIX rising ${absVm.toFixed(1)}% (flight-to-quality +${ftqAdj})`);
+        } else if (vm < 0 && absVm >= 5) {
+          // Falling VIX — risk-on rotation out of bonds
+          const ftqAdj = absVm >= 20 ? -6
+                       : absVm >= 10 ? -4
+                       : -2;
+          score += ftqAdj;
+          signals.push(`VIX falling ${absVm.toFixed(1)}% (risk-on rotation ${ftqAdj})`);
+        }
+      }
+      // TLT: VIX level — sustained fear or complacency regimes
+      if (asset === 'tlt' && extraSignals.vixLevel != null) {
+        const vl = extraSignals.vixLevel;
+        if (vl >= 30)      { score += 4; signals.push(`VIX ${vl.toFixed(1)} (fear regime — safe haven +4)`); }
+        else if (vl >= 24) { score += 2; signals.push(`VIX ${vl.toFixed(1)} (elevated — safe haven +2)`); }
+        else if (vl < 15)  { score -= 3; signals.push(`VIX ${vl.toFixed(1)} (risk appetite — bond headwind −3)`); }
+      }
+    }
+
+    // Clamp score to [-50, +50] then convert to bull/bear %
+    score = Math.max(-50, Math.min(50, score));
+    const bull = Math.round(50 + score);
+    const bear = 100 - bull;
+    const conf = Math.abs(score) >= 30 ? 'High' : Math.abs(score) >= 15 ? 'Medium' : 'Low';
+    return { bull, bear, conf, signals };
+  }
+
+  // DXY momentum: % change today vs yesterday (fires in calcBias only if >0.3%)
+  const dxyMomPct = (indices.dxy && indices.dxy1 && indices.dxy1 > 0)
+    ? (indices.dxy - indices.dxy1) / indices.dxy1 * 100
+    : null;
+  // VIX momentum: % change today vs yesterday (fires in calcBias only if >5%)
+  const vixMomPct = (vix && indices.vix1 && indices.vix1 > 0)
+    ? (vix - indices.vix1) / indices.vix1 * 100
+    : null;
+  // VVIX momentum: % change today vs yesterday — leading indicator for VIX moves.
+  // VVIX tends to spike 1-2 days before VIX, so rising VVIX is an early warning signal.
+  const vvixMomPct = (indices.vvix && indices.vvix1 && indices.vvix1 > 0)
+    ? (indices.vvix - indices.vvix1) / indices.vvix1 * 100
+    : null;
+  // Yield change in basis points today vs yesterday (fires in calcBias only if >3bps)
+  const tnxPrev = indices.tnx1 ?? null;
+  const yieldChangeBps = (tnx && tnxPrev) ? (tnx - tnxPrev) * 100 : null;
+  // Real yield change in bps — used for GLD bias (rising real yields = headwind for gold)
+  const realYieldChangeBps = (indices.realYield && indices.realYield1)
+    ? (indices.realYield - indices.realYield1) * 100
+    : null;
+
+  const spyCloses = rvData.SPY?.closes ?? null;
+  const gldCloses = rvData.GLD?.closes ?? null;
+  const tltCloses = rvData.TLT?.closes ?? null;
+
+  const bias = {
+    spy: calcBias(spyCloses, CA?.pcRatio, CA?.skew25, {
+      vixMomPct, vixLevel: vix,
+      vvixMomPct,
+      yieldChangeBps,
+      vix3m: indices.vix3m ?? null,  // VIX3M for term structure ratio signal
+      gexScore: CA?.gexScore ?? null,
+      gexM:     CA?.gexM     ?? null,
+    }, spyRV, 'spy'),
+    gld: calcBias(gldCloses, CB?.pcRatio, CB?.skew25, {
+      dxyMomPct, realYieldChangeBps,
+      yieldChangeBps,                    // nominal yield change — used for breakeven or fallback signal
+      dxyLevel: indices.dxy ?? null,     // current DXY level for level conditioning
+      gexScore: CB?.gexScore ?? null,
+      gexM:     CB?.gexM     ?? null,
+    }, gldRV, 'gld'),
+    tlt: calcBias(tltCloses, CC?.pcRatio, CC?.skew25, {
+      yieldChangeBps, moveLevel: move,
+      vixMomPct, vixLevel: vix,
+      yieldLevel: tnx,
+      realYieldChangeBps,                // real yield modifier — amplifies or dampens nominal signal
+      gexScore: CC?.gexScore ?? null,
+      gexM:     CC?.gexM     ?? null,
+    }, tltRV, 'tlt'),
+  };
+
+  // Generate for all assets × both DTE windows
+  const allCandidates = [
+    ...genTrades('SPY',spyP2,spyIV,spyFarIV,spyRV,dnt.spy,spyTs,bias.spy,skewCond(CA?.skew25??null),15),
+    ...genTrades('GLD',gldP2,gldIV,gldFarIV,gldRV,dnt.gld,gldTs,bias.gld,skewCond(CB?.skew25??null),15),
+    ...genTrades('TLT',tltP2,tltIV,tltFarIV,tltRV,dnt.tlt,tltTs,bias.tlt,skewCond(CC?.skew25??null),15),
+    ...genTrades('SPY',spyP2,spyIV,spyFarIV,spyRV,dnt.spy,spyTs,bias.spy,skewCond(CA?.skew25??null),30),
+    ...genTrades('GLD',gldP2,gldIV,gldFarIV,gldRV,dnt.gld,gldTs,bias.gld,skewCond(CB?.skew25??null),30),
+    ...genTrades('TLT',tltP2,tltIV,tltFarIV,tltRV,dnt.tlt,tltTs,bias.tlt,skewCond(CC?.skew25??null),30),
+  ].filter(t=>t && t.contracts>0 && t.potm && t.legs?.length);
+
+  // Selection: exactly 5 trades, conviction order, with guaranteed floor for PROCEED assets.
+  // Step 1 — sort everything by score descending.
+  allCandidates.sort((a,b) => b.score - a.score);
+
+  // Step 2 — for each PROCEED asset, lock in its single best trade (highest score).
+  // This guarantees representation even if that asset's trades rank 6th–Nth overall.
+  const proceedAssets = ['SPY','GLD','TLT'].filter(a => dnt[a.toLowerCase()] === 'PROCEED');
+  const guaranteed = [];
+  const guaranteedIdx = new Set();
+  for (const asset of proceedAssets) {
+    const idx = allCandidates.findIndex(t => t.label === asset);
+    if (idx !== -1 && !guaranteedIdx.has(idx)) {
+      guaranteed.push(allCandidates[idx]);
+      guaranteedIdx.add(idx);
+    }
+  }
+
+  // Step 3 — fill remaining slots (up to 5 total) with highest-scoring candidates
+  // not already guaranteed, preserving score order.
+  const remaining = allCandidates.filter((_, i) => !guaranteedIdx.has(i));
+  const filler = remaining.slice(0, Math.max(0, 5 - guaranteed.length));
+
+  // Step 4 — merge and re-sort by score so final list is always conviction order.
+  const trades = [...guaranteed, ...filler]
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 5);
+
+  // ── Portfolio CVaR ──
+  // Runs correlated Monte Carlo across all top-5 trades simultaneously.
+  // Uses Cholesky decomposition of a representative SPY/GLD/TLT correlation matrix.
+  // Correlation regime: risk-on (low VIX) vs stress (high VIX) shifts correlations.
+  // Output: { cvar, mean, stdev, pct5, pct1, paths, regime, corrMatrix, diversBenefit }
+  function portfolioCVaR(trades, spots, ivs) {
+    if (!trades || trades.length === 0) return null;
+    const N = 2000;
+
+    // Correlation matrices — empirical SPY/GLD/TLT
+    // Indices: 0=SPY, 1=GLD, 2=TLT
+    // Calm regime (VIX < 20): SPY-GLD weakly negative, SPY-TLT negative (flight to quality muted)
+    // Stress regime (VIX >= 20): SPY-TLT more negative (flight to quality), SPY-GLD more negative
+    const corrCalm = [
+      [ 1.00, -0.05, -0.35],
+      [-0.05,  1.00,  0.15],
+      [-0.35,  0.15,  1.00],
+    ];
+    const corrStress = [
+      [ 1.00, -0.20, -0.55],
+      [-0.20,  1.00,  0.25],
+      [-0.55,  0.25,  1.00],
+    ];
+    const corrMatrix = vix >= 20 ? corrStress : corrCalm;
+    const corrRegime = vix >= 20 ? 'Stress' : 'Calm';
+
+    // Cholesky decomposition (3×3 hard-coded for performance)
+    // L such that L·Lᵀ = C
+    function cholesky(C) {
+      const L = [[0,0,0],[0,0,0],[0,0,0]];
+      L[0][0] = Math.sqrt(C[0][0]);
+      L[1][0] = C[1][0] / L[0][0];
+      L[2][0] = C[2][0] / L[0][0];
+      L[1][1] = Math.sqrt(C[1][1] - L[1][0]*L[1][0]);
+      L[2][1] = (C[2][1] - L[2][0]*L[1][0]) / L[1][1];
+      L[2][2] = Math.sqrt(Math.max(0, C[2][2] - L[2][0]*L[2][0] - L[2][1]*L[2][1]));
+      return L;
+    }
+    const L = cholesky(corrMatrix);
+
+    // Map each trade to an asset index for correlated path lookup
+    function assetIdx(label) {
+      return label==='SPY' ? 0 : label==='GLD' ? 1 : 2;
+    }
+
+    // Per-trade parameters needed for payoff calculation
+    const tradeParams = trades.map(t => {
+      const a = t.label;
+      const spot = spots[a.toLowerCase()] ?? 0;
+      const iv   = ivs[a.toLowerCase()] ?? 0.18;
+      const T    = (t.dte ?? 15) / 365;
+      const sigma = iv * Math.sqrt(T);
+      return { ...t, spot, iv, T, sigma, aidx: assetIdx(a) };
+    });
+
+    const portfolioPnls = [];
+
+    for (let i = 0; i < N; i++) {
+      // Generate 3 independent standard normals via Box-Muller
+      const z = [0,0,0];
+      for (let k = 0; k < 3; k++) {
+        const u1 = Math.random(), u2 = Math.random();
+        z[k] = Math.sqrt(-2*Math.log(Math.max(u1,1e-10))) * Math.cos(2*Math.PI*u2);
+      }
+      // Correlated normals via Cholesky: w = L·z
+      const w = [
+        L[0][0]*z[0],
+        L[1][0]*z[0] + L[1][1]*z[1],
+        L[2][0]*z[0] + L[2][1]*z[1] + L[2][2]*z[2],
+      ];
+
+      // Simulate terminal price for each asset
+      const sTs = tradeParams.map(tp => {
+        const wi = w[tp.aidx];
+        return tp.spot * Math.exp(-0.5*tp.iv*tp.iv*tp.T + tp.sigma*wi);
+      });
+
+      // Sum payoffs across all trades in this path
+      let pathPnl = 0;
+      tradeParams.forEach((tp, j) => {
+        const sT = sTs[j];
+        let payoff = 0;
+        if (tp.type === 'credit' || tp.type === 'debit') {
+          const leg0=tp.legs[0]??'', leg1=tp.legs[1]??'';
+          const side=(leg0+leg1).toLowerCase().includes('put')?'put':'call';
+          const k0=parseFloat((leg0.match(/\$([\d.]+)/)||[])[1]??0);
+          const k1=parseFloat((leg1.match(/\$([\d.]+)/)||[])[1]??0);
+          if (tp.credit) {
+            const shortK=side==='put'?Math.max(k0,k1):Math.min(k0,k1);
+            const longK =side==='put'?Math.min(k0,k1):Math.max(k0,k1);
+            const sP=side==='put'?Math.max(0,shortK-sT):Math.max(0,sT-shortK);
+            const lP=side==='put'?Math.max(0,longK-sT) :Math.max(0,sT-longK);
+            payoff=-(sP-lP);
+          } else {
+            const longK =side==='put'?Math.max(k0,k1):Math.min(k0,k1);
+            const shortK=side==='put'?Math.min(k0,k1):Math.max(k0,k1);
+            const lP=side==='put'?Math.max(0,longK-sT) :Math.max(0,sT-longK);
+            const sP=side==='put'?Math.max(0,shortK-sT):Math.max(0,sT-shortK);
+            payoff=lP-sP;
+          }
+        } else if (tp.type==='calendar'||tp.type==='diagonal') {
+          const em=tp.spot*tp.iv*Math.sqrt(tp.T);
+          const dist=Math.abs(sT-tp.spot);
+          const w2=tp.type==='diagonal'?0.35:0.5;
+          payoff=dist<em*w2?(tp.width??5)*0.15:-Math.min((tp.width??5)*0.4,(dist-em*w2)*0.3);
+        } else if (tp.type==='condor') {
+          const psk=parseFloat(((tp.legs[0]??'').match(/\$([\d.]+)\s+put/i)||[])[1]??tp.spot*0.95);
+          const csk=parseFloat(((tp.legs[1]??'').match(/\$([\d.]+)\s+call/i)||[])[1]??tp.spot*1.05);
+          const w3=tp.width??5;
+          payoff=sT>psk&&sT<csk?w3*0.28:sT<=psk?Math.max(-w3,-(psk-sT)):Math.max(-w3,-(sT-csk));
+        } else if (tp.type==='bwb') {
+          const bk=parseFloat(((tp.legs[1]??'').match(/\$([\d.]+)/)||[])[1]??tp.spot);
+          const side=(tp.legs[0]??'').toLowerCase().includes('put')?'put':'call';
+          const mv=side==='put'?tp.spot-sT:sT-tp.spot;
+          const w4=tp.width??5;
+          payoff=mv<0?w4*0.15:mv<w4?w4*0.15-mv*0.5:mv<w4*2?-(mv-w4):-(w4*0.9);
+        }
+        pathPnl += payoff * tp.contracts * 100; // × $100 multiplier
+      });
+      portfolioPnls.push(pathPnl);
+    }
+
+    portfolioPnls.sort((a,b)=>a-b);
+    const cut5  = Math.floor(N*0.05);
+    const cut1  = Math.floor(N*0.01);
+    const tail5 = portfolioPnls.slice(0, cut5);
+    const tail1 = portfolioPnls.slice(0, cut1);
+    const cvar5 = Math.abs(tail5.reduce((s,v)=>s+v,0)/tail5.length);
+    const cvar1 = Math.abs(tail1.reduce((s,v)=>s+v,0)/tail1.length);
+    const mean  = portfolioPnls.reduce((s,v)=>s+v,0)/N;
+    const pct5  = portfolioPnls[cut5];  // 5th percentile P&L
+    const stdev = Math.sqrt(portfolioPnls.reduce((s,v)=>s+(v-mean)**2,0)/N);
+
+    // Diversification benefit: sum of individual CVaRs vs portfolio CVaR
+    // Individual CVaRs are already in dollars (from tradePayoff which uses width, not ×100)
+    // Re-scale: tradePayoff returns width-based loss, we need ×100 multiplier
+    const sumIndivCvar = trades.reduce((s,t)=>{
+      // cvar stored on trade is already per-trade (cvarPerUnit × contracts), width-based
+      // multiply by 100 to get dollar value
+      return s + (t.cvar??0)*100;
+    },0);
+    const diversBenefit = Math.max(0, sumIndivCvar - cvar5);
+    const diversPct = sumIndivCvar > 0 ? (diversBenefit/sumIndivCvar*100).toFixed(0) : 0;
+
+    return {
+      cvar5, cvar1, mean, stdev, pct5,
+      corrRegime, corrMatrix,
+      sumIndivCvar, diversBenefit, diversPct,
+      totalBudget: trades.reduce((s,t)=>s+(t.cvarBudget??800),0),
+    };
+  }
+
+  const portCVaR = portfolioCVaR(trades, {spy:spyP2,gld:gldP2,tlt:tltP2}, {spy:spyIV,gld:gldIV,tlt:tltIV});
+
+  // ── Continuous Risk Score ──
+  // Per-asset score 0–100. Hard overrides pin to Red (100) before scoring runs.
+  // Weights: CVaR/budget 35%, VVIX 25%, VIX absolute 20%, Skew 20%.
+  // VVIX contribution is neutral (50) when neither API nor manual entry available.
+  const vvixKnown = !!(indices.vvixIsAPI || indices.vvixIsManual);
+  // vixMomPct already computed above (shared with calcBias)
+  const vixSurging = vixMomPct !== null && vixMomPct >= 10; // ≥10% day-over-day → Red override
+
+  function calcRiskScore(assetLabel, vrp, skewCondStr, cvarPerUnit, budget) {
+    // ── Hard overrides — pin to 100 (Red) immediately ──
+    if (vrp < 0)       return { score:100, override:'Negative VRP', tier:'Red' };
+    if (vixSurging)    return { score:100, override:`VIX +${vixMomPct.toFixed(1)}% surge`, tier:'Red' };
+
+    // ── Continuous scoring ──
+    // Each component returns 0 (greenest) → 100 (reddest), then weighted.
+
+    // 1. CVaR/budget ratio (35%) — 0% → green, ≥100% → red
+    let cvarScore = 50; // neutral if unknown
+    if (cvarPerUnit != null && budget > 0) {
+      cvarScore = Math.min(100, Math.max(0, (cvarPerUnit / budget) * 100));
+    }
+
+    // 2. VVIX (25%) — ≤90 → green (0), ≥130 → red (100), neutral (50) if unknown
+    let vvixScore = 50;
+    if (vvixKnown) {
+      vvixScore = Math.min(100, Math.max(0, (vvix - 90) / (130 - 90) * 100));
+    }
+
+    // 3. VIX absolute (20%) — ≤15 → green (0), ≥28 → red (100)
+    const vixScore = Math.min(100, Math.max(0, (vix - 15) / (28 - 15) * 100));
+
+    // 4. Skew (20%) — Elevated → red (100), Normal → mid (40), Inverted → green (0), N/A → neutral (50)
+    const skewScore = skewCondStr==='Elevated' ? 100
+                    : skewCondStr==='Normal'   ? 40
+                    : skewCondStr==='Inverted' ? 0
+                    : 50; // N/A
+
+    const score = Math.round(cvarScore*0.35 + vvixScore*0.25 + vixScore*0.20 + skewScore*0.20);
+    const tier  = score <= 33 ? 'Green' : score <= 66 ? 'Amber' : 'Red';
+
+    return {
+      score, tier, override: null,
+      components: {
+        cvar:  { score: Math.round(cvarScore),  weight: 35, label: 'CVaR/budget' },
+        vvix:  { score: Math.round(vvixScore),  weight: 25, label: 'VVIX', neutral: !vvixKnown },
+        vix:   { score: Math.round(vixScore),   weight: 20, label: 'VIX level' },
+        skew:  { score: Math.round(skewScore),  weight: 20, label: 'Skew' },
+      },
+    };
+  }
+
+  // Find best (highest-score) cvarPerUnit for each asset from top trades
+  // Use the trade that represents each asset most fairly (lowest cvarPerUnit = most benign)
+  function bestCvarForAsset(label) {
+    const ts = trades.filter(t => t.label === label && t.cvarPerUnit != null);
+    if (!ts.length) return null;
+    return Math.min(...ts.map(t => t.cvarPerUnit));
+  }
+
+  const riskScore = {
+    spy: calcRiskScore('SPY', spyVRP, skewCond(CA?.skew25??null), bestCvarForAsset('SPY'), CVAR_BUDGETS['SPY']),
+    gld: calcRiskScore('GLD', gldVRP, skewCond(CB?.skew25??null), bestCvarForAsset('GLD'), CVAR_BUDGETS['GLD']),
+    tlt: calcRiskScore('TLT', tltVRP, skewCond(CC?.skew25??null), bestCvarForAsset('TLT'), CVAR_BUDGETS['TLT']),
+  };
+
+  // Sizing modifier from risk tier
+  // Green → full CVaR-budget sizing, Amber → half size (round up), Red → debit only / 1 contract
+  function tierSizeModifier(tier) {
+    return tier==='Green' ? 1.0 : tier==='Amber' ? 0.5 : 0.0; // 0 = debit-only (handled in trade gen)
+  }
+
+  return {
+    greeksLive:isMarketHours(), rvLive,
+    prices:{spy:spyP2,gld:gldP2,tlt:tltP2}, changes,
+    vix:{val:vix,pct:vixPct,reg:vixReg,prev:indices.vix1},
+    vvix:{val:vvix,pct:vvixPct},
+    move:{val:move,reg:moveReg,prev:indices.move1,proxy:moveIsProxy},
+    dxy:{val:dxy}, tnx:{val:tnx},
+    iv:{spy:spyIV,gld:gldIV,tlt:tltIV},
+    farIV:{spy:spyFarIV,gld:gldFarIV,tlt:tltFarIV},
+    rv:{spy:{val:spyRV,data:rvData.SPY},gld:{val:gldRV,data:rvData.GLD},tlt:{val:tltRV,data:rvData.TLT}},
+    vrp:{spy:spyVRP.toFixed(1),gld:gldVRP.toFixed(1),tlt:tltVRP.toFixed(1)},
+    ts_struct:{spy:spyTs,gld:gldTs,tlt:tltTs},
+    skew:{spy:CA?.skew25??null,gld:CB?.skew25??null,tlt:CC?.skew25??null},
+    skewSource:{spy:CA?.skewSource??'unavailable',gld:CB?.skewSource??'unavailable',tlt:CC?.skewSource??'unavailable'},
+    skewCond:{spy:skewCond(CA?.skew25??null),gld:skewCond(CB?.skew25??null),tlt:skewCond(CC?.skew25??null)},
+    iv25:{spy:{c:CA?.iv25C,p:CA?.iv25P},gld:{c:CB?.iv25C,p:CB?.iv25P},tlt:{c:CC?.iv25C,p:CC?.iv25P}},
+    oi:{spy:{pc:CA?.pcRatio??'—',callOI:CA?.callOI??0,putOI:CA?.putOI??0,walls:CA?.walls??[]},gld:{pc:CB?.pcRatio??'—',callOI:CB?.callOI??0,putOI:CB?.putOI??0,walls:CB?.walls??[]},tlt:{pc:CC?.pcRatio??'—',callOI:CC?.callOI??0,putOI:CC?.putOI??0,walls:CC?.walls??[]}},
+    straddle:{spy:f(CA?.straddleMid??0),gld:f(CB?.straddleMid??0),tlt:f(CC?.straddleMid??0)},
+    volReg:{spy:volR(spyIV),gld:volR(gldIV),tlt:volR(tltIV)},
+    _debugChains:{ SPY:chainsNear.SPY?.debug, GLD:chainsNear.GLD?.debug, TLT:chainsNear.TLT?.debug },
+    em:{
+      spy:{d7:emCalc(spyP2,spyIV,7),d15:emCalc(spyP2,spyIV,15),d30:emCalc(spyP2,spyIV,30),d45:emCalc(spyP2,spyIV,45),d60:emCalc(spyP2,spyIV,60)},
+      gld:{d7:emCalc(gldP2,gldIV,7),d15:emCalc(gldP2,gldIV,15),d30:emCalc(gldP2,gldIV,30),d45:emCalc(gldP2,gldIV,45),d60:emCalc(gldP2,gldIV,60)},
+      tlt:{d7:emCalc(tltP2,tltIV,7),d15:emCalc(tltP2,tltIV,15),d30:emCalc(tltP2,tltIV,30),d45:emCalc(tltP2,tltIV,45),d60:emCalc(tltP2,tltIV,60)},
+    },
+    dnt, regime, trades, portCVaR, riskScore,
+    stratSel:{spy:spyStrat,gld:gldStrat,tlt:tltStrat},
+    mod:{spy:vix>28?'Reduce':vix<18?'Increase':'Maintain',gld:gldVRP<0?'Reduce':'Maintain',tlt:move>110?'Reduce':'Maintain'},
+    bias,
+  };
+}
+
+/* ── Main fetch ── */
+async function runBriefing(sid) {
+  S.loading=true; S.errs=[]; S.warns=[]; render();
+  try {
+    // ETF bars for RV (30+ calendar days)
+    const [spyB,gldB,tltB]=await Promise.all(
+      ['SPY','GLD','TLT'].map(t=>stockBarsLong(t,35).catch(e=>{S.warns.push(`${t} bars: ${e.message}`);return[];}))
+    );
+    const rvData={SPY:calcRV(spyB,20),GLD:calcRV(gldB,20),TLT:calcRV(tltB,20)};
+    if(!rvData.SPY) S.warns.push('SPY RV: insufficient data — using structural estimate');
+    if(!rvData.GLD) S.warns.push('GLD RV: insufficient data — using structural estimate');
+    if(!rvData.TLT) S.warns.push('TLT RV: insufficient data — using structural estimate');
+
+    // Stock prices
+    const [spyPr,gldPr,tltPr]=await Promise.all(['SPY','GLD','TLT'].map(t=>stockPrev(t).catch(()=>null)));
+    const stocks={
+      SPY:{price:spyB.at(-1)?.c??spyPr?.c??0, prevClose:spyPr?.c??spyB.at(-2)?.c??0},
+      GLD:{price:gldB.at(-1)?.c??gldPr?.c??0, prevClose:gldPr?.c??gldB.at(-2)?.c??0},
+      TLT:{price:tltB.at(-1)?.c??tltPr?.c??0, prevClose:tltPr?.c??tltB.at(-2)?.c??0},
+    };
+
+    // ── Index data — Polygon Starter proxies ──
+    // VIX   → spyIV × 100 (computed in buildBriefing from chain)
+    // DXY   → 96.5 / C:EURUSD (Polygon forex, Starter plan ✓)
+    // 10Y   → 3.875 / (tltPrice/100) proxy from TLT bars already fetched
+    // VVIX/VIX3M/MOVE → manual override only (index plan required)
+    // All *1 (prev day) values populated so momentum signals fire correctly.
+    // Manual override fields (Today + Prev) take priority over all proxies.
+
+    const eurusdB = await polyForex('C:EURUSD', 3).catch(()=>[]);
+    const fv  = arr => arr[0]?.value ?? null;
+    const fv1 = arr => arr[1]?.value ?? null;
+
+    // DXY proxy from EUR/USD
+    const eurusd  = fv(eurusdB);
+    const eurusd1 = fv1(eurusdB);
+    const dxyProxy  = eurusd  ? parseFloat((96.5 / eurusd ).toFixed(2)) : null;
+    const dxyProxy1 = eurusd1 ? parseFloat((96.5 / eurusd1).toFixed(2)) : null;
+
+    // 10Y proxy from TLT price (tltB already fetched above)
+    const tltClose  = tltB.at(-1)?.c ?? 0;
+    const tltClose1 = tltB.at(-2)?.c ?? 0;
+    const tnxProxy  = tltClose  > 0 ? parseFloat((3.875 / (tltClose /100)).toFixed(2)) : null;
+    const tnxProxy1 = tltClose1 > 0 ? parseFloat((3.875 / (tltClose1/100)).toFixed(2)) : null;
+
+    const indices = {
+      vix:  null,      vix1:  null,       // derived in buildBriefing from spyIV
+      dxy:  dxyProxy,  dxy1:  dxyProxy1,  // EUR/USD inversion proxy
+      tnx:  tnxProxy,  tnx1:  tnxProxy1,  // TLT price proxy
+      realYield: null, realYield1: null, breakeven: null,
+      vvix: null, vix3m: null, move: null, move1: null,
+      vvixIsAPI: false,
+    };
+
+    // Manual overrides — Today fields override proxy; Prev fields override proxy prev.
+    // Both fields filled → momentum signal fires with your numbers.
+    // Only Today filled → value used, momentum signal stays null (no prev to diff against).
+    if (OV.vix  && !isNaN(+OV.vix))  { indices.vix  = +OV.vix;  S.warns.push('VIX: manual today'); }
+    if (OV.vix1 && !isNaN(+OV.vix1)) { indices.vix1 = +OV.vix1; }
+    if (OV.vvix && !isNaN(+OV.vvix)) { indices.vvix = +OV.vvix; indices.vvixIsManual=true; S.warns.push('VVIX: manual today'); }
+    if (OV.vvix1&& !isNaN(+OV.vvix1)){ indices.vvix1= +OV.vvix1; }
+    if (OV.move && !isNaN(+OV.move)) { indices.move = +OV.move; S.warns.push('MOVE: manual today'); }
+    if (OV.move1&& !isNaN(+OV.move1)){ indices.move1= +OV.move1; }
+    if (OV.dxy  && !isNaN(+OV.dxy))  { indices.dxy  = +OV.dxy; }
+    if (OV.dxy1 && !isNaN(+OV.dxy1)) { indices.dxy1 = +OV.dxy1; }
+    if (OV.tnx  && !isNaN(+OV.tnx))  { indices.tnx  = +OV.tnx; }
+    if (OV.tnx1 && !isNaN(+OV.tnx1)) { indices.tnx1 = +OV.tnx1; }
+    if (OV.ry   && !isNaN(+OV.ry))   { indices.realYield  = +OV.ry; }
+    if (OV.ry1  && !isNaN(+OV.ry1))  { indices.realYield1 = +OV.ry1; }
+    if (OV.vix3m && !isNaN(+OV.vix3m)) { indices.vix3m = +OV.vix3m; }
+    const tnx10 = indices.tnx;
+
+    // Fetch the most recent minute bar for each ETF to get a live spot price.
+    // Done once here (not inside each optionChain call) to avoid race conditions
+    // from 6 parallel fetches all writing to _chainSpots simultaneously.
+    // Walks back up to 5 trading days to handle weekends/holidays.
+    async function fetchLastMinutePrice(ticker, fallback) {
+      // 1. Try snapshot endpoint first — gives real-time last trade price
+      try {
+        const j = await apiFetch(
+          `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apiKey=${KEY}`,
+          `snapshot/${ticker}`
+        );
+        const lastTrade = j.ticker?.lastTrade?.p ?? 0;
+        const dayClose  = j.ticker?.day?.c ?? 0;
+        const prevClose = j.ticker?.prevDay?.c ?? 0;
+        const p = lastTrade || dayClose || 0;
+        if (p > 0) return p;
+      } catch(e) { /* fall through to minute bars */ }
+      // 2. Minute bars fallback — walk back up to 5 trading days
+      const etNow = toET(new Date());
+      for (let daysBack = 0; daysBack <= 5; daysBack++) {
+        const d = new Date(etNow);
+        d.setDate(d.getDate() - daysBack);
+        if (d.getDay() === 0 || d.getDay() === 6) continue;
+        const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        try {
+          const j = await apiFetch(
+            `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/minute/${ds}/${ds}?adjusted=true&sort=desc&limit=1&apiKey=${KEY}`,
+            `minute/${ticker}/${ds}`
+          );
+          const p = j.results?.[0]?.c ?? 0;
+          if (p > 0) return p;
+        } catch(e) { /* try next day */ }
+      }
+      return fallback;
+    }
+    const [spySpot, gldSpot, tltSpot] = await Promise.all([
+      fetchLastMinutePrice('SPY', stocks.SPY.price),
+      fetchLastMinutePrice('GLD', stocks.GLD.price),
+      fetchLastMinutePrice('TLT', stocks.TLT.price),
+    ]);
+    _chainSpots = { SPY: spySpot, GLD: gldSpot, TLT: tltSpot };
+    // Update stock prices to the live minute bar values for display
+    if (spySpot > 0) stocks.SPY.price = spySpot;
+    if (gldSpot > 0) stocks.GLD.price = gldSpot;
+    if (tltSpot > 0) stocks.TLT.price = tltSpot;
+
+    // Options chains — near (10–23 DTE) AND far (35–55 DTE) for term structure
+    const [spyNear,gldNear,tltNear,spyFar,gldFar,tltFar]=await Promise.all([
+      optionChain('SPY',10,23,spySpot).catch(e=>{S.warns.push(`SPY near chain: ${e.message}`);return[];}),
+      optionChain('GLD',10,23,gldSpot).catch(e=>{S.warns.push(`GLD near chain: ${e.message}`);return[];}),
+      optionChain('TLT',10,23,tltSpot).catch(e=>{S.warns.push(`TLT near chain: ${e.message}`);return[];}),
+      optionChain('SPY',35,55,spySpot).catch(e=>{S.warns.push(`SPY far chain: ${e.message}`);return[];}),
+      optionChain('GLD',35,55,gldSpot).catch(e=>{S.warns.push(`GLD far chain: ${e.message}`);return[];}),
+      optionChain('TLT',35,55,tltSpot).catch(e=>{S.warns.push(`TLT far chain: ${e.message}`);return[];}),
+    ]);
+
+    const chainsNear={SPY:analyseChain(spyNear,stocks.SPY.price,spyNear._dateFrom,spyNear._dateTo,_chainSpots.SPY,'SPY'),GLD:analyseChain(gldNear,stocks.GLD.price,gldNear._dateFrom,gldNear._dateTo,_chainSpots.GLD,'GLD'),TLT:analyseChain(tltNear,stocks.TLT.price,tltNear._dateFrom,tltNear._dateTo,_chainSpots.TLT,'TLT')};
+    const chainsFar ={SPY:analyseChain(spyFar, stocks.SPY.price,spyFar._dateFrom,spyFar._dateTo,_chainSpots.SPY,'SPY'),GLD:analyseChain(gldFar, stocks.GLD.price,gldFar._dateFrom,gldFar._dateTo,_chainSpots.GLD,'GLD'),TLT:analyseChain(tltFar, stocks.TLT.price,tltFar._dateFrom,tltFar._dateTo,_chainSpots.TLT,'TLT')};
+
+    if(!isMarketHours()) S.warns.push('Outside market hours — 25Δ greeks estimated via BS strike approximation (live greeks: 9:30–4:00 PM ET)');
+
+    S.briefs[sid]=buildBriefing({stocks,rvData,indices,chainsNear,chainsFar,tnx10});
+    S.sid=sid; S.tab='overview';
+  } catch(e) { S.errs.push(e.message); }
+  S.loading=false; render();
+}
+
+/* ── Render helpers ── */
+const vbadge=v=>v==='Expansion'?'br':v==='Transition'?'ba':'bb';
+const mbadge=m=>m==='Reduce'?'ba':m==='Increase'?'bg':'bx';
+const sbadge=s=>s==='HOLD'?'ba':s==='CONDITIONAL'?'bx':'bg';
+const skbadge=s=>s==='Elevated'?'br':s==='Inverted'?'bb':s==='N/A'?'bx':'bg';
+const regbadge=r=>r==='High'?'br':r==='Moderate'?'ba':'bg';
+const tsbadge=r=>r==='contango'?'bb':r==='backwardation'?'br':'bx';
+const stratbadge=t=>t==='calendar'?'bb':t==='diagonal'?'bp':t==='debit_spread'||t==='debit'?'ba':'bg';
+const stratColor=t=>t==='calendar'?'#1d4ed8':t==='diagonal'?'#7c3aed':t==='debit_spread'||t==='debit'?'#b45309':'#15803d';
+
+function chgHTML(c){
+  const n=parseFloat(c.pct),cls=n>=0?'up':'dn';
+  return `<span class="${cls}">${n>=0?'+':''}${c.ch} (${n>=0?'+':''}${c.pct}%)</span>`;
+}
+function skewBarHTML(skewVal){
+  if(skewVal==null) return `<div style="font-size:11px;color:#aaa">N/A outside market hours</div>`;
+  const pts=skewVal*100, pct=Math.min(100,Math.max(0,50+pts*300));
+  const color=pts>4?'#dc2626':pts< -1?'#2563eb':'#22c55e';
+  return `<div class="skew-visual"><div class="skew-track"><div class="skew-fill" style="width:${pct}%;background:${color}"></div></div><div class="skew-pts">${pts>=0?'+':''}${pts.toFixed(1)} pts</div></div>`;
+}
+function iv25HTML(iv25,side){
+  const val=iv25?.[side];
+  return (val==null||val===0)?'<span style="color:#aaa">—</span>':fp(val);
+}
+function sparklineHTML(returns){
+  if(!returns||!returns.length) return '';
+  const maxAbs=Math.max(...returns.map(Math.abs),0.001);
+  return `<div class="sparkline">${returns.slice(-20).map(r=>{
+    const h=Math.max(2,Math.round(Math.abs(r)/maxAbs*26));
+    return `<div class="spark-bar" style="height:${h}px;background:${r>=0?'#16a34a':'#dc2626'}"></div>`;
+  }).join('')}</div>`;
+}
+function vrpBarHTML(iv,rv){
+  const maxV=Math.max(iv,rv,0.01), ivP=(iv/maxV*100).toFixed(1), rvP=(rv/maxV*100).toFixed(1);
+  const vrpPos=iv>rv, vrpPts=((iv-rv)*100).toFixed(1);
+  return `<div class="vrp-bar-wrap">
+    <div class="vrp-bar-label"><span>RV ${fp(rv)}</span><span>IV ${fp(iv)}</span></div>
+    <div style="position:relative;height:20px;">
+      <div style="position:absolute;top:0;left:0;width:100%;height:6px;background:#f0f0ee;border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${rvP}%;background:#888;border-radius:3px;position:absolute;left:0;top:0"></div>
+        <div style="height:100%;width:${ivP}%;background:${vrpPos?'#16a34a':'#dc2626'};border-radius:3px;position:absolute;left:0;top:0;opacity:0.7"></div>
+      </div>
+      <div style="position:absolute;top:10px;right:0;font-size:9px;color:${vrpPos?'#16a34a':'#dc2626'};font-weight:600">VRP ${sgn(vrpPts)}${vrpPts}pts</div>
+    </div>
+  </div>`;
+}
+
+function tsCardHTML(ticker, b) {
+  const a=ticker.toLowerCase();
+  const ts=b.ts_struct[a];
+  const nearIV=b.iv[a], farIV=b.farIV[a];
+  if (!ts) return `<div class="ts-card">
+    <div class="ts-header"><div class="ts-ticker">${ticker}</div><span class="badge bx">No far chain data</span></div>
+    <div class="ts-body"><div style="font-size:11px;color:#aaa">Far expiry chain (35–55 DTE) unavailable. VIX/VIX3M fallback also unavailable for this asset.</div></div>
+  </div>`;
+
+  const maxIV=Math.max(nearIV,farIV??nearIV,0.01);
+  const nearPct=((nearIV/maxIV)*100).toFixed(0);
+  const farPct =(((farIV??nearIV)/maxIV)*100).toFixed(0);
+
+  return `<div class="ts-card">
+    <div class="ts-header">
+      <div class="ts-ticker">${ticker}</div>
+      <span class="badge ${tsbadge(ts.regime)}">${ts.label}</span>
+    </div>
+    <div class="ts-body">
+      <div class="ts-row">
+        <div class="ts-label">Near IV (~15D)</div>
+        <div class="ts-val">${fp(nearIV)}</div>
+      </div>
+      <div class="ts-row">
+        <div class="ts-label">Far IV (~45D)</div>
+        <div class="ts-val">${farIV?fp(farIV):'—'}</div>
+      </div>
+      <div class="ts-row">
+        <div class="ts-label">Near/Far ratio</div>
+        <div class="ts-val ${ts.ratio>1.05?'up':ts.ratio<0.95?'dn':'mu'}">${ts.ratio?.toFixed(3)??'—'}</div>
+      </div>
+      <div class="ts-row">
+        <div class="ts-label">Source</div>
+        <div class="ts-val" style="font-size:11px;color:#888">${ts.source==='chain'?'Options chain (both expirations)':'VIX / VIX3M ratio (fallback)'}</div>
+      </div>
+      <div class="ts-row">
+        <div class="ts-label">Strategy implication</div>
+        <div class="ts-val ${stratbadge(b.stratSel[a].type)}" style="font-size:11px;color:${stratColor(b.stratSel[a].type)};font-weight:600">${b.stratSel[a].label}</div>
+      </div>
+      <div class="ts-slope-wrap">
+        <div class="ts-slope-labels">
+          <span>Near ${fp(nearIV)}</span>
+          <span>Far ${farIV?fp(farIV):'—'}</span>
+        </div>
+        <div class="ts-slope-track">
+          <div class="ts-slope-far"  style="width:${farPct}%"></div>
+          <div class="ts-slope-near" style="width:${nearPct}%"></div>
+        </div>
+        <div style="font-size:9px;color:#aaa;margin-top:4px">Red = near IV · Blue = far IV · Near > Far = contango</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function rvCardHTML(ticker, b) {
+  const a=ticker.toLowerCase();
+  const rvObj=b.rv[a], iv=b.iv[a], rv=rvObj.val, vrpVal=parseFloat(b.vrp[a]);
+  const vrpCls=vrpVal>=0?'bg':'br';
+  const vrpSig=vrpVal>2?'Sell premium':vrpVal<-2?'Avoid short vol':'Calendars';
+  const data=rvObj.data;
+  return `<div class="rv-card">
+    <div class="rv-header"><div class="rv-ticker">${ticker}</div><span class="badge ${vrpCls}">${vrpSig}</span></div>
+    <div class="rv-body">
+      <div class="rv-row"><div class="rv-label">ATM IV (chain)</div><div class="rv-val">${fp(iv)}</div></div>
+      <div class="rv-row"><div class="rv-label">20D RV ${data?'(live)':'(structural)'}</div><div class="rv-val">${fp(rv)}</div></div>
+      <div class="rv-row"><div class="rv-label">VRP (IV − RV)</div><div class="rv-val ${vrpVal>=0?'up':'dn'}">${sgn(b.vrp[a])}${b.vrp[a]} pts</div></div>
+      ${data?`<div class="rv-row"><div class="rv-label">Trading days</div><div class="rv-val">${data.nDays}</div></div>`:''}
+      ${vrpBarHTML(iv,rv)}
+      ${data?sparklineHTML(data.returns):''}
+      ${data?`<div style="font-size:9px;color:#aaa;margin-top:4px;text-align:right">Daily log returns · green = up · red = down</div>`:''}
+    </div>
+  </div>`;
+}
+
+/* ─── Overview ─── */
+function renderOverview(b) {
+  const vixChg=b.vix.prev?((b.vix.val-b.vix.prev)/b.vix.prev*100).toFixed(1):null;
+  const moveChg=(b.move.prev&&b.move.val!=null)?((b.move.val-b.move.prev)/b.move.prev*100).toFixed(1):null;
+
+  return `
+  ${!b.greeksLive?`<div class="alert alert-info"><strong>After-hours:</strong> 25Δ skew estimated from OTM put/call price differential (live greeks: 9:30–4:00 PM ET).</div>`:''}
+
+  <div class="sh">Prices</div>
+  <div class="price-row">
+    ${['spy','gld','tlt'].map(a=>`<div class="price-card">
+      <div class="pc-ticker">${a.toUpperCase()}</div>
+      <div class="pc-price">${f$(b.prices[a])}</div>
+      <div class="pc-chg">${chgHTML(b.changes[a])}</div>
+      <div class="pc-iv">IV ${fp(b.iv[a])}</div>
+    </div>`).join('')}
+  </div>
+
+  <div class="sh">Volatility</div>
+  <div class="metric-row">
+    <div class="metric-card"><div class="mc-l">VIX<span style="font-size:8px;color:#bbb">*</span></div><div class="mc-v">${f(b.vix.val,2)}</div><div class="mc-s ${vixChg!=null?cc(vixChg):'mu'}">${vixChg!=null?sgn(vixChg)+vixChg+'%':b.vix.pct+'th pct'}</div></div>
+    <div class="metric-card"><div class="mc-l">VVIX</div><div class="mc-v">${f(b.vvix.val,1)}</div><div class="mc-s mu">${b.vvix.pct}th pct</div></div>
+    <div class="metric-card"><div class="mc-l">MOVE*</div><div class="mc-v">${b.move.val!=null?f(b.move.val,1):'—'}</div><div class="mc-s ${moveChg!=null?cc(moveChg):'mu'}">${moveChg!=null?sgn(moveChg)+moveChg+'%':b.move.val!=null?b.move.reg:'—'}</div></div>
+    <div class="metric-card"><div class="mc-l">DXY<span style="font-size:8px;color:#bbb">*</span></div><div class="mc-v">${f(b.dxy.val,2)}</div></div>
+    <div class="metric-card"><div class="mc-l">10Y<span style="font-size:8px;color:#bbb">*</span></div><div class="mc-v">${b.tnx.val!=null?f(b.tnx.val,2)+'%':'—'}</div></div>
+    <div class="metric-card"><div class="mc-l">Regime</div><div class="mc-v" style="font-size:12px;padding-top:3px"><span class="badge ${regbadge(b.regime)}">${b.regime}</span></div></div>
+  </div>
+
+
+
+
+  <div class="sh">Debug — raw Polygon IV values (tap to verify)</div>
+  <div class="list-card" style="margin-bottom:12px">
+    <div class="list-row" style="background:#f8f8f6">
+      <div class="list-label" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Asset</div>
+      <div class="list-val" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Spot used</div>
+      <div class="list-val" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">ATM strike</div>
+      <div class="list-val" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Call IV</div>
+      <div class="list-val" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Put IV</div>
+      <div class="list-val" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Mid IV</div>
+    </div>
+    ${['SPY','GLD','TLT'].map(t=>{
+      const cn=b._debugChains?.[t];
+      if(!cn) return `<div class="list-row"><div class="list-label" style="font-weight:600">${t}</div><div class="list-val" style="color:#aaa">no data</div></div>`;
+      const callRaw=cn.atmCallIV_raw, putRaw=cn.atmPutIV_raw, mid=b.iv[t.toLowerCase()];
+      return `<div class="list-row">
+        <div class="list-label" style="font-weight:600">${t}<br><span style="font-size:9px;color:#aaa">${cn.contractsInWindow} contracts</span></div>
+        <div class="list-val">${cn.liveSpotUsed?f$(cn.liveSpotUsed):'—'}</div>
+        <div class="list-val">${f$(cn.atmStrikeUsed)}</div>
+        <div class="list-val">${callRaw!=null?fp(callRaw):'—'}</div>
+        <div class="list-val">${putRaw!=null?fp(putRaw):'—'}</div>
+        <div class="list-val" style="font-weight:600">${fp(mid)}</div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <div class="sh">Term structure — near vs far IV</div>
+  ${['SPY','GLD','TLT'].map(t=>tsCardHTML(t,b)).join('')}
+
+  ${b.move.proxy?'<div style="font-size:10px;color:#aaa;margin:-6px 0 12px;padding:0 2px">* MOVE shown as proxy (TLT IV × 450) — I:MOVE not available on this data plan</div>':''}
+  <div class="sh">Realized vol &amp; VRP${b.rvLive?' — live 20D':' — structural fallback'}</div>
+  ${['SPY','GLD','TLT'].map(t=>rvCardHTML(t,b)).join('')}
+
+  <div class="sh">Asset summary</div>
+  ${['spy','gld','tlt'].map(a=>{
+    const rs = b.riskScore?.[a];
+    const tier = rs?.tier ?? 'Green';
+    const score = rs?.score ?? 0;
+    const tierCol  = tier==='Red'?'#dc2626':tier==='Amber'?'#d97706':'#16a34a';
+    const tierBg   = tier==='Red'?'#fee2e2':tier==='Amber'?'#fef3c7':'#dcfce7';
+    const tierLabel = tier==='Red'
+      ? (rs?.override ? `Red · ${rs.override}` : 'Red · debit only')
+      : tier==='Amber' ? 'Amber · half size' : 'Green · full size';
+    const scoreBar = `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+      <div style="flex:1;height:4px;background:#f0f0ee;border-radius:2px;overflow:hidden">
+        <div style="width:${score}%;height:100%;background:${tierCol};border-radius:2px"></div>
+      </div>
+      <span style="font-size:9px;color:${tierCol};font-weight:700;min-width:24px;text-align:right">${score}</span>
+    </div>`;
+    return `<div class="exec-card" style="border-left:3px solid ${tierCol}">
+    <div class="exec-top">
+      <div class="exec-ticker">${a.toUpperCase()}</div>
+      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+        <span class="badge ${sbadge(b.dnt[a])}">${b.dnt[a]}</span>
+        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${tierBg};color:${tierCol}">${tierLabel}</span>
+      </div>
+    </div>
+    <div style="margin:-4px 0 8px">
+      <div style="font-size:9px;color:#aaa;margin-bottom:2px">Risk score ${score}/100</div>
+      ${scoreBar}
+    </div>
+    <div class="exec-grid">
+      <div><div class="exec-label">Vol regime</div><div class="exec-val"><span class="badge ${vbadge(b.volReg[a])}">${b.volReg[a]}</span></div></div>
+      <div><div class="exec-label">VRP</div><div class="exec-val ${cc(b.vrp[a])}">${sgn(b.vrp[a])}${b.vrp[a]} pts</div></div>
+      <div><div class="exec-label">Term structure</div><div class="exec-val"><span class="badge ${tsbadge(b.ts_struct[a]?.regime??'flat')}">${b.ts_struct[a]?.label??'—'}</span></div></div>
+      <div><div class="exec-label">Selected strategy</div><div class="exec-val" style="font-size:11px;color:${stratColor(b.stratSel[a].type)};font-weight:600">${b.stratSel[a].label}</div></div>
+      <div><div class="exec-label">25Δ Skew</div><div class="exec-val"><span class="badge ${skbadge(b.skewCond[a])}">${b.skewCond[a]}</span></div></div>
+      <div><div class="exec-label">CVaR/budget</div><div class="exec-val" style="font-size:11px">${rs?.components?.cvar?.score!=null?rs.components.cvar.score+'/100':'—'}</div></div>
+    </div>
+  </div>`;
+  }).join('')}`;
+}
+
+/* ─── Signals ─── */
+function renderSignals(b) {
+  const allWalls=['spy','gld','tlt'].flatMap(a=>
+    (b.oi[a].walls||[]).slice(0,3).map(w=>({...w,ticker:a.toUpperCase(),asset:a}))
+  );
+  const dntFlags=[
+    ['VIX / ATM IV elevated',['spy','gld','tlt'].map(a=>b.iv[a]>0.18||b.vix.val>20)],
+    ['IV below 20th pct',[b.iv.spy<0.15, b.iv.gld<0.14, b.iv.tlt<0.10]],
+    ['Negative VRP (IV < RV)',['spy','gld','tlt'].map(a=>parseFloat(b.vrp[a])<0)],
+    ['VVIX > 110 (vol-of-vol spike)',['spy','gld','tlt'].map(()=>b.vvix.val!=null&&b.vvix.val>110)],
+    ['MOVE > 110 (TLT only)',[false,false,b.move.val!=null&&b.move.val>110]],
+  ];
+
+  return `
+  <div class="sh">Do not trade checklist</div>
+  <div class="list-card">
+    <div class="list-row" style="background:#f8f8f6">
+      <div class="list-label" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">Condition</div>
+      ${['SPY','GLD','TLT'].map(t=>`<div class="list-val" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">${t}</div>`).join('')}
+    </div>
+    ${dntFlags.map(([lbl,flags])=>`<div class="list-row">
+      <div class="list-label">${lbl}</div>
+      ${flags.map(fl=>`<div class="list-badge"><span class="badge ${fl?'br':'bg'}">${fl?'Y':'N'}</span></div>`).join('')}
+    </div>`).join('')}
+    <div class="list-row" style="background:#f8f8f6">
+      <div class="list-label" style="font-weight:700">Signal</div>
+      ${['spy','gld','tlt'].map(a=>`<div class="list-badge"><span class="badge ${sbadge(b.dnt[a])}">${b.dnt[a]}</span></div>`).join('')}
+    </div>
+  </div>
+
+  <div class="sh">25Δ skew — ${b.greeksLive?'live greeks':'price-implied fallback (market closed)'}</div>
+  ${['spy','gld','tlt'].map(a=>`<div class="exec-card" style="margin-bottom:8px">
+    <div class="exec-top" style="margin-bottom:6px">
+      <div class="exec-ticker" style="font-size:13px">${a.toUpperCase()}</div>
+      <div style="display:flex;gap:4px;align-items:center">
+        <span class="badge ${skbadge(b.skewCond[a])}">${b.skewCond[a]}</span>
+        <span style="font-size:9px;color:#aaa;font-weight:500">${b.skewSource?.[a]==='greeks'?'live Δ':b.skewSource?.[a]==='price-implied'?'price-implied':'—'}</span>
+      </div>
+    </div>
+    <div class="exec-grid" style="margin-bottom:4px">
+      <div><div class="exec-label">25Δ Put IV</div><div class="exec-val">${iv25HTML(b.iv25[a],'p')}</div></div>
+      <div><div class="exec-label">25Δ Call IV</div><div class="exec-val">${iv25HTML(b.iv25[a],'c')}</div></div>
+    </div>
+    ${skewBarHTML(b.skew[a])}
+  </div>`).join('')}
+
+  <div class="sh">Expected moves</div>
+  <div class="list-card">
+    <div class="list-row" style="background:#f8f8f6">
+      <div class="list-label" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;flex:1.4">Asset / DTE</div>
+      <div class="list-val" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">±$</div>
+      <div class="list-val" style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase">±%</div>
+    </div>
+    ${['spy','gld','tlt'].flatMap(a=>[7,15,30,45,60].map(d=>{
+      const e=b.em[a]['d'+d],spot=b.prices[a];
+      return `<div class="list-row">
+        <div class="list-label" style="flex:1.4">${a.toUpperCase()} ${d}D · ${fp(b.iv[a])}</div>
+        <div class="list-val">±${f$(e)}</div>
+        <div class="list-val">±${spot?((e/spot)*100).toFixed(2):'—'}%</div>
+      </div>`;
+    })).join('')}
+  </div>
+
+  <div class="sh">OI walls — zone-based S/R (pin · support/resistance · tail)</div>
+  ${['spy','gld','tlt'].map(a => {
+    const walls = (b.oi[a].walls||[]);
+    const spot = b.prices[a];
+    const em15 = b.em[a]?.d15 ?? null;
+    const totalCallOI = b.oi[a].callOI || 0;
+    const totalPutOI  = b.oi[a].putOI  || 0;
+
+    // Group walls by zone
+    const zones = {
+      pin:  walls.filter(w=>w.zone==='pin'),
+      sr:   walls.filter(w=>w.zone==='sr'),
+      tail: walls.filter(w=>w.zone==='tail'),
+    };
+    const zoneConfig = [
+      { key:'pin',  label:'Pin',              labelCol:'#7c3aed', labelBg:'#f3e8ff' },
+      { key:'sr',   label:'Support/Resist',   labelCol:'#1d4ed8', labelBg:'#dbeafe' },
+      { key:'tail', label:'Tail',             labelCol:'#888',    labelBg:'#f0f0ee' },
+    ];
+
+    const renderChip = w => {
+      const dist = spot && w.strike ? w.strike - spot : null;
+      const distPct = spot && dist !== null ? (dist / spot * 100) : null;
+      const distStr = distPct !== null
+        ? `${distPct>=0?'+':''}${distPct.toFixed(1)}% / ${dist>=0?'+':''}${f$(Math.abs(dist))}`
+        : '';
+      const distCol = distPct === null ? '#aaa'
+        : Math.abs(distPct) < 1.5 ? '#d97706'
+        : distPct > 0 ? '#1d4ed8'
+        : '#dc2626';
+      const absDist = dist !== null ? Math.abs(dist) : null;
+      const inEM = em15 && absDist !== null ? absDist <= em15 : null;
+      const emBadge = inEM === null ? ''
+        : inEM
+          ? `<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;background:#fef3c7;color:#92400e">IN EM</span>`
+          : `<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;background:#f0f0ee;color:#888">OUT</span>`;
+      const sideTotal = w.type==='call' ? totalCallOI : totalPutOI;
+      const concPct = sideTotal > 0 ? (w.oi / sideTotal * 100) : null;
+      const concStr = concPct !== null ? concPct.toFixed(0)+'%' : '';
+      const concCol = concPct === null ? '#aaa' : concPct >= 50 ? '#dc2626' : concPct >= 30 ? '#d97706' : '#aaa';
+      const pinning = w.dte != null && w.dte <= 14;
+      const pinBadge = pinning
+        ? `<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;background:#fee2e2;color:#b91c1c">⚡ ${w.dte}D</span>`
+        : w.dte != null ? `<span style="font-size:8px;color:#bbb">${w.dte}D</span>` : '';
+      return `<div class="wall-chip ${w.type==='call'?'wc-call':'wc-put'}" style="flex-direction:column;align-items:flex-start;gap:3px;${inEM?'border-color:#d97706;':'opacity:0.8;'}">
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+          <span class="wc-type">${w.type==='call'?'C':'P'}</span>
+          <span>${f$(w.strike)}</span>
+          <span style="color:#aaa;font-size:10px">${w.oi>=1000?(w.oi/1000).toFixed(1)+'k':w.oi}</span>
+          ${concStr?`<span style="font-size:9px;font-weight:700;color:${concCol}">${concStr}</span>`:''}
+          ${emBadge}${pinBadge}
+        </div>
+        ${distStr?`<div style="font-size:9px;font-weight:600;color:${distCol};padding-left:2px">${distStr}</div>`:''}
+      </div>`;
+    };
+
+    const hasAny = walls.length > 0;
+    const emStr = em15 ? ` · 15D EM ±${f$(em15)}` : '';
+    return `<div style="margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">${a.toUpperCase()} · spot ${f$(spot)}${emStr}</div>
+      ${hasAny ? zoneConfig.map(({key,label,labelCol,labelBg})=>{
+        const zw = zones[key];
+        if (!zw.length) return '';
+        return `<div style="margin-bottom:8px">
+          <div style="font-size:9px;font-weight:700;color:${labelCol};background:${labelBg};display:inline-block;padding:1px 7px;border-radius:4px;margin-bottom:5px">${label}</div>
+          <div class="wall-chips">${zw.map(renderChip).join('')}</div>
+        </div>`;
+      }).join('') : '<span style="font-size:11px;color:#bbb">No data</span>'}
+    </div>`;
+  }).join('')}`;
+}
+
+/* ─── Trades ─── */
+function renderTrades(b) {
+  const typeStyle = t => {
+    if (t==='calendar') return 'background:#dbeafe;color:#1d4ed8';
+    if (t==='diagonal') return 'background:#f3e8ff;color:#7c3aed';
+    if (t==='debit')    return 'background:#fef3c7;color:#b45309';
+    if (t==='condor')   return 'background:#f0fdf4;color:#15803d';
+    if (t==='bwb')      return 'background:#fdf2f8;color:#9d174d';
+    return 'background:#dcfce7;color:#15803d';
+  };
+  const typeLabel = t => ({calendar:'Cal',diagonal:'Diag',debit:'Debit',condor:'Condor',bwb:'BWB',credit:'Credit'})[t]??t;
+
+  if (!b.trades||!b.trades.length) {
+    return '<div class="content"><div class="alert alert-warn">No trades generated — all assets HOLD or no qualifying strikes at \u226565% P(OTM).</div></div>';
+  }
+
+  // ── Portfolio CVaR panel ──
+  const pc = b.portCVaR;
+  const portPanel = pc ? (()=>{
+    const totalBudget = pc.totalBudget;
+    const pctUsed = Math.min(100, (pc.cvar5 / totalBudget * 100));
+    const col = pc.cvar5 > totalBudget ? '#dc2626' : pc.cvar5 > totalBudget*0.7 ? '#d97706' : '#16a34a';
+    const trackCol = pc.cvar5 > totalBudget ? '#fee2e2' : pc.cvar5 > totalBudget*0.7 ? '#fef3c7' : '#dcfce7';
+    const signal = pc.cvar5 > totalBudget ? '⚠ Over budget — reduce size'
+                 : pc.cvar5 > totalBudget*0.7 ? '~ Near budget — monitor'
+                 : '✓ Within budget';
+    const signalCol = pc.cvar5 > totalBudget ? '#b91c1c' : pc.cvar5 > totalBudget*0.7 ? '#92400e' : '#15803d';
+
+    return '<div style="background:#fff;border:0.5px solid #e0e0de;border-radius:12px;padding:12px 14px;margin-bottom:12px">'
+      // Header
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<div style="font-size:12px;font-weight:700">Portfolio CVaR</div>'
+      +'<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;background:#f3e8ff;color:#7c3aed">Correlated MC · '+pc.corrRegime+' regime</span>'
+      +'</div>'
+
+      // Main CVaR bar
+      +'<div style="margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-bottom:4px">'
+      +'<span>5% CVaR (worst-case expected loss)</span>'
+      +'<span style="font-weight:600;color:'+col+'">$'+pc.cvar5.toFixed(0)+' / $'+totalBudget+'</span>'
+      +'</div>'
+      +'<div style="height:7px;background:'+trackCol+';border-radius:4px;overflow:hidden;margin-bottom:4px">'
+      +'<div style="width:'+pctUsed.toFixed(0)+'%;height:100%;background:'+col+';border-radius:4px"></div>'
+      +'</div>'
+      +'<div style="font-size:11px;font-weight:600;color:'+signalCol+'">'+signal+'</div>'
+      +'</div>'
+
+      // Metrics grid
+      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">'
+      +'<div style="background:#f8f8f6;border-radius:8px;padding:7px 9px">'
+      +'<div style="font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">1% CVaR</div>'
+      +'<div style="font-size:13px;font-weight:600;color:#dc2626">$'+pc.cvar1.toFixed(0)+'</div>'
+      +'<div style="font-size:9px;color:#aaa">extreme tail</div>'
+      +'</div>'
+      +'<div style="background:#f8f8f6;border-radius:8px;padding:7px 9px">'
+      +'<div style="font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Exp P&L</div>'
+      +'<div style="font-size:13px;font-weight:600;color:'+(pc.mean>=0?'#16a34a':'#dc2626')+'">'+(pc.mean>=0?'+':'')+'$'+pc.mean.toFixed(0)+'</div>'
+      +'<div style="font-size:9px;color:#aaa">avg at expiry</div>'
+      +'</div>'
+      +'<div style="background:#f8f8f6;border-radius:8px;padding:7px 9px">'
+      +'<div style="font-size:9px;color:#aaa;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Diversif.</div>'
+      +'<div style="font-size:13px;font-weight:600;color:#1d4ed8">'+pc.diversPct+'%</div>'
+      +'<div style="font-size:9px;color:#aaa">tail risk offset</div>'
+      +'</div>'
+      +'</div>'
+
+      // Correlation context
+      +'<div style="border-top:0.5px solid #f0f0ee;padding-top:8px">'
+      +'<div style="font-size:10px;color:#888;margin-bottom:5px;font-weight:600">Correlation assumptions ('+pc.corrRegime+' regime)</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<div style="font-size:10px;color:#666;background:#f8f8f6;border-radius:6px;padding:3px 8px">SPY↔TLT '+(pc.corrMatrix[0][2]>=0?'+':'')+pc.corrMatrix[0][2].toFixed(2)+'</div>'
+      +'<div style="font-size:10px;color:#666;background:#f8f8f6;border-radius:6px;padding:3px 8px">SPY↔GLD '+(pc.corrMatrix[0][1]>=0?'+':'')+pc.corrMatrix[0][1].toFixed(2)+'</div>'
+      +'<div style="font-size:10px;color:#666;background:#f8f8f6;border-radius:6px;padding:3px 8px">GLD↔TLT '+(pc.corrMatrix[1][2]>=0?'+':'')+pc.corrMatrix[1][2].toFixed(2)+'</div>'
+      +'</div>'
+      +'<div style="font-size:9px;color:#bbb;margin-top:6px">Diversification benefit = sum of individual CVaRs − portfolio CVaR. '+pc.corrRegime+' regime shifts correlations — stress = stronger SPY/TLT flight-to-quality.</div>'
+      +'</div>'
+      +'</div>';
+  })() : '';
+
+  // CVaR budget summary — budgets are asset-specific
+  const totalCvar = b.trades.reduce((s,t)=>s+(t.cvar??0),0);
+  const totalBudget = b.trades.reduce((s,t)=>s+(t.cvarBudget??800),0);
+  const budgetRows = b.trades.map(t=>{
+    const c=t.cvar??0, bgt=t.cvarBudget??800, pct=Math.min(100,(c/bgt)*100);
+    const col=c>bgt?'#dc2626':c>bgt*0.7?'#d97706':'#16a34a';
+    const trackCol=c>bgt?'#fee2e2':c>bgt*0.7?'#fef3c7':'#dcfce7';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'
+      +'<div style="font-size:10px;color:#666;width:72px;flex-shrink:0;white-space:nowrap">'+t.label+' '+t.strat.split(' ')[0]+'</div>'
+      +'<div style="flex:1;height:5px;background:'+trackCol+';border-radius:3px;overflow:hidden">'
+      +'<div style="width:'+pct.toFixed(0)+'%;height:100%;background:'+col+';border-radius:3px"></div>'
+      +'</div>'
+      +'<div style="font-size:10px;font-weight:600;color:'+col+';width:36px;text-align:right;flex-shrink:0">$'+c.toFixed(0)+'</div>'
+      +'<div style="font-size:10px;color:#aaa;width:48px;text-align:right;flex-shrink:0">/ $'+bgt+'</div>'
+      +'<div style="font-size:10px;color:#aaa;width:28px;text-align:right;flex-shrink:0">'+t.contracts+'×</div>'
+      +'</div>';
+  }).join('');
+  const summaryPanel = '<div style="background:#fff;border:0.5px solid #e0e0de;border-radius:12px;padding:12px 14px;margin-bottom:12px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+    +'<div style="font-size:12px;font-weight:600">CVaR sizing — per-asset budgets</div>'
+    +'<div style="font-size:11px;color:#888">Total: <strong style="color:'+(totalCvar>totalBudget?'#dc2626':totalCvar>totalBudget*0.7?'#d97706':'#1a1a1a')+'">$'+totalCvar.toFixed(0)+'</strong> of $'+totalBudget.toFixed(0)+'</div>'
+    +'</div>'
+    +budgetRows
+    +'<div style="font-size:9px;color:#bbb;margin-top:6px">SPY budget $800 · GLD/TLT budget $400 · each = ~2% of allocated capital. Contracts sized to stay within budget.</div>'
+    +'</div>';
+
+  const rows = b.trades.map((t,i) => {
+    const aggrBadge = t.aggressive ? '<span class="badge ba">Aggressive</span>' : '';
+    const holdBadge = t.dntSig!=='PROCEED' ? '<span class="badge ba">HOLD</span>' : '';
+    const tsBit = t.tsRatio ? '<div><div class="tg-l">TS ratio</div><div class="tg-v">'+t.tsRatio+'</div></div>' : '';
+    const legsHtml = (t.legs??[]).map((leg,j) =>
+      '<div><div class="tg-l">Leg '+(j+1)+'</div><div class="tg-v" style="font-size:11px;font-family:monospace">'+leg+'</div></div>'
+    ).join('');
+    return '<div class="trade-card" style="'+(t.aggressive?'border-color:#fbbf24;border-width:1.5px':'')+'">'
+      + '<div class="trade-head">'
+      +   '<div>'
+      +     '<div class="trade-title">'+t.label+' — '+t.strat+'</div>'
+      +     '<div style="font-size:10px;color:#888;margin-top:2px">'+t.expiry+' · '+t.contracts+' contract'+(t.contracts!==1?'s':'')+'</div>'
+      +   '</div>'
+      +   '<div style="display:flex;gap:4px;align-items:flex-start;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">'
+      +     '<span style="font-size:10px;padding:2px 7px;border-radius:6px;font-weight:600;'+typeStyle(t.type)+'">'+typeLabel(t.type)+'</span>'
+      +     aggrBadge + holdBadge
+      +   '</div>'
+      + '</div>'
+      + '<div class="trade-grid" style="margin-bottom:10px">'
+      +   legsHtml
+      +   '<div><div class="tg-l">Structure</div><div class="tg-v" style="font-size:11px">'+t.structure+'</div></div>'
+      +   '<div><div class="tg-l">P(OTM)</div><div class="tg-v">'+t.potm+'</div></div>'
+      +   '<div style="grid-column:1/-1"><div class="tg-l">Premium target</div><div class="tg-v" style="font-size:11px">'+t.premTarget+'</div></div>'
+      +   '<div><div class="tg-l">Contracts</div><div class="tg-v">'+t.contracts+' × '+t.label+(t.cvarPerUnit?' <span style="font-size:10px;color:#aaa">($'+t.cvarPerUnit.toFixed(0)+'/unit)</span>':'')+'</div></div>'
+      +   (t.cvar!=null?(()=>{
+            const budget=t.cvarBudget??800;
+            const pct=Math.min(100,(t.cvar/budget)*100);
+            const col=t.cvar>budget?'#dc2626':t.cvar>budget*0.7?'#d97706':'#16a34a';
+            const trackCol=t.cvar>budget?'#fee2e2':t.cvar>budget*0.7?'#fef3c7':'#dcfce7';
+            return '<div style="grid-column:1/-1">'
+              +'<div class="tg-l">CVaR (5%) · $'+budget+' budget</div>'
+              +'<div style="display:flex;align-items:center;gap:8px;margin-top:2px">'
+              +'<div style="flex:1;height:5px;background:'+trackCol+';border-radius:3px;overflow:hidden">'
+              +'<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:3px"></div>'
+              +'</div>'
+              +'<div class="tg-v" style="color:'+col+';font-weight:600;flex-shrink:0">−$'+t.cvar.toFixed(0)+'</div>'
+              +'</div>'
+              +'</div>';
+          })():'')
+      +   tsBit
+      +   (t.netDelta ? '<div><div class="tg-l">Net Δ</div><div class="tg-v" style="color:'+(t.netDelta.startsWith('+')?'#16a34a':'#dc2626')+'">'+t.netDelta+'</div></div>' : '')
+      + '</div>'
+      + '<div style="font-size:10px;color:#888;margin-bottom:6px;padding:4px 6px;background:#f8f8f6;border-radius:6px">'+(t.regimeNote??'')+'</div>'
+      + '<div class="trade-thesis"><strong>Rationale:</strong> '+t.rationale+'</div>'
+      + '<div class="trade-risk" style="margin-top:6px"><strong>Risk:</strong> '+t.risk+'</div>'
+      + '</div>';
+  }).join('');
+
+  const biasRows = ['spy','gld','tlt'].map(a => {
+    const bias=b.bias[a], net=Math.abs(bias.bull-bias.bear)<=10?'Neutral':bias.bull>bias.bear?'Bullish':'Bearish';
+    const confCls=bias.conf==='High'?'bg':bias.conf==='Medium'?'bx':'br';
+    const signalsList = (bias.signals??[]).length
+      ? '<div style="font-size:10px;color:#888;padding:4px 0 6px;line-height:1.6;border-top:0.5px solid #f0f0ee;margin-top:4px">'
+        + bias.signals.join(' · ')
+        + '</div>'
+      : '<div style="font-size:10px;color:#bbb;padding:4px 0 6px;border-top:0.5px solid #f0f0ee;margin-top:4px">No signals fired</div>';
+    return '<div class="list-row" style="flex-direction:column;align-items:stretch;padding-bottom:4px">'
+      + '<div style="display:flex;align-items:center;gap:8px;width:100%">'
+      + '<div class="list-label"><strong>'+a.toUpperCase()+'</strong> · '+(a==='spy'?'50%':'25%')+'</div>'
+      + '<div class="list-val"><span class="up">'+bias.bull+'%↑</span> <span class="dn">'+bias.bear+'%↓</span></div>'
+      + '<div class="list-badge"><span class="badge '+(net==='Bullish'?'bg':net==='Bearish'?'br':'bx')+'">'+net+'</span></div>'
+      + '<div class="list-badge"><span class="badge '+confCls+'" style="font-size:9px">'+bias.conf+'</span></div>'
+      + '</div>'
+      + signalsList
+      + '</div>';
+  }).join('');
+
+  const regRows = ['spy','gld','tlt'].map(a => {
+    const rs = b.riskScore?.[a];
+    const tier = rs?.tier ?? 'Green';
+    const score = rs?.score ?? 0;
+    const tierCol = tier==='Red'?'#dc2626':tier==='Amber'?'#d97706':'#16a34a';
+    const tierBg  = tier==='Red'?'#fee2e2':tier==='Amber'?'#fef3c7':'#dcfce7';
+    const overrideTxt = rs?.override ? ' · '+rs.override : '';
+    return '<div class="list-row">'
+      + '<div class="list-label"><strong>'+a.toUpperCase()+'</strong>'
+      + '<span style="font-size:10px;color:#aaa"> · '+(b.ts_struct[a]?.label??'—')+' · VRP '+(b.vrp[a]>0?'+':'')+b.vrp[a]+'pts · '+b.skewCond[a]+' skew</span>'
+      + '</div>'
+      + '<div class="list-badge"><span class="badge '+(b.dnt[a]==='HOLD'?'ba':'bg')+'">'+b.dnt[a]+'</span></div>'
+      + '<div class="list-badge"><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;background:'+tierBg+';color:'+tierCol+'">'+score+''+overrideTxt+'</span></div>'
+      + '</div>';
+  }).join('');
+
+  return '<div class="sh">Regime context</div>'
+    + '<div class="list-card">'+regRows+'</div>'
+    + '<div class="sh">Portfolio CVaR — correlated tail risk</div>'
+    + portPanel
+    + '<div class="sh">Sizing summary — CVaR budget</div>'
+    + summaryPanel
+    + '<div class="sh">Trade construction — top 5 by conviction score</div>'
+    + rows
+    + '<div class="sh">Directional bias</div>'
+    + '<div class="list-card">'+biasRows+'</div>';
+}
+
+
+
+/* ── Main render ── */
+function render() {
+  const root=document.getElementById('root');
+  const et=toET(S.now);
+  const timeStr=et.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true})+' ET';
+  const dateStr=et.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  // Update static topbar (no focus disruption)
+  const _clock=document.getElementById('clock-display');
+  if(_clock) _clock.textContent=dateStr+' · '+timeStr;
+  const _runBtns=document.getElementById('run-btns-container');
+  if(_runBtns) _runBtns.innerHTML=SESSIONS.map(s=>`<button class="btn ${sessStatus(s,S.now)==='on'?'btn-active':''}" ${S.loading?'disabled':''} onclick="run('${s.id}')">Run ${s.short}</button>`).join('');
+  const b=S.sid?S.briefs[S.sid]:null;
+
+  let bodyHTML='';
+  if (S.loading) {
+    bodyHTML=`<div class="state-screen">
+      <div class="spin"></div>
+      <div class="state-title">Fetching…</div>
+      <div class="state-sub">Near + far option chains · 20D RV · VIX/VIX3M term structure · MOVE · DXY</div>
+    </div>`;
+  } else if (b) {
+    const c=S.tab==='overview'?renderOverview(b):S.tab==='signals'?renderSignals(b):renderTrades(b);
+    bodyHTML=`<div class="content">${c}
+      <div class="footer-ts">
+        ${new Date(b.ts).toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true})} ET
+        &nbsp;·&nbsp; RV: 20D c-t-c${b.rvLive?' (live)':' (fallback)'}
+        &nbsp;·&nbsp; TS: ${b.ts_struct.spy?.source==='chain'?'chain-based':'VIX/VIX3M'} ratio
+        &nbsp;·&nbsp; IV: Options Starter · Macro: Polygon · * = proxy
+      </div>
+    </div>`;
+  } else {
+    bodyHTML=`<div class="state-screen">
+      <div class="state-title">No briefing yet</div>
+      <div class="state-sub">Tap Run to fetch live data including near + far option chains for term structure analysis.<br><br>Auto-runs at 8 AM, 1 PM, and 5 PM ET.</div>
+    </div>`;
+  }
+
+  const tabs=b?`<div class="tabs">
+    <button class="tab ${S.tab==='overview'?'on':''}" onclick="setTab('overview')">Overview</button>
+    <button class="tab ${S.tab==='signals'?'on':''}" onclick="setTab('signals')">Signals &amp; OI</button>
+    <button class="tab ${S.tab==='trades'?'on':''}" onclick="setTab('trades')">Trades</button>
+  </div>`:'';
+
+  root.innerHTML=`
+  <div style="height:8px"></div>
+  <div class="sbar">
+    ${SESSIONS.map(s=>{const st=sessStatus(s,S.now),has=!!S.briefs[s.id];return`<span class="pill ${st} ${has?'ptr':''}" onclick="${has?`setSession('${s.id}')`:''}">${s.label}${has?' ✓':''}</span>`;}).join('')}
+    <span class="cd">${countdown(S.now)}</span>
+  </div>
+  <div style="height:6px"></div>
+  ${tabs}
+  ${S.errs.length?`<div class="content"><div class="alert alert-err">⚠ ${S.errs.join(' · ')}</div></div>`:''}
+  ${S.warns.length?`<div class="content"><div class="alert alert-warn">${S.warns.join('<br>')}</div></div>`:''}
+  ${bodyHTML}`;
+}
+
+
+function setOV(key, val) {
+  OV[key] = val.trim();
+  const el = document.getElementById('ov-'+key);
+  if (el) el.classList.toggle('has-val', OV[key].length > 0);
+  if (key === 'tnx' || key === 'tnx1' || key === 'ry' || key === 'ry1') {
+    const suffix = el?.parentElement?.querySelector('span');
+    if (suffix) suffix.style.color = OV[key] ? '#92400e' : '#ccc';
+  }
+}
+function clearOV() {
+  OV = { vix:'', vix1:'', vvix:'', vvix1:'', move:'', move1:'', dxy:'', dxy1:'', tnx:'', tnx1:'', ry:'', ry1:'', vix3m:'' };
+  ['vix','vix1','vvix','vvix1','move','move1','dxy','dxy1','tnx','tnx1','ry','ry1','vix3m'].forEach(k => {
+    const el = document.getElementById('ov-'+k);
+    if (el) { el.value = ''; el.classList.remove('has-val'); }
+  });
+  document.querySelectorAll('#ov-tnx ~ span, #ov-tnx1 ~ span, #ov-tnx + span, #ov-tnx1 + span').forEach(s => s.style.color = '#ccc');
+}
+
+function setTab(t){S.tab=t;render();}
+function setSession(sid){S.sid=sid;S.tab='overview';render();}
+function run(sid){runBriefing(sid);}
+
+const timers={};
+function scheduleAutos(){
+  SESSIONS.forEach(s=>{
+    clearTimeout(timers[s.id]);
+    const tick=()=>{
+      const et=toET(new Date()),[h,m]=s.hhmm.split(':').map(Number);
+      const tgt=new Date(et);tgt.setHours(h,m,0,0);
+      let ms=tgt-et;if(ms<0)ms+=864e5;
+      timers[s.id]=setTimeout(()=>{run(s.id);tick();},ms);
+    };
+    tick();
+  });
+}
+
+setInterval(()=>{S.now=new Date();render();},1000);
+scheduleAutos();
+render();
+</script>
+</body>
+</html>
