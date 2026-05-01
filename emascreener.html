@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EMA Alignment Screener</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #060a10; color: #c8d8e8;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      min-height: 100vh; padding: 28px 20px 56px;
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0d1520; }
+    ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+
+    .wrapper { max-width: 1060px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .header { margin-bottom: 22px; }
+    .header h1 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 26px; font-weight: 700; letter-spacing: 0.08em;
+      color: #00ff88; text-transform: uppercase; display: inline;
+    }
+    .header-badge { font-size: 10px; color: #3a5a7a; letter-spacing: 0.12em; margin-left: 14px; }
+    .header-criteria { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 5px; }
+    .criteria-tag {
+      display: inline-block; background: #0a1a12; border: 1px solid #1a3a22;
+      color: #3a8a5a; border-radius: 3px; padding: 2px 8px;
+      font-size: 9px; letter-spacing: 0.06em;
+    }
+
+    /* ── Grid ── */
+    .grid { display: grid; grid-template-columns: 400px 1fr; gap: 18px; }
+    @media (max-width: 740px) { .grid { grid-template-columns: 1fr; } }
+    .left-col, .right-col { display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Cards ── */
+    .card { background: #0a1520; border: 1px solid #1a2f4a; border-radius: 4px; padding: 14px 16px; }
+    .card-label { font-size: 10px; color: #3a6080; letter-spacing: 0.12em; margin-bottom: 7px; text-transform: uppercase; }
+
+    /* ── Input ── */
+    input[type="password"] {
+      width: 100%; background: #050d18; border: 1px solid #1a2f4a;
+      border-radius: 3px; color: #a0c8e8; font-family: inherit;
+      font-size: 13px; padding: 7px 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="password"]:focus { outline: none; border-color: #00cc66; box-shadow: 0 0 0 2px rgba(0,204,102,0.15); }
+
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 8px; }
+    button { font-family: inherit; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 3px; cursor: pointer; transition: all 0.15s; border: none; }
+    button:disabled { cursor: not-allowed; opacity: 0.45; }
+    #btn-run { flex:1; background:#00cc66; color:#000; font-weight:700; padding:10px 0; }
+    #btn-run:hover:not(:disabled) { background:#00e07a; transform:translateY(-1px); }
+    #btn-run.running { background:#0a2a1a; color:#1a4a2a; }
+    #btn-test { background:transparent; color:#3a7a5a; border:1px solid #1a3a2a; padding:10px 12px; white-space:nowrap; }
+    #btn-test:hover:not(:disabled) { border-color:#00cc66; color:#00cc66; }
+    #btn-stop { background:#1a0808; color:#ff6666; border:1px solid #3a1010; padding:10px 12px; display:none; }
+    #btn-stop:hover { background:#cc2222; }
+    #btn-stop.visible { display:block; }
+
+    /* ── Progress ── */
+    #progress-card { display:none; }
+    #progress-card.visible { display:block; }
+    .progress-header { display:flex; justify-content:space-between; margin-bottom:7px; }
+    .progress-label { font-size:10px; color:#3a6080; letter-spacing:0.1em; }
+    #progress-count { font-size:10px; color:#3a9a5a; }
+    #progress-count.running { color:#00ff88; }
+    .progress-track { background:#050d18; border-radius:2px; height:3px; overflow:hidden; }
+    #progress-bar { height:100%; width:0%; background:linear-gradient(90deg,#00cc66,#00ff88); border-radius:2px; transition:width 0.3s ease; box-shadow:0 0 8px #00ff8866; }
+    #progress-bar.done { background:#00cc66; box-shadow:none; }
+    .progress-footer { display:flex; justify-content:space-between; margin-top:7px; font-size:10px; color:#2a4a6a; }
+
+    /* ── Stage pills ── */
+    #stage-row { display:none; gap:5px; flex-wrap:wrap; margin-top:11px; }
+    #stage-row.visible { display:flex; }
+    .stage-pill { font-size:9px; letter-spacing:0.06em; border-radius:2px; padding:3px 7px; border:1px solid; transition:all 0.2s; }
+    .stage-pill.done-ok   { background:#0a2a14; border-color:#1a4a24; color:#3a9a5a; }
+    .stage-pill.done-fail { background:#1a0a0a; border-color:#3a1a1a; color:#7a3a3a; }
+    .stage-pill.active    { background:#0a1a2a; border-color:#2a5a9a; color:#6aaaee; }
+    .stage-pill.idle      { background:#0a1218; border-color:#1a2a3a; color:#2a4a5a; }
+
+    /* ── Log ── */
+    #log-card { background:#070d18; border:1px solid #1a2f4a; border-radius:4px; overflow:hidden; flex-grow:1; min-height:200px; display:flex; flex-direction:column; }
+    .log-header { padding:7px 14px; border-bottom:1px solid #1a2f4a; font-size:10px; color:#3a6080; letter-spacing:0.1em; background:#0a1520; }
+    #log-body { max-height:680px; overflow-y:auto; padding:10px 14px; flex-grow:1; }
+    .log-placeholder { color:#1e3a5a; font-size:11px; font-style:italic; }
+    .log-line { font-size:11px; line-height:1.75; }
+    .log-hit      { color:#00ff88; }
+    .log-miss     { color:#4a7a8a; }
+    .log-system   { color:#5a9aaa; }
+    .log-error    { color:#ff5555; }
+    .log-warn     { color:#ffaa44; }
+    .log-checking { color:#3a6a8a; }
+    .log-fail     { color:#7a4a3a; }
+
+    /* ── Results ── */
+    .results-label { font-size:10px; color:#3a6080; letter-spacing:0.12em; padding:0 2px; }
+    #empty-state { flex:1; background:#0a1520; border:1px dashed #1a2f4a; border-radius:4px; display:flex; align-items:center; justify-content:center; min-height:280px; text-align:center; color:#1e3550; }
+    .empty-icon { font-size:30px; margin-bottom:8px; }
+    .empty-text { font-size:11px; letter-spacing:0.1em; }
+    #results-list { display:flex; flex-direction:column; gap:14px; }
+
+    /* ── Result card ── */
+    .result-card {
+      background:linear-gradient(135deg,#0a1f14,#0a1520);
+      border:1px solid #1a4a2a; border-left:3px solid #00cc66;
+      border-radius:4px; padding:14px 16px;
+      box-shadow:0 0 24px rgba(0,204,102,0.05);
+      animation:slideIn 0.3s ease;
+    }
+    .result-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .result-ticker { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700; color:#00ff88; letter-spacing:0.05em; }
+    .result-badge { font-size:9px; color:#2a6040; letter-spacing:0.08em; margin-left:10px; }
+    .result-num { font-size:10px; color:#1e4030; }
+
+    .chip-row { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:12px; }
+    .chip { font-size:9px; border-radius:2px; padding:3px 8px; border:1px solid; letter-spacing:0.06em; }
+    .chip-green  { background:#071a0e; border-color:#1a4a24; color:#4aaa6a; }
+    .chip-teal   { background:#07161a; border-color:#1a3a4a; color:#4a9aaa; }
+    .chip-orange { background:#1a1007; border-color:#4a3010; color:#aaa06a; }
+    .chip-purple { background:#100a1a; border-color:#2a1a4a; color:#8a6aaa; }
+
+    /* Metric grid — 3 cols */
+    .metric-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:10px; }
+    .metric-cell { background:#060f0a; border:1px solid #0e2a18; border-radius:3px; padding:6px 8px; }
+    .metric-label { font-size:9px; color:#2a5a3a; letter-spacing:0.06em; margin-bottom:3px; }
+    .metric-val { font-size:11px; color:#88ddaa; font-weight:600; }
+    .metric-val.good { color:#44cc88; }
+    .metric-val.warn { color:#aaaa44; }
+    .metric-val.strong { color:#44aaff; }
+
+    /* Trend sparkline */
+    .sparkline-wrap { margin-bottom:10px; }
+    .spark-label { font-size:9px; color:#2a4a3a; letter-spacing:0.08em; margin-bottom:4px; }
+    .spark-svg { width:100%; height:48px; display:block; }
+
+    /* EMA section */
+    .section-label { font-size:9px; color:#2a4a3a; letter-spacing:0.08em; margin-bottom:4px; }
+    .ema-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-bottom:7px; }
+    .ema-cell { background:#060f0a; border:1px solid #0e2a18; border-radius:3px; padding:5px 6px; text-align:center; }
+    .ema-cell-label { font-size:9px; color:#2a5a3a; letter-spacing:0.05em; margin-bottom:2px; }
+    .ema-cell-val { font-size:10px; color:#88ddaa; font-weight:600; }
+    .ema-bars { display:flex; align-items:flex-end; gap:3px; height:26px; }
+    .ema-bar { flex:1; border-radius:2px 2px 0 0; }
+
+    /* ── Banners ── */
+    .banner { border-radius:4px; padding:9px 14px; font-size:11px; letter-spacing:0.06em; text-align:center; display:none; }
+    #banner-complete { background:#0a1f14; border:1px solid #1a4a2a; color:#3a9a5a; }
+    #banner-partial  { background:#0d1a10; border:1px solid #1a3a20; color:#5a8a5a; }
+    #banner-none     { background:#130a0a; border:1px solid #3a1a1a; color:#7a3a3a; }
+
+    .footer { margin-top:18px; font-size:10px; color:#1e3550; letter-spacing:0.04em; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>EMA Alignment Screener</h1>
+      <span class="header-badge">POLYGON.IO</span>
+    </div>
+    <div class="header-criteria">
+      <span class="criteria-tag">① EMA(8) &gt; EMA(21) &gt; EMA(34) &gt; EMA(55) &gt; EMA(89)</span>
+      <span class="criteria-tag">② HIGHER HIGHS — 3×10-day windows</span>
+      <span class="criteria-tag">③ WITHIN 10% OF ALL-TIME HIGH</span>
+      <span class="criteria-tag">④ STEADY RETRACEMENT — no violent pullbacks</span>
+      <span class="criteria-tag">⑤ 4-MONTH UPTREND — linear regression R² ≥ 0.5</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div class="left-col">
+
+      <div class="card">
+        <div class="card-label">Polygon API Key</div>
+        <input type="password" id="api-key" placeholder="Paste your Polygon.io API key…" autocomplete="off" />
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-run">▶ Run Scan</button>
+        <button id="btn-test">Test API</button>
+        <button id="btn-stop">⊘ Stop</button>
+      </div>
+
+      <div class="card" id="progress-card">
+        <div class="progress-header">
+          <span class="progress-label" id="progress-label">SCANNING</span>
+          <span id="progress-count">0 / 0</span>
+        </div>
+        <div class="progress-track"><div id="progress-bar"></div></div>
+        <div class="progress-footer">
+          <span id="progress-matched">MATCHED: 0/5</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div id="stage-row">
+          <div class="stage-pill idle" id="s-ema">① EMA</div>
+          <div class="stage-pill idle" id="s-hh">② HI-HI</div>
+          <div class="stage-pill idle" id="s-ath">③ ATH</div>
+          <div class="stage-pill idle" id="s-ret">④ RETRACEMENT</div>
+          <div class="stage-pill idle" id="s-trend">⑤ UPTREND</div>
+        </div>
+        <div id="current-ticker" style="margin-top:8px;font-size:10px;color:#2a5a7a;letter-spacing:0.08em;display:none;"></div>
+      </div>
+
+      <div id="log-card">
+        <div class="log-header">SCAN LOG</div>
+        <div id="log-body">
+          <div class="log-placeholder" id="log-placeholder">Paste API key → Test API → Run Scan</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-col">
+      <div class="results-label" id="results-label">MATCHED RESULTS (0 / 5)</div>
+
+      <div id="empty-state">
+        <div>
+          <div class="empty-icon">◉</div>
+          <div class="empty-text">AWAITING SCAN</div>
+        </div>
+      </div>
+
+      <div id="results-list"></div>
+      <div class="banner" id="banner-complete">✓ TARGET MET — 5 STOCKS FOUND</div>
+      <div class="banner" id="banner-partial"></div>
+      <div class="banner" id="banner-none">✗ NO STOCKS MET ALL 5 CRITERIA</div>
+    </div>
+  </div>
+
+  <div class="footer" id="footer"></div>
+</div>
+
+<script>
+// ─── Universe ─────────────────────────────────────────────────────────────────
+const TICKERS = [
+  "AAPL","MSFT","NVDA","GOOGL","GOOG","AMZN","META","TSLA","AVGO","ORCL",
+  "ADBE","CRM","INTU","NOW","WDAY","SNOW","DDOG","NET","CRWD","ZS",
+  "PANW","OKTA","FTNT","GTLB","MDB","CFLT","HUBS","SHOP","SQ","PYPL",
+  "AFRM","BILL","DOCN","BRZE","RBLX","APP","SNAP","PINS","RDDT","BMBL",
+  "AMD","INTC","QCOM","TXN","AMAT","LRCX","KLAC","ADI","MRVL","MCHP",
+  "SMCI","ON","MPWR","ENTG","ACLS","ONTO","COHU","ICHR","MU","WDC",
+  "STX","PSTG","NTAP","HPE","IBM","DELL","HPQ","SWKS","QRVO","AMBA",
+  "JPM","BAC","WFC","C","GS","MS","BLK","SCHW","AXP","V","MA","COF",
+  "DFS","SYF","ALLY","FITB","KEY","RF","HBAN","CFG","MTB","USB","PNC",
+  "TFC","ZION","CMA","WAL","EWBC","SOFI","NU","HOOD","COIN","MSTR",
+  "JNJ","UNH","LLY","ABBV","MRK","ABT","TMO","DHR","BMY","AMGN",
+  "GILD","REGN","VRTX","BIIB","MRNA","BNTX","ZBH","BSX","EW","SYK",
+  "MDT","ISRG","RMD","DXCM","PODD","INSP","NTRA","EXAS","ILMN","PACB",
+  "WMT","COST","TGT","HD","LOW","MCD","SBUX","NKE","LULU","DECK",
+  "ONON","CROX","SKX","PVH","RL","TPR","ROST","TJX","BURL","ULTA",
+  "FIVE","DG","DLTR","ETSY","EBAY","W","CHWY","PDD","MTCH","IAC",
+  "XOM","CVX","COP","SLB","EOG","DVN","MPC","VLO","PSX","HES",
+  "OXY","APA","FANG","CTRA","AR","EQT","RRC","MTDR","SM","CIVI",
+  "BA","LMT","RTX","NOC","GD","HON","GE","CAT","DE","EMR",
+  "ETN","PH","ROK","AME","FAST","GWW","TDG","HWM","KTOS","AXON",
+  "CACI","LDOS","BAH","SAIC","SPR","HEI","TDY","VRSK","MSC","GNRC",
+  "NFLX","DIS","CMCSA","WBD","PARA","FOXA","SPOT","ROKU","TTD","MGNI",
+  "T","VZ","TMUS","LUMN","LYV","WWE","IMAX","CNK","EDR","SIRI",
+  "RIVN","LCID","F","GM","STLA","UBER","LYFT","DASH","ABNB","BKNG",
+  "EXPE","OPEN","RDFN","ZG","HIMS","CART","GRAB","BLNK","CHPT","GOEV",
+  "UPST","LC","OPFI","TREE","PLTR","IONQ","RGTI","QBTS","ARQQ","QUBT",
+  "PG","KO","PEP","PM","MO","MDLZ","GIS","K","CPB","HSY",
+  "NEE","DUK","SO","AEP","EXC","XEL","ES","WEC","ETR","PPL",
+  "ACMR","ONTO","FORM","WOLF","SLAB","RELY","FLYW","PAYO","PSFE","BTBT",
+];
+
+// ─── Thresholds — edit to tune filters ───────────────────────────────────────
+const CFG = {
+  // Stage ③ — ATH
+  athPct:            0.90,   // within 10% of all-time high
+
+  // Stage ④ — Steady retracement
+  atrMultiplierMax:  2.0,    // max single-bar TR as multiple of ATR14
+  maxSingleDayDrop: -3.0,    // % worst allowed close-to-close in retracement window
+  retracementMin:   -15.0,   // % deepest allowed pullback from 20-day high
+  retracementMax:   -1.0,    // % must actually be pulling back (not just at highs)
+  retracementWindow: 10,     // bars to inspect for violent moves
+
+  // Stage ⑤ — 4-month uptrend
+  trendBars:          85,    // ~4 months of trading days
+  trendR2Min:         0.50,  // minimum R² (trend consistency; 1.0 = perfectly linear)
+  trendGainMin:       3.0,   // % minimum net gain over the full 4-month window
+};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let abortFlag  = false;
+let running    = false;
+let matchCount = 0;
+
+// ─── DOM ──────────────────────────────────────────────────────────────────────
+const apiKeyEl        = document.getElementById('api-key');
+const btnRun          = document.getElementById('btn-run');
+const btnTest         = document.getElementById('btn-test');
+const btnStop         = document.getElementById('btn-stop');
+const progressCard    = document.getElementById('progress-card');
+const progressLabel   = document.getElementById('progress-label');
+const progressCount   = document.getElementById('progress-count');
+const progressBar     = document.getElementById('progress-bar');
+const progressMatched = document.getElementById('progress-matched');
+const progressPct     = document.getElementById('progress-pct');
+const stageRow        = document.getElementById('stage-row');
+const logBody         = document.getElementById('log-body');
+const logPlaceholder  = document.getElementById('log-placeholder');
+const emptyState      = document.getElementById('empty-state');
+const resultsList     = document.getElementById('results-list');
+const resultsLabel    = document.getElementById('results-label');
+const bannerComplete  = document.getElementById('banner-complete');
+const bannerPartial   = document.getElementById('banner-partial');
+const bannerNone      = document.getElementById('banner-none');
+
+document.getElementById('footer').textContent =
+  `${TICKERS.length} symbols · 5-stage filter · ~500ms/ticker · stops at 5 matches`;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const sleep   = ms => new Promise(r => setTimeout(r, ms));
+const fmt     = n  => typeof n === 'number' ? n.toFixed(2) : '—';
+const fmtPct  = n  => typeof n === 'number' ? (n >= 0 ? '+' : '') + n.toFixed(1) + '%' : '—';
+const today   = () => new Date().toISOString().split('T')[0];
+const daysAgo = n  => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]; };
+
+function addLog(msg, type = 'info') {
+  if (logPlaceholder) logPlaceholder.remove();
+  const div = document.createElement('div');
+  div.className = `log-line log-${type}`;
+  div.textContent = msg;
+  logBody.appendChild(div);
+  while (logBody.children.length > 500) logBody.removeChild(logBody.firstChild);
+  logBody.scrollTop = logBody.scrollHeight;
+}
+
+function setStages(ema, hh, ath, ret, trend) {
+  ['s-ema','s-hh','s-ath','s-ret','s-trend'].forEach((id, i) => {
+    document.getElementById(id).className = `stage-pill ${[ema,hh,ath,ret,trend][i]}`;
+  });
+}
+
+function setProgress(checked, total, matched) {
+  const pct = total > 0 ? (checked / total) * 100 : 0;
+  progressCount.textContent   = `${checked} / ${total}`;
+  progressBar.style.width     = `${pct}%`;
+  progressMatched.textContent = `MATCHED: ${matched}/5`;
+  progressPct.textContent     = `${Math.round(pct)}%`;
+}
+
+function setBusy(isBusy) {
+  apiKeyEl.disabled = isBusy;
+  btnRun.disabled   = isBusy;
+  btnTest.disabled  = isBusy;
+  if (isBusy && running) {
+    btnRun.classList.add('running');
+    btnRun.textContent = '◈ Scanning…';
+    btnStop.classList.add('visible');
+  } else {
+    btnRun.classList.remove('running');
+    btnRun.textContent = '▶ Run Scan';
+    btnStop.classList.remove('visible');
+  }
+}
+
+function resetResults() {
+  matchCount = 0;
+  resultsList.innerHTML = '';
+  emptyState.style.display = 'flex';
+  resultsLabel.textContent = 'MATCHED RESULTS (0 / 5)';
+  bannerComplete.style.display = 'none';
+  bannerPartial.style.display  = 'none';
+  bannerNone.style.display     = 'none';
+}
+
+// ─── Linear Regression ───────────────────────────────────────────────────────
+// values[0] = oldest price, values[n-1] = most recent
+// Returns slope ($/bar), R², and predicted line endpoints for sparkline
+function linReg(values) {
+  const n = values.length;
+  let sx = 0, sy = 0, sxy = 0, sx2 = 0;
+  for (let i = 0; i < n; i++) { sx += i; sy += values[i]; sxy += i * values[i]; sx2 += i * i; }
+  const slope     = (n * sxy - sx * sy) / (n * sx2 - sx * sx);
+  const intercept = (sy - slope * sx) / n;
+  const yMean     = sy / n;
+  let ssTot = 0, ssRes = 0;
+  for (let i = 0; i < n; i++) {
+    ssTot += (values[i] - yMean) ** 2;
+    ssRes += (values[i] - (slope * i + intercept)) ** 2;
+  }
+  const r2   = ssTot === 0 ? 0 : Math.max(0, 1 - ssRes / ssTot);
+  const yStart = intercept;
+  const yEnd   = slope * (n - 1) + intercept;
+  return { slope, intercept, r2, yStart, yEnd };
+}
+
+// ─── Sparkline SVG ───────────────────────────────────────────────────────────
+function makeSpark(closes_asc, reg) {
+  const W = 300, H = 44, PAD = 3;
+  const n   = closes_asc.length;
+  const min = Math.min(...closes_asc);
+  const max = Math.max(...closes_asc);
+  const rng = max - min || 1;
+  const px  = i => PAD + (i / (n - 1)) * (W - PAD * 2);
+  const py  = v => H - PAD - ((v - min) / rng) * (H - PAD * 2);
+
+  // Price path
+  const pts = closes_asc.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ');
+
+  // Regression line endpoints
+  const rx0 = px(0),     ry0 = py(Math.max(min, Math.min(max, reg.yStart)));
+  const rx1 = px(n - 1), ry1 = py(Math.max(min, Math.min(max, reg.yEnd)));
+
+  return `
+    <svg class="spark-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <polyline points="${pts}" fill="none" stroke="rgba(0,204,102,0.5)" stroke-width="1.2" stroke-linejoin="round"/>
+      <line x1="${rx0}" y1="${ry0}" x2="${rx1}" y2="${ry1}" stroke="#4a88ff" stroke-width="1" stroke-dasharray="3,2" opacity="0.7"/>
+    </svg>`;
+}
+
+// ─── Result card ──────────────────────────────────────────────────────────────
+function addResult(r, index) {
+  emptyState.style.display = 'none';
+  resultsLabel.textContent = `MATCHED RESULTS (${index} / 5)`;
+
+  const vals  = [r.e8, r.e21, r.e34, r.e55, r.e89];
+  const minV  = Math.min(...vals), rng = Math.max(...vals) - minV || 1;
+  const emaBars = vals.map((v, i) => {
+    const h = 10 + ((v - minV) / rng) * 20;
+    return `<div class="ema-bar" style="height:${h}px;background:rgba(0,204,102,${(0.9-i*0.14).toFixed(2)})"></div>`;
+  }).join('');
+  const emaCells = [['EMA 8',r.e8],['EMA 21',r.e21],['EMA 34',r.e34],['EMA 55',r.e55],['EMA 89',r.e89]]
+    .map(([l,v]) => `<div class="ema-cell"><div class="ema-cell-label">${l}</div><div class="ema-cell-val">${fmt(v)}</div></div>`).join('');
+
+  const athDist  = ((r.price / r.ath - 1) * 100).toFixed(1);
+  const retDepth = r.retDepth.toFixed(1);
+  const slopeMonthly = (r.slope * 21 / r.price * 100).toFixed(2); // % per ~month
+  const gainPct = r.gain4m.toFixed(1);
+
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML = `
+    <div class="result-header">
+      <div>
+        <span class="result-ticker">${r.ticker}</span>
+        <span class="result-badge">BULL SETUP</span>
+      </div>
+      <span class="result-num">#${index}</span>
+    </div>
+
+    <div class="chip-row">
+      <span class="chip chip-green">✓ EMA ALIGNED</span>
+      <span class="chip chip-green">✓ HIGHER HIGHS</span>
+      <span class="chip chip-teal">${athDist}% FROM ATH</span>
+      <span class="chip chip-orange">RETRACEMENT ${retDepth}%  ·  MAX ATR×${r.maxATRRatio.toFixed(2)}</span>
+      <span class="chip chip-purple">4M TREND  +${gainPct}%  ·  R²=${r.r2.toFixed(2)}  ·  +${slopeMonthly}%/mo</span>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-cell">
+        <div class="metric-label">PRICE</div>
+        <div class="metric-val">$${fmt(r.price)}</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">4M GAIN</div>
+        <div class="metric-val good">+${gainPct}%</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">TREND R²</div>
+        <div class="metric-val ${r.r2 >= 0.7 ? 'good' : 'strong'}">${r.r2.toFixed(2)}</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">SLOPE / MONTH</div>
+        <div class="metric-val good">+${slopeMonthly}%</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">PULLBACK DEPTH</div>
+        <div class="metric-val ${Math.abs(r.retDepth) < 8 ? 'good' : 'warn'}">${retDepth}%</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">ATH DISTANCE</div>
+        <div class="metric-val">${athDist}%</div>
+      </div>
+    </div>
+
+    <div class="sparkline-wrap">
+      <div class="spark-label">4-MONTH PRICE  ·  <span style="color:#4a88ff">— regression line</span></div>
+      ${makeSpark(r.closes_asc, { yStart: r.regYStart, yEnd: r.regYEnd })}
+    </div>
+
+    <div class="section-label">EMA STACK</div>
+    <div class="ema-grid">${emaCells}</div>
+    <div class="ema-bars">${emaBars}</div>
+  `;
+  resultsList.appendChild(card);
+}
+
+function showFinalBanner(count) {
+  if (count >= 5) {
+    bannerComplete.style.display = 'block';
+  } else if (count > 0) {
+    bannerPartial.textContent = `◈ ${count} STOCK${count > 1 ? 'S' : ''} MET ALL 5 CRITERIA`;
+    bannerPartial.style.display = 'block';
+  } else {
+    bannerNone.style.display = 'block';
+  }
+}
+
+// ─── Fetch Helpers ────────────────────────────────────────────────────────────
+async function fetchJSON(url) {
+  try {
+    const r = await fetch(url, { headers: { Accept: 'application/json' } });
+    return r.json();
+  } catch {
+    const proxy = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+    const r = await fetch(proxy, { headers: { Accept: 'application/json' } });
+    return r.json();
+  }
+}
+
+// ── Stage ① — EMA alignment ───────────────────────────────────────────────────
+async function checkEMAs(ticker, apiKey) {
+  const base = `https://api.polygon.io/v1/indicators/ema/${encodeURIComponent(ticker)}` +
+    `?timespan=day&adjusted=true&series_type=close&order=desc&limit=1`;
+  const [d8,d21,d34,d55,d89] = await Promise.all(
+    [8,21,34,55,89].map(w => fetchJSON(`${base}&window=${w}&apiKey=${apiKey}`))
+  );
+  const get = d => {
+    if (d.status === 'ERROR') throw new Error(`EMA: ${d.error}`);
+    const v = d.results?.values?.[0]?.value;
+    if (v == null) throw new Error('No EMA value');
+    return Number(v);
+  };
+  const [e8,e21,e34,e55,e89] = [d8,d21,d34,d55,d89].map(get);
+  if (!(e8 > e21 && e21 > e34 && e34 > e55 && e55 > e89)) return null;
+  return { e8, e21, e34, e55, e89 };
+}
+
+// ── Fetch daily bars (shared by stages ②, ④, ⑤) ───────────────────────────────
+// Requests CFG.trendBars bars (~4 months). Extra calendar-day buffer for weekends.
+async function fetchDailyBars(ticker, apiKey) {
+  const calDays = Math.ceil(CFG.trendBars * 1.6) + 15;
+  const from    = daysAgo(calDays);
+  const url     = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}` +
+    `/range/1/day/${from}/${today()}?adjusted=true&sort=desc&limit=${CFG.trendBars}&apiKey=${apiKey}`;
+  const data = await fetchJSON(url);
+  if (data.status === 'ERROR') throw new Error(`Aggs: ${data.error}`);
+  if (!data.results || data.results.length < 30)
+    throw new Error(`Only ${data.results?.length ?? 0} bars returned`);
+  return data.results; // bars[0] = most recent
+}
+
+// ── Stage ② — Higher highs ────────────────────────────────────────────────────
+function checkHigherHighs(bars) {
+  const maxH = arr => Math.max(...arr.map(b => b.h));
+  const [wA, wB, wC] = [bars.slice(0,10), bars.slice(10,20), bars.slice(20,30)];
+  const hA = maxH(wA), hB = maxH(wB), hC = maxH(wC);
+  return { pass: hA > hB && hB > hC };
+}
+
+// ── Stage ③ — Within 10% of ATH ──────────────────────────────────────────────
+async function checkNearATH(ticker, apiKey, currentClose) {
+  const url  = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}` +
+    `/range/1/month/2000-01-01/${today()}?adjusted=true&sort=asc&limit=400&apiKey=${apiKey}`;
+  const data = await fetchJSON(url);
+  if (data.status === 'ERROR') throw new Error(`ATH: ${data.error}`);
+  if (!data.results?.length)  throw new Error('No ATH data');
+  const ath  = Math.max(...data.results.map(b => b.h));
+  return { pass: currentClose >= ath * CFG.athPct, ath };
+}
+
+// ── Stage ④ — Steady retracement ─────────────────────────────────────────────
+function checkSteadyRetracement(bars) {
+  // ATR14 from most-recent 14 bars
+  const atrSlice = bars.slice(0, 14);
+  let trSum = 0;
+  for (let i = 0; i < atrSlice.length; i++) {
+    const b = atrSlice[i], prev = atrSlice[i+1];
+    const hl = b.h - b.l;
+    trSum += prev ? Math.max(hl, Math.abs(b.h - prev.c), Math.abs(b.l - prev.c)) : hl;
+  }
+  const atr14 = trSum / atrSlice.length;
+
+  // 20-day high → retracement depth
+  const hi20         = Math.max(...bars.slice(0, 20).map(b => b.h));
+  const currentClose = bars[0].c;
+  const retDepth     = ((currentClose / hi20) - 1) * 100;
+
+  // Inspect retracement window
+  const win = bars.slice(0, CFG.retracementWindow);
+  let maxATRRatio = 0, maxDayDrop = 0;
+  for (let i = 0; i < win.length; i++) {
+    const b = win[i], prev = win[i+1];
+    const hl = b.h - b.l;
+    const tr = prev ? Math.max(hl, Math.abs(b.h - prev.c), Math.abs(b.l - prev.c)) : hl;
+    const ratio = atr14 > 0 ? tr / atr14 : 0;
+    if (ratio > maxATRRatio) maxATRRatio = ratio;
+    if (prev) {
+      const pct = ((b.c / prev.c) - 1) * 100;
+      if (pct < maxDayDrop) maxDayDrop = pct;
+    }
+  }
+
+  const depthOk = retDepth >= CFG.retracementMin && retDepth <= CFG.retracementMax;
+  const atrOk   = maxATRRatio <= CFG.atrMultiplierMax;
+  const dropOk  = maxDayDrop  >= CFG.maxSingleDayDrop;
+
+  return { pass: depthOk && atrOk && dropOk, atr14, maxATRRatio, maxDayDrop, retDepth, depthOk, atrOk, dropOk };
+}
+
+// ── Stage ⑤ — 4-month uptrend via linear regression ─────────────────────────
+//
+//  closes_asc: daily closes oldest→newest (reversed from bars which are desc)
+//  slope      > 0                          (price rising over period)
+//  R²         >= CFG.trendR2Min            (trend is consistent, not noise)
+//  gain       >= CFG.trendGainMin %        (meaningful appreciation)
+//
+function checkUptrend(bars) {
+  // Use up to CFG.trendBars bars. bars are desc → reverse for asc.
+  const slice     = bars.slice(0, CFG.trendBars).reverse();
+  const closes    = slice.map(b => b.c);
+  const reg       = linReg(closes);
+  const gain4m    = ((closes[closes.length - 1] / closes[0]) - 1) * 100;
+
+  const slopeOk = reg.slope > 0;
+  const r2Ok    = reg.r2    >= CFG.trendR2Min;
+  const gainOk  = gain4m    >= CFG.trendGainMin;
+
+  return {
+    pass: slopeOk && r2Ok && gainOk,
+    slope: reg.slope, r2: reg.r2, gain4m,
+    closes_asc: closes,
+    regYStart: reg.yStart, regYEnd: reg.yEnd,
+    slopeOk, r2Ok, gainOk,
+  };
+}
+
+// ── Full 5-stage check ────────────────────────────────────────────────────────
+async function checkTicker(ticker, apiKey) {
+  // ① EMA
+  setStages('active','idle','idle','idle','idle');
+  const emas = await checkEMAs(ticker, apiKey);
+  if (!emas) { setStages('done-fail','idle','idle','idle','idle'); return null; }
+  setStages('done-ok','active','idle','idle','idle');
+
+  // Fetch bars once — used by ②, ④, ⑤
+  const bars = await fetchDailyBars(ticker, apiKey);
+  const currentClose = bars[0].c;
+
+  // ② Higher highs
+  const hh = checkHigherHighs(bars);
+  if (!hh.pass) { setStages('done-ok','done-fail','idle','idle','idle'); return null; }
+  setStages('done-ok','done-ok','active','idle','idle');
+
+  // ③ Near ATH
+  const athResult = await checkNearATH(ticker, apiKey, currentClose);
+  if (!athResult.pass) { setStages('done-ok','done-ok','done-fail','idle','idle'); return null; }
+  setStages('done-ok','done-ok','done-ok','active','idle');
+
+  // ④ Steady retracement
+  const ret = checkSteadyRetracement(bars);
+  if (!ret.pass) {
+    setStages('done-ok','done-ok','done-ok','done-fail','idle');
+    if (!ret.depthOk) addLog(`  ↳ depth ${ret.retDepth.toFixed(1)}% (need ${CFG.retracementMin}% to ${CFG.retracementMax}%)`, 'fail');
+    if (!ret.atrOk)   addLog(`  ↳ max TR ${ret.maxATRRatio.toFixed(2)}× ATR (limit ${CFG.atrMultiplierMax}×)`, 'fail');
+    if (!ret.dropOk)  addLog(`  ↳ worst day ${ret.maxDayDrop.toFixed(1)}% (limit ${CFG.maxSingleDayDrop}%)`, 'fail');
+    return null;
+  }
+  setStages('done-ok','done-ok','done-ok','done-ok','active');
+
+  // ⑤ 4-month uptrend
+  const trend = checkUptrend(bars);
+  if (!trend.pass) {
+    setStages('done-ok','done-ok','done-ok','done-ok','done-fail');
+    if (!trend.slopeOk) addLog(`  ↳ slope negative — price declining over 4 months`, 'fail');
+    if (!trend.r2Ok)    addLog(`  ↳ R²=${trend.r2.toFixed(2)} below ${CFG.trendR2Min} — trend too choppy`, 'fail');
+    if (!trend.gainOk)  addLog(`  ↳ 4M gain ${trend.gain4m.toFixed(1)}% below ${CFG.trendGainMin}% minimum`, 'fail');
+    return null;
+  }
+  setStages('done-ok','done-ok','done-ok','done-ok','done-ok');
+
+  return {
+    ticker, ...emas,
+    price:      currentClose,
+    ath:        athResult.ath,
+    retDepth:   ret.retDepth,
+    maxATRRatio:ret.maxATRRatio,
+    maxDayDrop: ret.maxDayDrop,
+    atr14:      ret.atr14,
+    slope:      trend.slope,
+    r2:         trend.r2,
+    gain4m:     trend.gain4m,
+    closes_asc: trend.closes_asc,
+    regYStart:  trend.regYStart,
+    regYEnd:    trend.regYEnd,
+  };
+}
+
+// ─── Test Connection ──────────────────────────────────────────────────────────
+async function testConnection() {
+  const apiKey = apiKeyEl.value.trim();
+  if (!apiKey) return;
+  setBusy(true);
+  logBody.innerHTML = '';
+  addLog('━━━ DIAGNOSTICS ━━━', 'system');
+  const url = `https://api.polygon.io/v1/indicators/ema/AAPL?timespan=day&adjusted=true&window=21&series_type=close&order=desc&limit=1&apiKey=${apiKey}`;
+  addLog('1. Direct fetch to api.polygon.io…', 'checking');
+  try {
+    const data = await (await fetch(url, { headers: { Accept: 'application/json' } })).json();
+    if (data.status === 'ERROR') { addLog(`   ✗ ${data.error}`, 'error'); }
+    else {
+      addLog(`   ✓ Direct OK — AAPL EMA(21) = ${Number(data.results?.values?.[0]?.value).toFixed(4)}`, 'hit');
+      addLog('━━━ READY ━━━', 'system'); setBusy(false); return;
+    }
+  } catch(e) { addLog(`   ✗ Blocked: ${e.message}`, 'warn'); }
+  addLog('2. Trying corsproxy.io…', 'checking');
+  try {
+    const data = await (await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`, { headers: { Accept: 'application/json' } })).json();
+    if (data.status === 'ERROR') { addLog(`   ✗ ${data.error}`, 'error'); addLog('   → Check key permissions (needs Stocks Starter+)', 'warn'); }
+    else { addLog(`   ✓ Proxy OK — AAPL EMA(21) = ${Number(data.results?.values?.[0]?.value).toFixed(4)}`, 'hit'); addLog('━━━ READY (via proxy) ━━━', 'system'); }
+  } catch(e) { addLog(`   ✗ Proxy failed: ${e.message}`, 'error'); addLog('→ Check connection or try another browser', 'warn'); }
+  setBusy(false);
+}
+
+// ─── Main Scan ────────────────────────────────────────────────────────────────
+async function runScreener() {
+  const apiKey = apiKeyEl.value.trim();
+  if (!apiKey) return;
+  abortFlag = false; running = true; matchCount = 0;
+  setBusy(true); resetResults(); logBody.innerHTML = '';
+  progressCard.classList.add('visible');
+  stageRow.classList.add('visible');
+  progressLabel.textContent = 'SCANNING';
+  progressCount.classList.add('running');
+  progressBar.classList.remove('done');
+  progressBar.style.width = '0%';
+  setProgress(0, TICKERS.length, 0);
+  setStages('idle','idle','idle','idle','idle');
+
+  addLog('◈ EMA Screener — 5-Stage Filter', 'system');
+  addLog('◈ ① EMA Align  ② Higher Highs  ③ Near ATH  ④ Steady Retrace  ⑤ 4M Uptrend', 'system');
+  addLog(`◈ Trend: R²≥${CFG.trendR2Min}  gain≥${CFG.trendGainMin}%  over ~${CFG.trendBars} bars (~4 months)`, 'system');
+  addLog(`◈ ${TICKERS.length} symbols…`, 'system');
+
+  const currentTickerEl = document.getElementById('current-ticker');
+  currentTickerEl.style.display = 'block';
+
+  for (let i = 0; i < TICKERS.length; i++) {
+    if (abortFlag) { addLog('⊘ Aborted', 'warn'); break; }
+    if (matchCount >= 5) break;
+    const ticker = TICKERS[i];
+    currentTickerEl.textContent = `CHECKING  ${ticker}  (${i+1}/${TICKERS.length})`;
+    try {
+      const result = await checkTicker(ticker, apiKey);
+      if (result.pass) {
+        matchCount++;
+        addResult(result, matchCount);
+        addLog(
+          `✓ ${ticker.padEnd(6)} ALL 5 PASSED  [${matchCount}/5]  ` +
+          `4M +${result.gain4m.toFixed(1)}%  R²=${result.r2.toFixed(2)}  ret ${result.retDepth.toFixed(1)}%`,
+          'hit'
+        );
+      } else {
+        addLog(`✗ ${ticker.padEnd(6)} failed ${result.failStage}`, 'miss');
+      }
+    } catch(err) {
+      const msg = err.message || '';
+      if (msg.includes('403')||msg.includes('401')) { addLog('⊘ Auth error — check API key','error'); break; }
+      if (msg.includes('429')) { addLog('⚠ Rate limited — pausing 20s','warn'); await sleep(20000); i--; continue; }
+      addLog(`! ${ticker.padEnd(6)} error — ${msg.slice(0,70)}`, 'warn');
+    }
+    setProgress(i + 1, TICKERS.length, matchCount);
+    await sleep(480);
+  }
+  currentTickerEl.style.display = 'none';
+
+  running = false; setBusy(false);
+  stageRow.classList.remove('visible');
+  setStages('idle','idle','idle','idle','idle');
+  progressLabel.textContent = 'COMPLETE';
+  progressCount.classList.remove('running');
+  progressBar.classList.add('done'); progressBar.style.width = '100%';
+  showFinalBanner(matchCount);
+  addLog(matchCount
+    ? `◈ Done — ${matchCount} stock${matchCount>1?'s':''} met all 5 criteria`
+    : '◈ Scan complete — no stocks met all 5 criteria', 'system');
+}
+
+// ─── Events ───────────────────────────────────────────────────────────────────
+btnRun.addEventListener('click',  runScreener);
+btnTest.addEventListener('click', testConnection);
+btnStop.addEventListener('click', () => { abortFlag = true; });
+apiKeyEl.addEventListener('input', () => {
+  const ok = apiKeyEl.value.trim().length > 0;
+  btnRun.disabled = !ok; btnTest.disabled = !ok;
+});
+btnRun.disabled = true; btnTest.disabled = true;
+</script>
+</body>
+</html>
