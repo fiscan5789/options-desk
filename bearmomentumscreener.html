@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bear Momentum Entry Screener</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0608; color: #d8c8c8;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      min-height: 100vh; padding: 28px 20px 56px;
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #150d0d; }
+    ::-webkit-scrollbar-thumb { background: #4a1e1e; border-radius: 2px; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+
+    .wrapper { max-width: 1060px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .header { margin-bottom: 22px; }
+    .header h1 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 26px; font-weight: 700; letter-spacing: 0.08em;
+      color: #ff4444; text-transform: uppercase; display: inline;
+    }
+    .header-badge { font-size: 10px; color: #7a5a5a; letter-spacing: 0.12em; margin-left: 14px; }
+    .header-criteria { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 5px; }
+    .criteria-tag {
+      display: inline-block; background: #1a0a0a; border: 1px solid #3a1a1a;
+      color: #8a4a4a; border-radius: 3px; padding: 2px 8px;
+      font-size: 9px; letter-spacing: 0.06em;
+    }
+    .criteria-tag.orange { background: #1a1007; border-color: #3a2810; color: #8a6a3a; }
+    .criteria-tag.blue   { background: #090f1a; border-color: #1a2a3a; color: #3a5a7a; }
+
+    /* ── Grid ── */
+    .grid { display: grid; grid-template-columns: 400px 1fr; gap: 18px; }
+    @media (max-width: 740px) { .grid { grid-template-columns: 1fr; } }
+    .left-col, .right-col { display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Cards ── */
+    .card { background: #150d0d; border: 1px solid #3a1f1f; border-radius: 4px; padding: 14px 16px; }
+    .card-label { font-size: 10px; color: #7a4a4a; letter-spacing: 0.12em; margin-bottom: 7px; text-transform: uppercase; }
+
+    /* ── Input ── */
+    input[type="password"] {
+      width: 100%; background: #0d0808; border: 1px solid #3a1f1f;
+      border-radius: 3px; color: #d0a8a8; font-family: inherit;
+      font-size: 13px; padding: 7px 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="password"]:focus { outline: none; border-color: #cc3333; box-shadow: 0 0 0 2px rgba(204,51,51,0.15); }
+
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 8px; }
+    button { font-family: inherit; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 3px; cursor: pointer; transition: all 0.15s; border: none; }
+    button:disabled { cursor: not-allowed; opacity: 0.45; }
+    #btn-run { flex:1; background:#cc3333; color:#fff; font-weight:700; padding:10px 0; }
+    #btn-run:hover:not(:disabled) { background:#ee4444; transform:translateY(-1px); }
+    #btn-run.running { background:#2a0a0a; color:#5a2020; }
+    #btn-test { background:transparent; color:#7a3a3a; border:1px solid #3a1a1a; padding:10px 12px; white-space:nowrap; }
+    #btn-test:hover:not(:disabled) { border-color:#cc3333; color:#cc3333; }
+    #btn-stop { background:#0d0808; color:#ff6666; border:1px solid #3a1010; padding:10px 12px; display:none; }
+    #btn-stop:hover { background:#330a0a; }
+    #btn-stop.visible { display:block; }
+
+    /* ── Progress ── */
+    #progress-card { display:none; }
+    #progress-card.visible { display:block; }
+    .progress-header { display:flex; justify-content:space-between; margin-bottom:7px; }
+    .progress-label { font-size:10px; color:#7a4a4a; letter-spacing:0.1em; }
+    #progress-count { font-size:10px; color:#aa5a5a; }
+    #progress-count.running { color:#ff5555; }
+    .progress-track { background:#0d0808; border-radius:2px; height:3px; overflow:hidden; }
+    #progress-bar { height:100%; width:0%; background:linear-gradient(90deg,#cc3333,#ff5555); border-radius:2px; transition:width 0.3s ease; box-shadow:0 0 8px #ff333366; }
+    #progress-bar.done { background:#cc3333; box-shadow:none; }
+    .progress-footer { display:flex; justify-content:space-between; margin-top:7px; font-size:10px; color:#5a3a3a; }
+
+    /* ── Stage pills ── */
+    #stage-row { display:none; gap:5px; flex-wrap:wrap; margin-top:11px; }
+    #stage-row.visible { display:flex; }
+    .stage-pill { font-size:9px; letter-spacing:0.06em; border-radius:2px; padding:3px 7px; border:1px solid; transition:all 0.2s; }
+    .stage-pill.done-ok   { background:#2a0a0a; border-color:#4a1a1a; color:#cc5a5a; }
+    .stage-pill.done-fail { background:#0a0a14; border-color:#1a1a3a; color:#4a4a7a; }
+    .stage-pill.active    { background:#1a0f07; border-color:#6a3a1a; color:#ee8a4a; }
+    .stage-pill.idle      { background:#120808; border-color:#2a1a1a; color:#4a2a2a; }
+
+    /* ── Log ── */
+    #log-card { background:#0d0808; border:1px solid #2a1a1a; border-radius:4px; overflow:hidden; flex-grow:1; min-height:200px; display:flex; flex-direction:column; }
+    .log-header { padding:7px 14px; border-bottom:1px solid #2a1a1a; font-size:10px; color:#7a4a4a; letter-spacing:0.1em; background:#150d0d; }
+    #log-body { max-height:680px; overflow-y:auto; padding:10px 14px; flex-grow:1; }
+    .log-placeholder { color:#3a1a1a; font-size:11px; font-style:italic; }
+    .log-line { font-size:11px; line-height:1.75; }
+    .log-hit      { color:#ff5555; }
+    .log-miss     { color:#4a3535; }
+    .log-system   { color:#aa6a6a; }
+    .log-error    { color:#ff3333; }
+    .log-warn     { color:#ffaa44; }
+    .log-checking { color:#7a4a5a; }
+    .log-fail     { color:#4a2a2a; }
+
+    /* ── Results ── */
+    .results-label { font-size:10px; color:#7a4a4a; letter-spacing:0.12em; padding:0 2px; }
+    #empty-state { flex:1; background:#150d0d; border:1px dashed #2a1a1a; border-radius:4px; display:flex; align-items:center; justify-content:center; min-height:280px; text-align:center; color:#3a1e1e; }
+    .empty-icon { font-size:30px; margin-bottom:8px; }
+    .empty-text { font-size:11px; letter-spacing:0.1em; }
+    #results-list { display:flex; flex-direction:column; gap:14px; }
+
+    /* ── Result card ── */
+    .result-card {
+      background: linear-gradient(135deg, #1f0a0a, #150d0d);
+      border: 1px solid #4a1a1a; border-left: 3px solid #cc3333;
+      border-radius: 4px; padding: 14px 16px;
+      box-shadow: 0 0 24px rgba(204,51,51,0.07);
+      animation: slideIn 0.3s ease;
+    }
+    .result-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .result-ticker { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700; color:#ff5555; letter-spacing:0.05em; }
+    .result-badge { font-size:9px; color:#7a3030; letter-spacing:0.08em; margin-left:10px; }
+    .result-num { font-size:10px; color:#4a2020; }
+
+    .chip-row { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:12px; }
+    .chip { font-size:9px; border-radius:2px; padding:3px 8px; border:1px solid; letter-spacing:0.06em; }
+    .chip-red    { background:#1f0808; border-color:#4a1a1a; color:#cc5a5a; }
+    .chip-orange { background:#1a1007; border-color:#4a2a10; color:#cc8844; }
+    .chip-teal   { background:#07161a; border-color:#1a3a4a; color:#4a9aaa; }
+    .chip-purple { background:#100a1a; border-color:#2a1a4a; color:#8a6aaa; }
+
+    /* Metric grid */
+    .metric-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; }
+    .metric-cell { background:#0f0808; border:1px solid #2a1010; border-radius:3px; padding:6px 8px; }
+    .metric-label { font-size:9px; color:#6a3a3a; letter-spacing:0.06em; margin-bottom:3px; }
+    .metric-val { font-size:11px; color:#cc8888; font-weight:600; }
+    .metric-val.bad    { color:#ff5555; }
+    .metric-val.warn   { color:#aaaa44; }
+    .metric-val.orange { color:#cc8844; }
+    .metric-val.blue   { color:#4a9aaa; }
+
+    /* Trigger box */
+    .trigger-box {
+      background: #0f0a12; border: 1px solid #2a1a2a;
+      border-radius: 3px; padding: 8px 12px; margin-bottom: 12px;
+      font-size: 10px; color: #9a5a7a; letter-spacing: 0.06em; line-height: 1.7;
+    }
+    .trigger-label { color: #5a2a3a; font-size: 9px; letter-spacing: 0.1em; margin-bottom: 3px; }
+
+    /* EMA section */
+    .section-label { font-size:9px; color:#5a3a3a; letter-spacing:0.08em; margin-bottom:4px; }
+    .ema-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-bottom:7px; }
+    .ema-cell { background:#0f0808; border:1px solid #2a1010; border-radius:3px; padding:5px 6px; text-align:center; }
+    .ema-cell-label { font-size:9px; color:#6a3a3a; letter-spacing:0.05em; margin-bottom:2px; }
+    .ema-cell-val { font-size:10px; color:#cc8888; font-weight:600; }
+    .ema-bars { display:flex; align-items:flex-end; gap:3px; height:26px; }
+    .ema-bar { flex:1; border-radius:2px 2px 0 0; }
+
+    /* Banners */
+    .banner { border-radius:4px; padding:9px 14px; font-size:11px; letter-spacing:0.06em; text-align:center; display:none; }
+    #banner-complete { background:#1f0a0a; border:1px solid #4a1a1a; color:#cc5a5a; }
+    #banner-partial  { background:#1a0f0f; border:1px solid #3a1a1a; color:#8a4a4a; }
+    #banner-none     { background:#0a0a15; border:1px solid #1a1a3a; color:#4a4a7a; }
+
+    .footer { margin-top:18px; font-size:10px; color:#3a2020; letter-spacing:0.04em; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>Bear Momentum Entry Screener</h1>
+      <span class="header-badge">POLYGON.IO</span>
+    </div>
+    <div class="header-criteria">
+      <span class="criteria-tag">① EMA(8) ≤ EMA(21) ≤ EMA(34) ≤ EMA(55) ≤ EMA(89)</span>
+      <span class="criteria-tag orange">② SLOW STOCH(8,3) ≥ 60</span>
+      <span class="criteria-tag orange">③ ADX(13) ≥ 20</span>
+      <span class="criteria-tag blue">④ RSI(2) crosses below 90  OR  Close &lt; Prev Low &amp; Close &lt; Open</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div class="left-col">
+      <div class="card">
+        <div class="card-label">Polygon API Key</div>
+        <input type="password" id="api-key" placeholder="Paste your Polygon.io API key…" autocomplete="off" />
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-run">▼ Run Scan</button>
+        <button id="btn-test">Test API</button>
+        <button id="btn-stop">⊘ Stop</button>
+      </div>
+
+      <div class="card" id="progress-card">
+        <div class="progress-header">
+          <span class="progress-label" id="progress-label">SCANNING</span>
+          <span id="progress-count">0 / 0</span>
+        </div>
+        <div class="progress-track"><div id="progress-bar"></div></div>
+        <div class="progress-footer">
+          <span id="progress-matched">MATCHED: 0/5</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div id="stage-row">
+          <div class="stage-pill idle" id="s-ema">① EMA</div>
+          <div class="stage-pill idle" id="s-stoch">② STOCH</div>
+          <div class="stage-pill idle" id="s-adx">③ ADX</div>
+          <div class="stage-pill idle" id="s-entry">④ ENTRY</div>
+        </div>
+        <div id="current-ticker" style="margin-top:8px;font-size:10px;color:#5a2a2a;letter-spacing:0.08em;display:none;"></div>
+      </div>
+
+      <div id="log-card">
+        <div class="log-header">SCAN LOG</div>
+        <div id="log-body">
+          <div class="log-placeholder" id="log-placeholder">Paste API key → Test API → Run Scan</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-col">
+      <div class="results-label" id="results-label">MATCHED RESULTS (0 / 5)</div>
+
+      <div id="empty-state">
+        <div>
+          <div class="empty-icon">◉</div>
+          <div class="empty-text">AWAITING SCAN</div>
+        </div>
+      </div>
+
+      <div id="results-list"></div>
+      <div class="banner" id="banner-complete">▼ TARGET MET — 5 SHORT ENTRIES FOUND</div>
+      <div class="banner" id="banner-partial"></div>
+      <div class="banner" id="banner-none">— NO STOCKS MET ALL 4 CRITERIA</div>
+    </div>
+  </div>
+
+  <div class="footer" id="footer"></div>
+</div>
+
+<script>
+// ─── Universe ─────────────────────────────────────────────────────────────────
+const TICKERS = [
+  "AAPL","MSFT","NVDA","GOOGL","GOOG","AMZN","META","TSLA","AVGO","ORCL",
+  "ADBE","CRM","INTU","NOW","WDAY","SNOW","DDOG","NET","CRWD","ZS",
+  "PANW","OKTA","FTNT","GTLB","MDB","CFLT","HUBS","SHOP","SQ","PYPL",
+  "AFRM","BILL","DOCN","BRZE","RBLX","APP","SNAP","PINS","RDDT","BMBL",
+  "AMD","INTC","QCOM","TXN","AMAT","LRCX","KLAC","ADI","MRVL","MCHP",
+  "SMCI","ON","MPWR","ENTG","ACLS","ONTO","COHU","ICHR","MU","WDC",
+  "STX","PSTG","NTAP","HPE","IBM","DELL","HPQ","SWKS","QRVO","AMBA",
+  "JPM","BAC","WFC","C","GS","MS","BLK","SCHW","AXP","V","MA","COF",
+  "DFS","SYF","ALLY","FITB","KEY","RF","HBAN","CFG","MTB","USB","PNC",
+  "TFC","ZION","CMA","WAL","EWBC","SOFI","NU","HOOD","COIN","MSTR",
+  "JNJ","UNH","LLY","ABBV","MRK","ABT","TMO","DHR","BMY","AMGN",
+  "GILD","REGN","VRTX","BIIB","MRNA","BNTX","ZBH","BSX","EW","SYK",
+  "MDT","ISRG","RMD","DXCM","PODD","INSP","NTRA","EXAS","ILMN","PACB",
+  "WMT","COST","TGT","HD","LOW","MCD","SBUX","NKE","LULU","DECK",
+  "ONON","CROX","SKX","PVH","RL","TPR","ROST","TJX","BURL","ULTA",
+  "FIVE","DG","DLTR","ETSY","EBAY","W","CHWY","PDD","MTCH","IAC",
+  "XOM","CVX","COP","SLB","EOG","DVN","MPC","VLO","PSX","HES",
+  "OXY","APA","FANG","CTRA","AR","EQT","RRC","MTDR","SM","CIVI",
+  "BA","LMT","RTX","NOC","GD","HON","GE","CAT","DE","EMR",
+  "ETN","PH","ROK","AME","FAST","GWW","TDG","HWM","KTOS","AXON",
+  "CACI","LDOS","BAH","SAIC","SPR","HEI","TDY","VRSK","MSC","GNRC",
+  "NFLX","DIS","CMCSA","WBD","PARA","FOXA","SPOT","ROKU","TTD","MGNI",
+  "T","VZ","TMUS","LUMN","LYV","WWE","IMAX","CNK","EDR","SIRI",
+  "RIVN","LCID","F","GM","STLA","UBER","LYFT","DASH","ABNB","BKNG",
+  "EXPE","OPEN","RDFN","ZG","HIMS","CART","GRAB","BLNK","CHPT","GOEV",
+  "UPST","LC","OPFI","TREE","PLTR","IONQ","RGTI","QBTS","ARQQ","QUBT",
+  "PG","KO","PEP","PM","MO","MDLZ","GIS","K","CPB","HSY",
+  "NEE","DUK","SO","AEP","EXC","XEL","ES","WEC","ETR","PPL",
+  "ACMR","ONTO","FORM","WOLF","SLAB","RELY","FLYW","PAYO","PSFE","BTBT",
+];
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let abortFlag  = false;
+let running    = false;
+let matchCount = 0;
+
+// ─── DOM ──────────────────────────────────────────────────────────────────────
+const apiKeyEl        = document.getElementById('api-key');
+const btnRun          = document.getElementById('btn-run');
+const btnTest         = document.getElementById('btn-test');
+const btnStop         = document.getElementById('btn-stop');
+const progressCard    = document.getElementById('progress-card');
+const progressLabel   = document.getElementById('progress-label');
+const progressCount   = document.getElementById('progress-count');
+const progressBar     = document.getElementById('progress-bar');
+const progressMatched = document.getElementById('progress-matched');
+const progressPct     = document.getElementById('progress-pct');
+const stageRow        = document.getElementById('stage-row');
+const logBody         = document.getElementById('log-body');
+const logPlaceholder  = document.getElementById('log-placeholder');
+const emptyState      = document.getElementById('empty-state');
+const resultsList     = document.getElementById('results-list');
+const resultsLabel    = document.getElementById('results-label');
+const bannerComplete  = document.getElementById('banner-complete');
+const bannerPartial   = document.getElementById('banner-partial');
+const bannerNone      = document.getElementById('banner-none');
+const currentTickerEl = document.getElementById('current-ticker');
+
+document.getElementById('footer').textContent =
+  `${TICKERS.length} symbols · EMA bear stack → Stoch(8,3) → ADX(13) → Short entry trigger · ~550ms/ticker · stops at 5`;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const fmt   = n  => typeof n === 'number' ? n.toFixed(2) : '—';
+
+function addLog(msg, type = 'info') {
+  if (logPlaceholder) logPlaceholder.remove();
+  const div = document.createElement('div');
+  div.className = `log-line log-${type}`;
+  div.textContent = msg;
+  logBody.appendChild(div);
+  while (logBody.children.length > 500) logBody.removeChild(logBody.firstChild);
+  logBody.scrollTop = logBody.scrollHeight;
+}
+
+function setStages(ema, stoch, adx, entry) {
+  ['s-ema','s-stoch','s-adx','s-entry'].forEach((id, i) => {
+    document.getElementById(id).className = `stage-pill ${[ema,stoch,adx,entry][i]}`;
+  });
+}
+
+function setProgress(checked, total, matched) {
+  const pct = total > 0 ? (checked / total) * 100 : 0;
+  progressCount.textContent   = `${checked} / ${total}`;
+  progressBar.style.width     = `${pct}%`;
+  progressMatched.textContent = `MATCHED: ${matched}/5`;
+  progressPct.textContent     = `${Math.round(pct)}%`;
+}
+
+function setBusy(isBusy) {
+  apiKeyEl.disabled = isBusy;
+  btnRun.disabled   = isBusy;
+  btnTest.disabled  = isBusy;
+  if (isBusy && running) {
+    btnRun.classList.add('running');
+    btnRun.textContent = '◈ Scanning…';
+    btnStop.classList.add('visible');
+  } else {
+    btnRun.classList.remove('running');
+    btnRun.textContent = '▼ Run Scan';
+    btnStop.classList.remove('visible');
+  }
+}
+
+function resetResults() {
+  matchCount = 0;
+  resultsList.innerHTML = '';
+  emptyState.style.display = 'flex';
+  resultsLabel.textContent = 'MATCHED RESULTS (0 / 5)';
+  bannerComplete.style.display = 'none';
+  bannerPartial.style.display  = 'none';
+  bannerNone.style.display     = 'none';
+}
+
+function addResult(r, index) {
+  emptyState.style.display = 'none';
+  resultsLabel.textContent = `MATCHED RESULTS (${index} / 5)`;
+
+  // EMA bars — e89 tallest (bear stack: longest EMA is highest)
+  const vals  = [r.e8, r.e21, r.e34, r.e55, r.e89];
+  const minV  = Math.min(...vals), rng = Math.max(...vals) - minV || 1;
+  const emaBars = vals.map((v, i) => {
+    const h = 10 + ((v - minV) / rng) * 20;
+    return `<div class="ema-bar" style="height:${h}px;background:rgba(204,51,51,${(0.3+i*0.15).toFixed(2)})"></div>`;
+  }).join('');
+  const emaCells = [['EMA 8',r.e8],['EMA 21',r.e21],['EMA 34',r.e34],['EMA 55',r.e55],['EMA 89',r.e89]]
+    .map(([l,v]) => `<div class="ema-cell"><div class="ema-cell-label">${l}</div><div class="ema-cell-val">${fmt(v)}</div></div>`).join('');
+
+  const triggerDesc = r.triggerType === 'rsi2'
+    ? `RSI(2) CROSS ↓ 90  —  yesterday ${fmt(r.rsiYesterday)} ≥ 90  →  today ${fmt(r.rsiToday)} < 90`
+    : `PRICE BREAKDOWN  —  close $${fmt(r.close)} < prev low $${fmt(r.prevLow)}  &  close < open $${fmt(r.open)}`;
+
+  const triggerChip = r.triggerType === 'rsi2'
+    ? `<span class="chip chip-purple">RSI(2) CROSS ↓ 90  (${fmt(r.rsiYesterday)} → ${fmt(r.rsiToday)})</span>`
+    : `<span class="chip chip-teal">PRICE BREAKDOWN  close $${fmt(r.close)} &lt; prev L $${fmt(r.prevLow)}</span>`;
+
+  const card = document.createElement('div');
+  card.className = 'result-card';
+  card.innerHTML = `
+    <div class="result-header">
+      <div>
+        <span class="result-ticker">${r.ticker}</span>
+        <span class="result-badge">SHORT ENTRY</span>
+      </div>
+      <span class="result-num">#${index}</span>
+    </div>
+
+    <div class="chip-row">
+      <span class="chip chip-red">✓ EMA BEAR STACK</span>
+      <span class="chip chip-orange">STOCH %K ${fmt(r.stochK)}</span>
+      <span class="chip chip-orange">ADX ${fmt(r.adx)}</span>
+      ${triggerChip}
+    </div>
+
+    <div class="trigger-box">
+      <div class="trigger-label">SHORT ENTRY TRIGGER</div>
+      ${triggerDesc}
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-cell">
+        <div class="metric-label">PRICE</div>
+        <div class="metric-val">$${fmt(r.close)}</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">STOCH %K (8,3)</div>
+        <div class="metric-val ${r.stochK >= 80 ? 'bad' : 'orange'}">${fmt(r.stochK)}</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">ADX (13)</div>
+        <div class="metric-val ${r.adx >= 30 ? 'bad' : 'orange'}">${fmt(r.adx)}</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">RSI (2) TODAY</div>
+        <div class="metric-val ${r.rsiToday >= 70 ? 'bad' : 'blue'}">${fmt(r.rsiToday)}</div>
+      </div>
+    </div>
+
+    <div class="section-label">EMA STACK (8 → 89, bear order)</div>
+    <div class="ema-grid">${emaCells}</div>
+    <div class="ema-bars">${emaBars}</div>
+  `;
+  resultsList.appendChild(card);
+}
+
+function showFinalBanner(count) {
+  if (count >= 5) { bannerComplete.style.display = 'block'; }
+  else if (count > 0) { bannerPartial.textContent = `▼ ${count} SHORT ENTRY SIGNAL${count>1?'S':''} FOUND`; bannerPartial.style.display = 'block'; }
+  else { bannerNone.style.display = 'block'; }
+}
+
+// ─── Fetch ────────────────────────────────────────────────────────────────────
+async function fetchJSON(url) {
+  try {
+    const r = await fetch(url, { headers: { Accept: 'application/json' } });
+    return r.json();
+  } catch {
+    const proxy = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+    const r = await fetch(proxy, { headers: { Accept: 'application/json' } });
+    return r.json();
+  }
+}
+
+// ─── Manual Indicator Calculations (from OHLC bars) ──────────────────────────
+
+// Slow Stochastics(kPeriod, smoothK)
+// bars: DESC order (bars[0] = most recent)
+// Raw %K[i] = 100 * (Close[i] - LowestLow(kPeriod)) / (HighestHigh(kPeriod) - LowestLow(kPeriod))
+// Slow %K = smoothK-period SMA of Raw %K values
+function calcSlowStochK(bars, kPeriod = 8, smoothK = 3) {
+  if (bars.length < kPeriod + smoothK - 1) return null;
+  const rawKs = [];
+  for (let i = 0; i < smoothK; i++) {
+    const w       = bars.slice(i, i + kPeriod);
+    const lowest  = Math.min(...w.map(b => b.l));
+    const highest = Math.max(...w.map(b => b.h));
+    const range   = highest - lowest;
+    rawKs.push(range === 0 ? 50 : ((bars[i].c - lowest) / range) * 100);
+  }
+  return rawKs.reduce((a, b) => a + b, 0) / smoothK;
+}
+
+// ADX(period) using Wilder's smoothing
+// bars: DESC order, needs period*2+2 bars minimum
+function calcADX(bars, period = 13) {
+  if (bars.length < period * 2 + 2) return null;
+  const asc = [...bars].reverse();
+  const n   = asc.length;
+
+  const trs = [], pDMs = [], mDMs = [];
+  for (let i = 1; i < n; i++) {
+    const c = asc[i], p = asc[i - 1];
+    trs.push(Math.max(c.h - c.l, Math.abs(c.h - p.c), Math.abs(c.l - p.c)));
+    const up = c.h - p.h, dn = p.l - c.l;
+    pDMs.push(up > dn && up > 0 ? up : 0);
+    mDMs.push(dn > up && dn > 0 ? dn : 0);
+  }
+
+  let smTR  = trs.slice(0, period).reduce((a, b) => a + b, 0);
+  let smPDM = pDMs.slice(0, period).reduce((a, b) => a + b, 0);
+  let smMDM = mDMs.slice(0, period).reduce((a, b) => a + b, 0);
+
+  const getDX = () => {
+    const pdi = smTR > 0 ? (smPDM / smTR) * 100 : 0;
+    const mdi = smTR > 0 ? (smMDM / smTR) * 100 : 0;
+    const s   = pdi + mdi;
+    return s > 0 ? (Math.abs(pdi - mdi) / s) * 100 : 0;
+  };
+
+  const dxVals = [getDX()];
+  for (let i = period; i < trs.length; i++) {
+    smTR  = smTR  - smTR  / period + trs[i];
+    smPDM = smPDM - smPDM / period + pDMs[i];
+    smMDM = smMDM - smMDM / period + mDMs[i];
+    dxVals.push(getDX());
+  }
+
+  if (dxVals.length < period) return null;
+  let adx = dxVals.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < dxVals.length; i++) {
+    adx = (adx * (period - 1) + dxVals[i]) / period;
+  }
+  return adx;
+}
+
+// ── Stage ① — EMA bear stack: e8 <= e21 <= e34 <= e55 <= e89 ─────────────────
+async function checkEMABear(ticker, apiKey) {
+  const base = `https://api.polygon.io/v1/indicators/ema/${encodeURIComponent(ticker)}` +
+    `?timespan=day&adjusted=true&series_type=close&order=desc&limit=1`;
+  const results = await Promise.all(
+    [8,21,34,55,89].map(w => fetchJSON(`${base}&window=${w}&apiKey=${apiKey}`))
+  );
+  const [e8,e21,e34,e55,e89] = results.map(d => {
+    if (d.status === 'ERROR') throw new Error(`EMA: ${d.error}`);
+    const v = d.results?.values?.[0]?.value;
+    if (v == null) throw new Error('No EMA value');
+    return Number(v);
+  });
+  // Bear stack: shorter EMA ≤ longer EMA at every step
+  if (!(e8 <= e21 && e21 <= e34 && e34 <= e55 && e55 <= e89)) return null;
+  return { e8, e21, e34, e55, e89 };
+}
+
+// ── Stages ②③④ — one bar fetch + one RSI fetch ──────────────────────────────
+async function fetchIndicators(ticker, apiKey) {
+  const today = new Date().toISOString().split('T')[0];
+  const from  = (() => { const d = new Date(); d.setDate(d.getDate() - 110); return d.toISOString().split('T')[0]; })();
+
+  const [barsData, rsiData] = await Promise.all([
+    // 60 daily bars for Stoch(8,3) and ADX(13) calculations
+    fetchJSON(`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}` +
+      `/range/1/day/${from}/${today}?adjusted=true&sort=desc&limit=60&apiKey=${apiKey}`),
+    // RSI(2) — limit=2 gives today and yesterday
+    fetchJSON(`https://api.polygon.io/v1/indicators/rsi/${encodeURIComponent(ticker)}` +
+      `?timespan=day&adjusted=true&window=2&series_type=close&order=desc&limit=2&apiKey=${apiKey}`),
+  ]);
+
+  // Daily bars
+  if (barsData.status === 'ERROR') throw new Error(`Bars: ${barsData.error}`);
+  const bars = barsData.results;
+  if (!bars || bars.length < 30) throw new Error(`Bars: only ${bars?.length ?? 0} returned (need 30+)`);
+
+  // Stoch(8,3) — must be >= 60 (overbought within downtrend)
+  const stochK = calcSlowStochK(bars, 8, 3);
+  if (stochK === null) throw new Error('Stoch: not enough bars');
+
+  // ADX(13)
+  const adx = calcADX(bars, 13);
+  if (adx === null) throw new Error('ADX: not enough bars');
+
+  // RSI(2)
+  if (rsiData.status === 'ERROR') throw new Error(`RSI: ${rsiData.error}`);
+  const rsiVals = rsiData.results?.values;
+  if (!rsiVals || rsiVals.length < 2) throw new Error(`RSI: need 2 values, got ${rsiVals?.length ?? 0}`);
+  const rsiToday     = Number(rsiVals[0].value);
+  const rsiYesterday = Number(rsiVals[1].value);
+
+  // Price trigger inputs (today's bar + yesterday's bar)
+  const close   = bars[0].c;
+  const open    = bars[0].o;
+  const prevLow = bars[1].l;  // yesterday's low (breakdown trigger)
+
+  return { stochK, adx, rsiToday, rsiYesterday, close, open, prevLow };
+}
+
+// ── Full 4-stage check ────────────────────────────────────────────────────────
+async function checkTicker(ticker, apiKey) {
+  const fail = (stage, stageArgs) => {
+    setStages(...stageArgs);
+    return { pass: false, failStage: stage };
+  };
+
+  // ① EMA bear stack
+  setStages('active','idle','idle','idle');
+  const emas = await checkEMABear(ticker, apiKey);
+  if (!emas) return fail('① EMA bear stack', ['done-fail','idle','idle','idle']);
+  setStages('done-ok','active','idle','idle');
+
+  // ②③④ — bars + RSI in parallel
+  const ind = await fetchIndicators(ticker, apiKey);
+
+  // ② Slow Stoch(8,3) >= 60
+  setStages('done-ok','active','idle','idle');
+  if (ind.stochK < 60)
+    return fail(`② Stoch %K=${fmt(ind.stochK)} < 60`, ['done-ok','done-fail','idle','idle']);
+  setStages('done-ok','done-ok','active','idle');
+
+  // ③ ADX(13) >= 20
+  if (ind.adx < 20)
+    return fail(`③ ADX=${fmt(ind.adx)} < 20`, ['done-ok','done-ok','done-fail','idle']);
+  setStages('done-ok','done-ok','done-ok','active');
+
+  // ④ Entry trigger — either condition qualifies:
+  //   A) RSI(2) cross below 90: yesterday >= 90 AND today < 90
+  //   B) Price breakdown:       close < prev day's low AND close < open
+  const rsiCross      = ind.rsiYesterday >= 90 && ind.rsiToday < 90;
+  const priceBreakdown = ind.close < ind.prevLow && ind.close < ind.open;
+
+  if (!rsiCross && !priceBreakdown) {
+    const why = `RSI(2) ${fmt(ind.rsiYesterday)}→${fmt(ind.rsiToday)}` +
+                ` | close $${fmt(ind.close)} vs prevL $${fmt(ind.prevLow)} open $${fmt(ind.open)}`;
+    return fail(`④ no entry (${why})`, ['done-ok','done-ok','done-ok','done-fail']);
+  }
+
+  setStages('done-ok','done-ok','done-ok','done-ok');
+
+  return {
+    pass: true,
+    ticker, ...emas,
+    stochK:       ind.stochK,
+    adx:          ind.adx,
+    rsiToday:     ind.rsiToday,
+    rsiYesterday: ind.rsiYesterday,
+    close:        ind.close,
+    open:         ind.open,
+    prevLow:      ind.prevLow,
+    triggerType:  rsiCross ? 'rsi2' : 'price',
+  };
+}
+
+// ─── Test Connection ──────────────────────────────────────────────────────────
+async function testConnection() {
+  const apiKey = apiKeyEl.value.trim();
+  if (!apiKey) return;
+  setBusy(true);
+  logBody.innerHTML = '';
+  addLog('━━━ DIAGNOSTICS ━━━', 'system');
+  const url = `https://api.polygon.io/v1/indicators/ema/AAPL?timespan=day&adjusted=true&window=21&series_type=close&order=desc&limit=1&apiKey=${apiKey}`;
+  addLog('1. Direct fetch to api.polygon.io…', 'checking');
+  try {
+    const data = await (await fetch(url, { headers: { Accept: 'application/json' } })).json();
+    if (data.status === 'ERROR') { addLog(`   ✗ ${data.error}`, 'error'); }
+    else {
+      addLog(`   ✓ Direct OK — AAPL EMA(21) = ${Number(data.results?.values?.[0]?.value).toFixed(4)}`, 'hit');
+      addLog('━━━ READY ━━━', 'system'); setBusy(false); return;
+    }
+  } catch(e) { addLog(`   ✗ Blocked: ${e.message}`, 'warn'); }
+  addLog('2. Trying corsproxy.io…', 'checking');
+  try {
+    const data = await (await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`, { headers: { Accept: 'application/json' } })).json();
+    if (data.status === 'ERROR') { addLog(`   ✗ ${data.error}`, 'error'); addLog('   → Check key permissions (needs Stocks Starter+)', 'warn'); }
+    else { addLog(`   ✓ Proxy OK — AAPL EMA(21) = ${Number(data.results?.values?.[0]?.value).toFixed(4)}`, 'hit'); addLog('━━━ READY (via proxy) ━━━', 'system'); }
+  } catch(e) { addLog(`   ✗ Both failed: ${e.message}`, 'error'); addLog('→ Check connection or try another browser', 'warn'); }
+  setBusy(false);
+}
+
+// ─── Main Scan ────────────────────────────────────────────────────────────────
+async function runScreener() {
+  const apiKey = apiKeyEl.value.trim();
+  if (!apiKey) return;
+  abortFlag = false; running = true; matchCount = 0;
+  setBusy(true); resetResults(); logBody.innerHTML = '';
+  progressCard.classList.add('visible');
+  stageRow.classList.add('visible');
+  progressLabel.textContent = 'SCANNING';
+  progressCount.classList.add('running');
+  progressBar.classList.remove('done');
+  progressBar.style.width = '0%';
+  setProgress(0, TICKERS.length, 0);
+  setStages('idle','idle','idle','idle');
+  currentTickerEl.style.display = 'block';
+
+  addLog('◈ Bear Momentum Entry Screener', 'system');
+  addLog('◈ ① EMA Bear Stack  ② Stoch(8,3)≥60  ③ ADX(13)≥20  ④ RSI(2) cross ↓90 OR Price breakdown', 'system');
+  addLog(`◈ ${TICKERS.length} symbols…`, 'system');
+
+  for (let i = 0; i < TICKERS.length; i++) {
+    if (abortFlag) { addLog('⊘ Aborted', 'warn'); break; }
+    if (matchCount >= 5) break;
+
+    const ticker = TICKERS[i];
+    currentTickerEl.textContent = `CHECKING  ${ticker}  (${i+1}/${TICKERS.length})`;
+
+    try {
+      const result = await checkTicker(ticker, apiKey);
+      if (result.pass) {
+        matchCount++;
+        addResult(result, matchCount);
+        const trigLabel = result.triggerType === 'rsi2' ? 'RSI(2) cross ↓90' : 'price breakdown';
+        addLog(
+          `▼ ${ticker.padEnd(6)} ALL PASSED [${matchCount}/5]` +
+          `  Stoch=${fmt(result.stochK)}  ADX=${fmt(result.adx)}  trigger: ${trigLabel}`,
+          'hit'
+        );
+      } else {
+        addLog(`✗ ${ticker.padEnd(6)} failed ${result.failStage}`, 'miss');
+      }
+    } catch(err) {
+      const msg = err.message || '';
+      if (msg.includes('403')||msg.includes('401')) { addLog('⊘ Auth error — check API key','error'); break; }
+      if (msg.includes('429')) { addLog('⚠ Rate limited — pausing 20s','warn'); await sleep(20000); i--; continue; }
+      addLog(`! ${ticker.padEnd(6)} error — ${msg.slice(0,70)}`, 'warn');
+    }
+
+    setProgress(i+1, TICKERS.length, matchCount);
+    await sleep(500);
+  }
+
+  currentTickerEl.style.display = 'none';
+  running = false; setBusy(false);
+  stageRow.classList.remove('visible');
+  setStages('idle','idle','idle','idle');
+  progressLabel.textContent = 'COMPLETE';
+  progressCount.classList.remove('running');
+  progressBar.classList.add('done'); progressBar.style.width = '100%';
+  showFinalBanner(matchCount);
+  addLog(matchCount
+    ? `◈ Done — ${matchCount} short entry signal${matchCount>1?'s':''} found`
+    : '◈ Scan complete — no stocks met all 4 criteria', 'system');
+}
+
+// ─── Events ───────────────────────────────────────────────────────────────────
+btnRun.addEventListener('click',  runScreener);
+btnTest.addEventListener('click', testConnection);
+btnStop.addEventListener('click', () => { abortFlag = true; });
+apiKeyEl.addEventListener('input', () => {
+  const ok = apiKeyEl.value.trim().length > 0;
+  btnRun.disabled = !ok; btnTest.disabled = !ok;
+});
+btnRun.disabled = true; btnTest.disabled = true;
+</script>
+</body>
+</html>
