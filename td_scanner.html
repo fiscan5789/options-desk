@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TD Sequential 9-13 Scanner</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --surface-2: #f4f3ee;
+    --border: #e5e4dd;
+    --border-strong: #d3d1c7;
+    --text: #2c2c2a;
+    --text-2: #5f5e5a;
+    --text-3: #888780;
+    --accent: #185fa5;
+    --accent-bg: #e6f1fb;
+    --buy: #0f6e56;
+    --buy-bg: #e1f5ee;
+    --sell: #993c1d;
+    --sell-bg: #faece7;
+    --warn: #854f0b;
+    --warn-bg: #faeeda;
+    --danger: #a32d2d;
+    --danger-bg: #fcebeb;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  h2 { font-size: 16px; font-weight: 500; margin: 0 0 12px; }
+  .subtitle { color: var(--text-2); margin: 0 0 24px; font-size: 13px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+  label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  input[type="text"], input[type="password"], textarea, select {
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    width: 100%;
+  }
+  input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+  }
+  textarea { font-family: var(--mono); font-size: 13px; resize: vertical; min-height: 90px; }
+  button {
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 9px 18px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  button:hover { background: var(--surface-2); border-color: var(--text-3); }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+  button.primary:hover { background: #1a1a18; border-color: #1a1a18; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+  .checkbox-row input { width: 16px; height: 16px; }
+  .progress-wrap {
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--accent);
+    width: 0;
+    transition: width 0.2s;
+  }
+  .status-line { font-size: 13px; color: var(--text-2); margin-top: 8px; font-family: var(--mono); }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--surface-2);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+  .stat-label { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 500; }
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+  .filter-bar label { text-transform: none; letter-spacing: normal; font-size: 13px; color: var(--text-2); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    font-weight: 500;
+    color: var(--text-2);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  th:hover { color: var(--text); }
+  th.sorted { color: var(--text); }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:hover td { background: #faf9f5; }
+  .ticker { font-weight: 500; font-family: var(--mono); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .badge-buy { background: var(--buy-bg); color: var(--buy); }
+  .badge-sell { background: var(--sell-bg); color: var(--sell); }
+  .badge-setup { background: var(--accent-bg); color: var(--accent); }
+  .badge-countdown { background: var(--warn-bg); color: var(--warn); }
+  .pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    background: var(--surface-2);
+    color: var(--text-2);
+  }
+  .pill-yes { background: var(--buy-bg); color: var(--buy); }
+  .pill-no { background: var(--surface-2); color: var(--text-3); }
+  .num { font-variant-numeric: tabular-nums; font-family: var(--mono); }
+  .errors-card { border-color: var(--danger-bg); }
+  .errors-list { font-family: var(--mono); font-size: 12px; color: var(--text-2); max-height: 160px; overflow-y: auto; }
+  .errors-list div { padding: 3px 0; border-bottom: 1px solid var(--border); }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-size: 12px; color: var(--text-2); }
+  .empty { padding: 40px; text-align: center; color: var(--text-3); }
+  .about {
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+  .about code { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+  .sparkline { display: inline-block; vertical-align: middle; }
+  .key-warn { font-size: 11px; color: var(--warn); margin-top: 4px; }
+
+  /* Top picks */
+  .pick-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: center;
+  }
+  .pick-rank {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    min-width: 32px;
+    text-align: center;
+  }
+  .pick-main { min-width: 0; }
+  .pick-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .pick-ticker { font-family: var(--mono); font-weight: 600; font-size: 17px; }
+  .pick-price { font-family: var(--mono); color: var(--text-2); font-size: 13px; }
+  .pick-reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-2);
+  }
+  .pick-reasons .reason {
+    background: var(--surface-2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .pick-reasons .reason.pos { background: var(--buy-bg); color: var(--buy); }
+  .pick-reasons .reason.neg { background: var(--sell-bg); color: var(--sell); }
+  .pick-score {
+    text-align: right;
+    min-width: 80px;
+  }
+  .pick-stars {
+    color: #d4a017;
+    font-size: 16px;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  .pick-stars .empty-star { color: var(--border-strong); }
+  .pick-score-num {
+    font-size: 22px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .pick-score-label {
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .score-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .score-cell .score-num { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .score-cell .score-stars { font-size: 11px; color: #d4a017; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>TD Sequential 9-13 scanner</h1>
+  <p class="subtitle">Daily-bar scan of ~340 commonly traded US tickers (incl. GLD &amp; TLT). Ranks candidates by composite quality score; surfaces top 10 picks. Polygon.io API.</p>
+
+  <div class="card">
+    <h2>Configuration</h2>
+    <div class="row">
+      <div class="field" style="flex: 2;">
+        <label for="apiKey">Polygon API key</label>
+        <input type="password" id="apiKey" placeholder="paste your key" autocomplete="off" />
+        <div class="checkbox-row">
+          <input type="checkbox" id="rememberKey" />
+          <label for="rememberKey" style="text-transform: none; letter-spacing: normal; font-size: 12px;">Remember in browser (localStorage)</label>
+        </div>
+      </div>
+      <div class="field" style="flex: 0 0 140px;">
+        <label for="historyDays">History (trading days)</label>
+        <input type="text" id="historyDays" value="300" />
+      </div>
+      <div class="field" style="flex: 0 0 140px;">
+        <label for="concurrency">Parallel requests</label>
+        <input type="text" id="concurrency" value="10" />
+      </div>
+    </div>
+    <div class="row" style="margin-top: 16px;">
+      <div class="field">
+        <label for="tickers">Universe — <span id="tickerCount">0</span> tickers (editable; comma, space, or newline separated)</label>
+        <textarea id="tickers"></textarea>
+        <div style="display: flex; gap: 8px; margin-top: 6px;">
+          <button id="resetTickers" type="button" style="font-size: 12px; padding: 4px 10px;">Reset to default universe</button>
+          <button id="collapseTickers" type="button" style="font-size: 12px; padding: 4px 10px;">Hide list</button>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top: 16px; justify-content: flex-end;">
+      <button id="testBtn">Test connection</button>
+      <button id="dryRunBtn">Dry run (first 5)</button>
+      <button id="scanBtn" class="primary">Run scan</button>
+    </div>
+    <div class="progress-wrap" id="progressWrap" style="display: none;">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="status-line" id="statusLine"></div>
+  </div>
+
+  <div id="resultsArea" style="display: none;">
+    <div class="summary-grid" id="summaryGrid"></div>
+
+    <div class="card" id="topPicksCard">
+      <h2>Top picks <span style="font-weight: normal; color: var(--text-3); font-size: 13px;">— ranked by composite quality score</span></h2>
+      <div id="topPicksContent"></div>
+    </div>
+
+    <div class="card">
+      <h2>Candidates <span style="font-weight: normal; color: var(--text-3); font-size: 13px;">— full filtered list</span></h2>
+      <div class="filter-bar">
+        <label><input type="checkbox" class="filter" data-filter="phase" data-value="setup" checked /> Setups</label>
+        <label><input type="checkbox" class="filter" data-filter="phase" data-value="countdown" checked /> Countdowns</label>
+        <span style="color: var(--border-strong);">|</span>
+        <label><input type="checkbox" class="filter" data-filter="dir" data-value="buy" checked /> Buy</label>
+        <label><input type="checkbox" class="filter" data-filter="dir" data-value="sell" checked /> Sell</label>
+        <span style="color: var(--border-strong);">|</span>
+        <label>Min count: <input type="text" id="minCount" value="6" style="width: 50px; padding: 4px 6px;" /></label>
+        <label style="margin-left: auto;"><input type="checkbox" id="completedOnly" /> Just completed (9 or 13 today)</label>
+      </div>
+      <div style="overflow-x: auto;">
+        <table id="resultsTable">
+          <thead>
+            <tr>
+              <th data-sort="score" class="sorted">Score</th>
+              <th data-sort="ticker">Ticker</th>
+              <th data-sort="close">Close</th>
+              <th data-sort="dir">Dir</th>
+              <th data-sort="phase">Phase</th>
+              <th data-sort="count">Count</th>
+              <th data-sort="perfected">Perf.</th>
+              <th data-sort="qualifier">Qual.</th>
+              <th data-sort="tdst">TDST</th>
+              <th data-sort="barsSince">Bars</th>
+              <th>30d</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyMsg" class="empty" style="display: none;">No tickers match the current filters.</div>
+    </div>
+
+    <div class="card errors-card" id="errorsCard" style="display: none;">
+      <h2>Failed tickers</h2>
+      <div class="errors-list" id="errorsList"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>About this scanner</h2>
+    <div class="about">
+      <p>This tool implements <strong>TD Sequential</strong> as defined in DeMark's standard published rules. A scan runs against the most recently <em>closed</em> daily bar — if you scan during market hours, today's partial bar is excluded.</p>
+      <p><strong>Setup phase (9):</strong> bullish (buy) setup requires 9 consecutive closes &lt; close 4 bars earlier; bearish (sell) setup requires 9 consecutive closes &gt; close 4 bars earlier. Setup is <em>perfected</em> when the low of bar 8 or 9 (buy) is ≤ the lows of bars 6 and 7, or the high of bar 8 or 9 (sell) is ≥ the highs of bars 6 and 7.</p>
+      <p><strong>Countdown phase (13):</strong> after a completed setup, count bars where close ≤ low 2 bars earlier (buy) or close ≥ high 2 bars earlier (sell). Bars need not be consecutive. The <strong>13-vs-8 qualifier</strong> requires bar 13's low ≤ bar 8's close (buy) or bar 13's high ≥ bar 8's close (sell); if not met, an unqualified 13 prints with <code>Qual=No</code>.</p>
+      <p><strong>TDST</strong> = price extreme of the prior opposing setup, used as support (buy TDST) or resistance (sell TDST). Shown alongside current close so you can gauge whether the level is intact.</p>
+      <p><strong>Composite quality score (0–100):</strong> Each candidate is scored on signal type (40 base for qualified 13s, 25 for perfected 9s, etc.), plus modifiers: freshness (+15 if completed today), bar efficiency (+5 for clean count, –5 for choppy), TDST confluence (+10 intact, +5 within 2%), ATR-normalized move (+10 for 1.5–3.5 ATR Goldilocks zone, –8 if parabolic), and penalties for whipsaw (opposing 9 within 10 bars: –15) or 25%+ recent moves (event-driven: –10). Liquidity floor: tickers with avg daily $-volume below $5M are excluded entirely. Star ratings: 5★ = 80+, 4★ = 65–79, 3★ = 50–64, 2★ = 35–49, 1★ = below 35.</p>
+      <p><strong>Not implemented in this version:</strong> Recycle (R), Combo, the optional 8-vs-5 countdown deferral, intersection variants, weekly-timeframe confluence, and earnings-date filtering. The 13-vs-8 qualifier <em>is</em> implemented since it's standard.</p>
+      <p><strong>Polygon endpoint used:</strong> <code>/v2/aggs/ticker/{ticker}/range/1/day/{from}/{to}?adjusted=true</code></p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Default ticker universe — ~350 commonly traded US tickers
+// Includes GLD and TLT as required
+// ============================================================
+const DEFAULT_UNIVERSE = [
+  // Major index & broad-market ETFs
+  "SPY","QQQ","IWM","DIA","VTI","VOO","EFA","EEM",
+  // Sector ETFs
+  "XLF","XLE","XLK","XLV","XLI","XLY","XLP","XLU","XLB","XLRE","XLC","SMH","SOXX","IBB","KRE","KBE","XBI","GDX","GDXJ","XME","XRT","XHB","ITB","KIE","KCE","IYR","VNQ",
+  // Leveraged / inverse / volatility
+  "TQQQ","SQQQ","SOXL","SOXS","UVXY","VXX","TNA","TZA","SPXS","SPXL",
+  // Mega-cap & large-cap stocks (cross-sector)
+  "AAPL","MSFT","GOOGL","GOOG","AMZN","NVDA","META","TSLA","BRK.B","AVGO","LLY","JPM","V","XOM","UNH","MA","PG","JNJ","HD","COST","ORCL","ABBV","CVX","WMT","KO","BAC","MRK","NFLX","CRM","AMD","PEP","TMO","LIN","CSCO","DIS","ACN","ADBE","ABT","WFC","MCD","DHR","VZ","TXN","QCOM","INTC","IBM","PM","AMGN","CAT","RTX","GE","GS","NOW","SPGI","UNP","HON","T","LOW","COP","NEE","AXP","ISRG","MS","PFE","UPS","SYK","BLK","BKNG","LMT","DE","SCHW","TJX","GILD","MDT","VRTX","REGN","CB","ELV","C","ADP","MDLZ","ZTS",
+  // Semiconductors & hardware
+  "AMAT","LRCX","KLAC","MU","ADI","ASML","TSM","MRVL","ANET",
+  // Cybersecurity & enterprise software
+  "PANW","CDNS","SNPS","CRWD","FTNT","NOW","ZS","NET","DDOG","SNOW","MDB","TEAM","DOCU","ZM","OKTA","SPLK","WDAY",
+  // Consumer internet & fintech
+  "SHOP","UBER","ABNB","SQ","PYPL","DASH","LYFT","PINS","SNAP","TWLO","ROKU","SOFI","HOOD","PLTR","U","AFRM","UPST","LC",
+  // Crypto-adjacent
+  "COIN","MSTR","RIOT","MARA","CLSK","HUT","BITF","WULF","IREN",
+  // EVs & autos
+  "RIVN","LCID","F","GM","STLA","TM","HMC","NIO","LI","XPEV",
+  // Materials & metals
+  "RIO","FCX","NEM","GOLD","AA","X","CLF","STLD","NUE",
+  // Energy
+  "VLO","MPC","PSX","OXY","EOG","HES","DVN","APA","MRO","SLB","HAL","BKR","KMI","WMB","OKE","LNG","ET","EPD","PAA","TRP","ENB","SU","CNQ","IMO",
+  // Airlines & travel
+  "UAL","DAL","AAL","LUV","ALK","JBLU","RCL","CCL","NCLH","MAR","HLT","WYNN","LVS","MGM",
+  // Media & telecom
+  "PARA","WBD","FOX","FOXA","NWS","NWSA","TMUS","CMCSA","CHTR","DISH",
+  // Insurance
+  "LMND","ROOT",
+  // Thematic ETFs
+  "ARKK","ARKG","ARKW","ARKQ","ARKF","JETS","KWEB","FXI","MCHI","TAN","ICLN","LIT","FAN",
+  // Country / region ETFs
+  "EWZ","EWJ","EWG","EWU","EWC","EWA","INDA","EWY","EWT","EZA","EWW","EWI","EWP","EWQ","EWN","EWD","EWL","VWO","IEMG",
+  // Currency ETFs
+  "FXE","FXY","FXB","FXA","FXC","FXF","UUP","UDN",
+  // Fixed income (TLT included)
+  "USHY","HYG","JNK","LQD","TLT","IEF","SHY","GOVT","BND","AGG","TIP","MUB","EMB",
+  // Commodities (GLD included)
+  "GLD","SLV","PPLT","PALL","SIVR","SGOL","IAU","USO","UNG","DBA","DBC","DBO","DBB","DBP","DBE","DBS","JJG","JJC","WEAT","CORN","SOYB","CANE","COW","MOO"
+];
+// Deduplicate
+const UNIVERSE = [...new Set(DEFAULT_UNIVERSE)];
+
+// ============================================================
+// TD Sequential indicator engine
+// ============================================================
+
+/**
+ * Compute TD Sequential state for a series of daily bars.
+ * Returns the state at the most recent bar.
+ *
+ * Bars: array of {date, open, high, low, close, volume}, ascending by date.
+ * Returns: {
+ *   phase: 'setup' | 'countdown' | 'none',
+ *   direction: 'buy' | 'sell' | null,
+ *   count: number,
+ *   perfected: boolean | null,
+ *   qualifierMet: boolean | null,
+ *   tdstSupport: number | null,
+ *   tdstResistance: number | null,
+ *   barsSinceSignalStart: number,
+ *   completedToday: boolean
+ * }
+ */
+function computeTDSequential(bars) {
+  if (bars.length < 30) return null;
+
+  // State carried through the loop
+  let setupDir = null;       // 'buy' | 'sell' | null — direction of in-progress setup
+  let setupCount = 0;        // current setup count (0-9)
+  let setupStartIdx = -1;    // bar index where current setup count started
+  let setupAttemptsThisDirection = 0; // # of times count restarted before completing in current direction
+  let setupNineHitIdx = -1;  // bar index where most recent 9 actually fired (for staleness reporting)
+  let setupNineDir = null;   // direction of most recent 9
+  let setupNinePerfected = null;
+  let lastCompletedSetup = null;  // {direction, perfected, startIdx, endIdx, high, low}
+
+  let countdownDir = null;
+  let countdownCount = 0;
+  let countdownStartIdx = -1;
+  let countdownBar8Close = null;  // close of the 8th countdown bar (for 13-vs-8 qualifier)
+  let lastCompletedCountdown = null;
+
+  // TDST levels: highest high / lowest low of the most recent completed setup
+  // (in the OPPOSITE direction of the current trend) become support/resistance
+  let tdstSupport = null;     // from most recent completed sell setup's lowest low
+  let tdstResistance = null;  // from most recent completed buy setup's highest high
+
+  // Track recently completed setups so we can establish TDST lines
+  let lastBuySetup = null;   // {startIdx, endIdx, lowestLow}
+  let lastSellSetup = null;  // {startIdx, endIdx, highestHigh}
+
+  for (let i = 4; i < bars.length; i++) {
+    const cur = bars[i];
+    const prior4 = bars[i - 4];
+
+    // === Setup logic ===
+    if (cur.close < prior4.close) {
+      // Bearish bar (toward buy setup)
+      if (setupDir === 'buy') {
+        setupCount++;
+      } else {
+        // Direction change or fresh start
+        if (setupDir === 'sell') setupAttemptsThisDirection = 0; // direction flipped, reset attempts
+        else setupAttemptsThisDirection++; // count restart in same direction
+        setupDir = 'buy';
+        setupCount = 1;
+        setupStartIdx = i;
+        if (setupAttemptsThisDirection === 0) setupAttemptsThisDirection = 1;
+      }
+    } else if (cur.close > prior4.close) {
+      // Bullish bar (toward sell setup)
+      if (setupDir === 'sell') {
+        setupCount++;
+      } else {
+        if (setupDir === 'buy') setupAttemptsThisDirection = 0;
+        else setupAttemptsThisDirection++;
+        setupDir = 'sell';
+        setupCount = 1;
+        setupStartIdx = i;
+        if (setupAttemptsThisDirection === 0) setupAttemptsThisDirection = 1;
+      }
+    } else {
+      // Equal close: setup count is reset (one common interpretation)
+      // DeMark's classic rule treats "<" and ">" strictly
+      setupDir = null;
+      setupCount = 0;
+    }
+
+    // Cap setup count at 9; on completion, snapshot it
+    if (setupCount === 9) {
+      // Check perfection
+      const dir = setupDir;
+      const bar8 = bars[i - 1];
+      const bar9 = cur;
+      const bar6 = bars[i - 3];
+      const bar7 = bars[i - 2];
+      let perfected = false;
+      if (dir === 'buy') {
+        const minLow67 = Math.min(bar6.low, bar7.low);
+        if (bar8.low <= minLow67 || bar9.low <= minLow67) perfected = true;
+      } else {
+        const maxHigh67 = Math.max(bar6.high, bar7.high);
+        if (bar8.high >= maxHigh67 || bar9.high >= maxHigh67) perfected = true;
+      }
+
+      // Compute setup extremes for TDST
+      let lowestLow = Infinity, highestHigh = -Infinity;
+      for (let k = setupStartIdx; k <= i; k++) {
+        if (bars[k].low < lowestLow) lowestLow = bars[k].low;
+        if (bars[k].high > highestHigh) highestHigh = bars[k].high;
+      }
+
+      const completedSetup = {
+        direction: dir,
+        perfected,
+        startIdx: setupStartIdx,
+        endIdx: i,
+        lowestLow,
+        highestHigh
+      };
+      lastCompletedSetup = completedSetup;
+
+      if (dir === 'buy') {
+        lastBuySetup = completedSetup;
+        // TDST resistance for the new uptrend = highest high of this buy setup
+        // (Conventional interpretation: TDST line for next move = extreme of this setup)
+        tdstResistance = highestHigh;
+      } else {
+        lastSellSetup = completedSetup;
+        tdstSupport = lowestLow;
+      }
+
+      // Begin countdown phase, but only if no countdown is already running in the same direction
+      // (Same-direction re-fires of 9 don't restart the countdown — that would lose progress)
+      if (countdownDir !== dir) {
+        countdownDir = dir;
+        countdownCount = 0;
+        countdownStartIdx = i;
+        countdownBar8Close = null;
+      }
+
+      // Track the 9 hit and reset setup tracker so subsequent bars can start a new setup
+      setupNineHitIdx = i;
+      setupNineDir = dir;
+      setupNinePerfected = perfected;
+      setupDir = null;
+      setupCount = 0;
+      setupAttemptsThisDirection = 0;
+    }
+
+    // === Countdown logic ===
+    // Countdown only runs after a completed setup, in the same direction
+    if (countdownDir !== null && i > countdownStartIdx) {
+      // Recycle check (simplified): a fresh setup of 9 in the OPPOSITE direction
+      // cancels the in-progress countdown. We don't implement full recycle rules.
+      if (setupCount === 9 && setupDir !== countdownDir) {
+        countdownDir = null;
+        countdownCount = 0;
+      }
+
+      if (countdownDir === 'buy') {
+        // Buy countdown: close ≤ low 2 bars earlier
+        if (i >= 2 && cur.close <= bars[i - 2].low) {
+          countdownCount++;
+          if (countdownCount === 8) countdownBar8Close = cur.close;
+          if (countdownCount === 13) {
+            // Check 13-vs-8 qualifier: bar 13's low ≤ bar 8's close
+            const qualifierMet = countdownBar8Close !== null && cur.low <= countdownBar8Close;
+            lastCompletedCountdown = {
+              direction: 'buy',
+              endIdx: i,
+              qualifierMet,
+              riskLevel: Math.min(...bars.slice(countdownStartIdx, i + 1).map(b => b.low))
+            };
+            countdownDir = null;  // reset after completion
+            countdownCount = 0;
+          }
+        }
+      } else if (countdownDir === 'sell') {
+        if (i >= 2 && cur.close >= bars[i - 2].high) {
+          countdownCount++;
+          if (countdownCount === 8) countdownBar8Close = cur.close;
+          if (countdownCount === 13) {
+            const qualifierMet = countdownBar8Close !== null && cur.high >= countdownBar8Close;
+            lastCompletedCountdown = {
+              direction: 'sell',
+              endIdx: i,
+              qualifierMet,
+              riskLevel: Math.max(...bars.slice(countdownStartIdx, i + 1).map(b => b.high))
+            };
+            countdownDir = null;
+            countdownCount = 0;
+          }
+        }
+      }
+    }
+  }
+
+  // Determine the most "interesting" current state to report
+  const lastIdx = bars.length - 1;
+  const lastBar = bars[lastIdx];
+
+  // Priority: active countdown > active setup > recently completed
+  let result = {
+    phase: 'none',
+    direction: null,
+    count: 0,
+    perfected: null,
+    qualifierMet: null,
+    tdstSupport,
+    tdstResistance,
+    barsSinceSignalStart: 0,
+    completedToday: false,
+    barsSinceCompletion: null,    // for completed signals: bars since the 9 or 13 printed
+    setupAttempts: setupAttemptsThisDirection || 1,  // how many restarts in current direction
+    lastClose: lastBar.close,
+    lastDate: lastBar.date,
+    // Cross-references for scoring (whipsaw detection)
+    lastBuySetupEndIdx: lastBuySetup ? lastBuySetup.endIdx : null,
+    lastSellSetupEndIdx: lastSellSetup ? lastSellSetup.endIdx : null,
+    totalBars: bars.length
+  };
+
+  if (countdownDir !== null && countdownCount > 0) {
+    result.phase = 'countdown';
+    result.direction = countdownDir;
+    result.count = countdownCount;
+    result.barsSinceSignalStart = lastIdx - countdownStartIdx;
+    // For active countdown <13, qualifier not yet evaluated
+    result.qualifierMet = null;
+  } else if (lastCompletedCountdown && lastCompletedCountdown.endIdx === lastIdx) {
+    result.phase = 'countdown';
+    result.direction = lastCompletedCountdown.direction;
+    result.count = 13;
+    result.qualifierMet = lastCompletedCountdown.qualifierMet;
+    result.completedToday = true;
+    result.barsSinceCompletion = 0;
+    result.barsSinceSignalStart = 0;
+  } else if (lastCompletedCountdown && (lastIdx - lastCompletedCountdown.endIdx) <= 3) {
+    // 13 completed within last 3 bars — still actionable but staler
+    result.phase = 'countdown';
+    result.direction = lastCompletedCountdown.direction;
+    result.count = 13;
+    result.qualifierMet = lastCompletedCountdown.qualifierMet;
+    result.completedToday = false;
+    result.barsSinceCompletion = lastIdx - lastCompletedCountdown.endIdx;
+    result.barsSinceSignalStart = lastIdx - lastCompletedCountdown.endIdx;
+  } else if (setupNineHitIdx >= 0 && (lastIdx - setupNineHitIdx) <= 3 && setupCount === 0) {
+    // A 9 fired recently and no fresh setup has begun — report the recent 9
+    result.phase = 'setup';
+    result.direction = setupNineDir;
+    result.count = 9;
+    result.perfected = setupNinePerfected;
+    result.completedToday = (setupNineHitIdx === lastIdx);
+    result.barsSinceCompletion = lastIdx - setupNineHitIdx;
+    result.barsSinceSignalStart = lastIdx - setupNineHitIdx;
+  } else if (setupDir !== null && setupCount > 0) {
+    result.phase = 'setup';
+    result.direction = setupDir;
+    result.count = setupCount;
+    result.barsSinceSignalStart = lastIdx - setupStartIdx;
+    // Check perfection for active setups (only meaningful at counts 6+)
+    if (setupCount >= 6) {
+      const bar6 = bars[setupStartIdx + 5];
+      const bar7 = bars[setupStartIdx + 6];
+      if (bar6 && bar7) {
+        if (setupDir === 'buy') {
+          const minLow67 = Math.min(bar6.low, bar7.low);
+          // Check whether any bar from #8 onward has perfected
+          let perf = false;
+          for (let k = setupStartIdx + 7; k <= lastIdx; k++) {
+            if (bars[k].low <= minLow67) { perf = true; break; }
+          }
+          result.perfected = perf;
+        } else {
+          const maxHigh67 = Math.max(bar6.high, bar7.high);
+          let perf = false;
+          for (let k = setupStartIdx + 7; k <= lastIdx; k++) {
+            if (bars[k].high >= maxHigh67) { perf = true; break; }
+          }
+          result.perfected = perf;
+        }
+      }
+    }
+    if (setupCount === 9 && setupStartIdx + 8 === lastIdx) {
+      result.completedToday = true;
+      result.barsSinceCompletion = 0;
+    }
+  }
+
+  return result;
+}
+
+// ============================================================
+// Scoring helpers
+// ============================================================
+
+// Average True Range over the last N bars
+function computeATR(bars, period = 14) {
+  if (bars.length < period + 1) return null;
+  const trs = [];
+  for (let i = bars.length - period; i < bars.length; i++) {
+    const cur = bars[i];
+    const prev = bars[i - 1];
+    if (!prev) continue;
+    const tr = Math.max(
+      cur.high - cur.low,
+      Math.abs(cur.high - prev.close),
+      Math.abs(cur.low - prev.close)
+    );
+    trs.push(tr);
+  }
+  return trs.reduce((a, b) => a + b, 0) / trs.length;
+}
+
+// Average daily dollar volume over last N bars
+function computeAvgDollarVolume(bars, period = 20) {
+  const slice = bars.slice(-period);
+  if (slice.length === 0) return 0;
+  const sum = slice.reduce((acc, b) => acc + b.close * b.volume, 0);
+  return sum / slice.length;
+}
+
+// Percent move from N bars ago to last bar
+function computeRecentMovePct(bars, period = 20) {
+  if (bars.length < period + 1) return 0;
+  const start = bars[bars.length - 1 - period].close;
+  const end = bars[bars.length - 1].close;
+  return ((end - start) / start) * 100;
+}
+
+// Distance from current price to TDST as a % (smaller = closer = more confluence)
+function distanceToTDSTPct(close, tdst) {
+  if (!tdst || !close) return null;
+  return Math.abs((close - tdst) / close) * 100;
+}
+
+// Whether price is still respecting TDST for the signal direction
+// Buy signal: price should still be BELOW the TDST resistance from prior buy setup top
+//   (interpretation: prior up-move's high is now overhead resistance the new uptrend must clear)
+// Actually, the conventional read: for a buy signal at exhaustion of a downtrend, the relevant
+// TDST is the LAST SELL setup's lowest low (tdstSupport) — that's the floor that, if held, validates the signal
+// For a sell signal, the relevant TDST is the LAST BUY setup's highest high (tdstResistance)
+function isTDSTIntact(direction, close, tdstSupport, tdstResistance) {
+  if (direction === 'buy') {
+    // For a buy at downtrend exhaustion: relevant level is tdstSupport (prior sell setup low).
+    // "Intact" here means price hasn't decisively broken below it (still close to or above).
+    if (tdstSupport === null) return null;
+    return close >= tdstSupport * 0.98;  // within 2% above is "intact"
+  } else {
+    if (tdstResistance === null) return null;
+    return close <= tdstResistance * 1.02;
+  }
+}
+
+// ============================================================
+// Composite quality score
+// Returns: { score, stars, reasons: [{label, points}], disqualified, disqualifyReason }
+// ============================================================
+function scoreSignal(state, bars) {
+  const reasons = [];
+  let score = 0;
+
+  // ---- Hard disqualifiers ----
+  const avgDollarVol = computeAvgDollarVolume(bars, 20);
+  if (avgDollarVol < 1_000_000) {
+    return {
+      score: 0, stars: 0, reasons: [], disqualified: true,
+      disqualifyReason: `Liquidity: avg $-vol $${(avgDollarVol / 1e6).toFixed(2)}M (< $1M floor)`,
+      avgDollarVol
+    };
+  }
+  if (avgDollarVol < 5_000_000) {
+    return {
+      score: 0, stars: 0, reasons: [], disqualified: true,
+      disqualifyReason: `Liquidity: avg $-vol $${(avgDollarVol / 1e6).toFixed(2)}M (< $5M filter)`,
+      avgDollarVol
+    };
+  }
+
+  // ---- Base points by signal type ----
+  if (state.phase === 'countdown' && state.count === 13) {
+    if (state.qualifierMet) {
+      score += 40;
+      reasons.push({ label: 'Buy/sell 13 with qualifier', points: 40 });
+    } else {
+      score += 20;
+      reasons.push({ label: '13 without qualifier', points: 20 });
+    }
+  } else if (state.phase === 'setup' && state.count === 9) {
+    if (state.perfected) {
+      score += 25;
+      reasons.push({ label: 'Perfected 9', points: 25 });
+    } else {
+      score += 12;
+      reasons.push({ label: 'Imperfected 9', points: 12 });
+    }
+  } else if (state.phase === 'countdown' && state.count >= 11) {
+    score += 18;
+    reasons.push({ label: `Active countdown ${state.count}/13`, points: 18 });
+  } else if (state.phase === 'countdown' && state.count >= 8) {
+    score += 12;
+    reasons.push({ label: `Active countdown ${state.count}/13`, points: 12 });
+  } else if (state.phase === 'setup' && state.count === 8) {
+    score += 10;
+    reasons.push({ label: 'Setup 8/9 (one bar away)', points: 10 });
+  } else if (state.phase === 'setup' && state.count >= 6) {
+    score += 5;
+    reasons.push({ label: `Setup ${state.count}/9 (early)`, points: 5 });
+  } else {
+    return {
+      score: 0, stars: 0, reasons: [], disqualified: true,
+      disqualifyReason: `Signal not strong enough (${state.phase} ${state.count})`,
+      avgDollarVol
+    };
+  }
+
+  // ---- Freshness ----
+  if (state.completedToday) {
+    score += 15;
+    reasons.push({ label: 'Completed on latest bar', points: 15 });
+  } else if (state.barsSinceCompletion !== null && state.barsSinceCompletion <= 2) {
+    score += 5;
+    reasons.push({ label: `Completed ${state.barsSinceCompletion} bar(s) ago`, points: 5 });
+  } else if (state.barsSinceCompletion !== null && state.barsSinceCompletion >= 3) {
+    score -= 5;
+    reasons.push({ label: `Stale (${state.barsSinceCompletion} bars since 13)`, points: -5 });
+  }
+
+  // ---- Bar efficiency: did setup run cleanly without restarts? ----
+  if (state.setupAttempts <= 1) {
+    score += 5;
+    reasons.push({ label: 'Clean setup (no restarts)', points: 5 });
+  } else if (state.setupAttempts >= 3) {
+    score -= 5;
+    reasons.push({ label: `Choppy setup (${state.setupAttempts} attempts)`, points: -5 });
+  }
+
+  // ---- TDST confluence ----
+  const tdstIntact = isTDSTIntact(state.direction, state.lastClose, state.tdstSupport, state.tdstResistance);
+  if (tdstIntact === true) {
+    score += 10;
+    reasons.push({ label: 'TDST level intact', points: 10 });
+    const relevantTDST = state.direction === 'buy' ? state.tdstSupport : state.tdstResistance;
+    const distPct = distanceToTDSTPct(state.lastClose, relevantTDST);
+    if (distPct !== null && distPct < 2) {
+      score += 5;
+      reasons.push({ label: `Price within ${distPct.toFixed(1)}% of TDST`, points: 5 });
+    }
+  } else if (tdstIntact === false) {
+    score -= 5;
+    reasons.push({ label: 'TDST broken', points: -5 });
+  }
+
+  // ---- ATR-normalized recent move ----
+  // Goldilocks: 1.5-3 ATRs of move into the signal = healthy stretch, not parabolic
+  const atr = computeATR(bars, 14);
+  if (atr) {
+    const setupBars = Math.max(state.barsSinceSignalStart, 9);
+    const lookback = Math.min(setupBars, bars.length - 1);
+    const startPrice = bars[bars.length - 1 - lookback].close;
+    const endPrice = state.lastClose;
+    const moveInAtrs = Math.abs(endPrice - startPrice) / atr;
+    if (moveInAtrs >= 1.5 && moveInAtrs <= 3.5) {
+      score += 10;
+      reasons.push({ label: `Healthy move (${moveInAtrs.toFixed(1)} ATR)`, points: 10 });
+    } else if (moveInAtrs > 5) {
+      score -= 8;
+      reasons.push({ label: `Parabolic (${moveInAtrs.toFixed(1)} ATR — risky to fade)`, points: -8 });
+    } else if (moveInAtrs < 0.8) {
+      score -= 5;
+      reasons.push({ label: `Weak move (${moveInAtrs.toFixed(1)} ATR — chop)`, points: -5 });
+    }
+  }
+
+  // ---- Recent extreme price moves (event-driven flag) ----
+  const recent20Pct = Math.abs(computeRecentMovePct(bars, 20));
+  if (recent20Pct > 25) {
+    score -= 10;
+    reasons.push({ label: `${recent20Pct.toFixed(0)}% move in 20 days (event-driven?)`, points: -10 });
+  }
+
+  // ---- Whipsaw: opposing signal recently completed ----
+  // If a buy 9 just printed but a sell 9 also completed in the last ~10 bars, the ticker is in chop
+  const lastBuyEnd = state.lastBuySetupEndIdx;
+  const lastSellEnd = state.lastSellSetupEndIdx;
+  const lastIdx = state.totalBars - 1;
+  if (state.direction === 'buy' && lastSellEnd !== null && (lastIdx - lastSellEnd) <= 10) {
+    score -= 15;
+    reasons.push({ label: `Whipsaw: opposing 9 ${lastIdx - lastSellEnd} bars ago`, points: -15 });
+  } else if (state.direction === 'sell' && lastBuyEnd !== null && (lastIdx - lastBuyEnd) <= 10) {
+    score -= 15;
+    reasons.push({ label: `Whipsaw: opposing 9 ${lastIdx - lastBuyEnd} bars ago`, points: -15 });
+  }
+
+  // Clamp
+  score = Math.max(0, Math.min(100, score));
+
+  // Stars: 80+ = 5, 65-79 = 4, 50-64 = 3, 35-49 = 2, <35 = 1
+  let stars;
+  if (score >= 80) stars = 5;
+  else if (score >= 65) stars = 4;
+  else if (score >= 50) stars = 3;
+  else if (score >= 35) stars = 2;
+  else stars = 1;
+
+  return { score, stars, reasons, disqualified: false, disqualifyReason: null, avgDollarVol };
+}
+
+// ============================================================
+// Polygon API client
+// ============================================================
+
+async function fetchBars(ticker, apiKey, days, timeoutMs = 20000) {
+  // Calculate date range: enough calendar days to cover `days` trading days
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - Math.ceil(days * 1.5) - 30);
+  const fromStr = from.toISOString().slice(0, 10);
+  const toStr = to.toISOString().slice(0, 10);
+
+  const url = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/range/1/day/${fromStr}/${toStr}?adjusted=true&sort=asc&limit=50000&apiKey=${encodeURIComponent(apiKey)}`;
+
+  // Abort the request if it takes too long
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let resp;
+  try {
+    resp = await fetch(url, { signal: controller.signal });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error(`Timeout after ${timeoutMs / 1000}s`);
+    }
+    // Network errors (CORS, DNS, offline) usually surface as TypeError: Failed to fetch
+    throw new Error(`Network error: ${err.message}. Check console for details.`);
+  }
+  clearTimeout(timeoutId);
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    if (resp.status === 401 || resp.status === 403) {
+      throw new Error(`Auth failed (HTTP ${resp.status}) — check your API key`);
+    }
+    if (resp.status === 429) {
+      throw new Error(`Rate limited (HTTP 429) — too many requests`);
+    }
+    throw new Error(`HTTP ${resp.status}: ${text.slice(0, 120)}`);
+  }
+  const data = await resp.json();
+  if (data.status === 'ERROR') throw new Error(data.error || 'Polygon error');
+  if (!data.results || data.results.length === 0) throw new Error('No bars returned');
+
+  const bars = data.results.map(r => ({
+    date: new Date(r.t).toISOString().slice(0, 10),
+    open: r.o, high: r.h, low: r.l, close: r.c, volume: r.v
+  }));
+
+  // Drop any bar from today (incomplete during market hours)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return bars.filter(b => b.date < todayStr);
+}
+
+// ============================================================
+// Concurrency-limited runner
+// ============================================================
+
+async function runScan(tickers, apiKey, days, concurrency, onProgress) {
+  const results = [];
+  const errors = [];
+  let completed = 0;
+  const inFlight = new Set();
+
+  const queue = [...tickers];
+  const workers = [];
+
+  async function worker() {
+    while (queue.length > 0) {
+      const ticker = queue.shift();
+      inFlight.add(ticker);
+      onProgress(completed, tickers.length, [...inFlight], errors.length);
+      try {
+        const bars = await fetchBars(ticker, apiKey, days);
+        if (bars.length < 30) {
+          errors.push({ ticker, error: `Only ${bars.length} bars available` });
+        } else {
+          const state = computeTDSequential(bars);
+          if (state) {
+            const scoring = scoreSignal(state, bars);
+            results.push({
+              ticker,
+              state,
+              scoring,
+              bars: bars.slice(-30),  // for sparkline
+              fullBarsLength: bars.length
+            });
+          } else {
+            errors.push({ ticker, error: 'Indicator returned null' });
+          }
+        }
+      } catch (err) {
+        console.error(`[${ticker}]`, err);
+        errors.push({ ticker, error: err.message });
+      }
+      inFlight.delete(ticker);
+      completed++;
+      onProgress(completed, tickers.length, [...inFlight], errors.length);
+    }
+  }
+
+  for (let i = 0; i < concurrency; i++) workers.push(worker());
+  await Promise.all(workers);
+
+  return { results, errors };
+}
+
+// ============================================================
+// UI
+// ============================================================
+
+const $ = (id) => document.getElementById(id);
+
+// Restore key from localStorage if present, populate ticker universe
+window.addEventListener('DOMContentLoaded', () => {
+  const stored = localStorage.getItem('polygonKey');
+  if (stored) {
+    $('apiKey').value = stored;
+    $('rememberKey').checked = true;
+  }
+  // Pre-populate the ticker textarea with the built-in universe
+  $('tickers').value = UNIVERSE.join(', ');
+  updateTickerCount();
+});
+
+function updateTickerCount() {
+  const count = parseTickers($('tickers').value).length;
+  $('tickerCount').textContent = count;
+}
+
+$('tickers').addEventListener('input', updateTickerCount);
+
+$('resetTickers').addEventListener('click', () => {
+  $('tickers').value = UNIVERSE.join(', ');
+  $('tickers').style.display = '';
+  $('collapseTickers').textContent = 'Hide list';
+  updateTickerCount();
+});
+
+$('collapseTickers').addEventListener('click', () => {
+  const ta = $('tickers');
+  if (ta.style.display === 'none') {
+    ta.style.display = '';
+    $('collapseTickers').textContent = 'Hide list';
+  } else {
+    ta.style.display = 'none';
+    $('collapseTickers').textContent = 'Show list';
+  }
+});
+
+$('rememberKey').addEventListener('change', (e) => {
+  if (e.target.checked) {
+    localStorage.setItem('polygonKey', $('apiKey').value);
+  } else {
+    localStorage.removeItem('polygonKey');
+  }
+});
+
+$('apiKey').addEventListener('input', (e) => {
+  if ($('rememberKey').checked) {
+    localStorage.setItem('polygonKey', e.target.value);
+  }
+});
+
+function parseTickers(text) {
+  return text.split(/[\s,]+/).map(t => t.trim().toUpperCase()).filter(t => t.length > 0 && t.length <= 10);
+}
+
+let allResults = [];
+let currentSort = { key: 'score', desc: true };
+
+async function doScan(dryRun) {
+  const apiKey = $('apiKey').value.trim();
+  if (!apiKey) { alert('Please enter your Polygon API key.'); return; }
+  let tickers = parseTickers($('tickers').value);
+  if (tickers.length === 0) { alert('Please enter at least one ticker.'); return; }
+  if (dryRun) tickers = tickers.slice(0, 5);
+  const days = parseInt($('historyDays').value) || 300;
+  const concurrency = Math.max(1, Math.min(20, parseInt($('concurrency').value) || 10));
+
+  $('scanBtn').disabled = true;
+  $('dryRunBtn').disabled = true;
+  $('progressWrap').style.display = 'block';
+  $('progressBar').style.width = '0%';
+  $('statusLine').textContent = `Starting scan of ${tickers.length} ticker(s)...`;
+
+  const startTime = Date.now();
+  const { results, errors } = await runScan(tickers, apiKey, days, concurrency, (done, total, inFlight, errCount) => {
+    const pct = (done / total) * 100;
+    $('progressBar').style.width = pct + '%';
+    const inFlightStr = inFlight.length > 0 ? ` | in flight: ${inFlight.slice(0, 5).join(', ')}${inFlight.length > 5 ? '...' : ''}` : '';
+    $('statusLine').textContent = `${done}/${total} done, ${errCount} errors${inFlightStr}`;
+  });
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  $('statusLine').textContent = `Done in ${elapsed}s. ${results.length} ticker(s) processed, ${errors.length} error(s).`;
+  $('scanBtn').disabled = false;
+  $('dryRunBtn').disabled = false;
+
+  allResults = results;
+  renderResults(results, errors);
+}
+
+function renderResults(results, errors) {
+  $('resultsArea').style.display = 'block';
+
+  // Summary stats
+  const candidates = results.filter(r => r.state.phase !== 'none');
+  const setups = candidates.filter(r => r.state.phase === 'setup');
+  const countdowns = candidates.filter(r => r.state.phase === 'countdown');
+  const nines = setups.filter(r => r.state.count === 9);
+  const thirteens = countdowns.filter(r => r.state.count === 13);
+  const liqExcluded = candidates.filter(r => r.scoring && r.scoring.disqualified && r.scoring.disqualifyReason && r.scoring.disqualifyReason.startsWith('Liquidity')).length;
+
+  $('summaryGrid').innerHTML = `
+    <div class="stat"><div class="stat-label">Scanned</div><div class="stat-value">${results.length}</div></div>
+    <div class="stat"><div class="stat-label">Candidates</div><div class="stat-value">${candidates.length}</div></div>
+    <div class="stat"><div class="stat-label">Active setups</div><div class="stat-value">${setups.length}</div></div>
+    <div class="stat"><div class="stat-label">Active countdowns</div><div class="stat-value">${countdowns.length}</div></div>
+    <div class="stat"><div class="stat-label">Completed 9s</div><div class="stat-value">${nines.length}</div></div>
+    <div class="stat"><div class="stat-label">Completed 13s</div><div class="stat-value">${thirteens.length}</div></div>
+    <div class="stat"><div class="stat-label">Excluded (low liq.)</div><div class="stat-value">${liqExcluded}</div></div>
+  `;
+
+  // Errors
+  if (errors.length > 0) {
+    $('errorsCard').style.display = 'block';
+    $('errorsList').innerHTML = errors.map(e => `<div><strong>${e.ticker}</strong>: ${e.error}</div>`).join('');
+  } else {
+    $('errorsCard').style.display = 'none';
+  }
+
+  renderTopPicks(results);
+  applyFiltersAndRender();
+}
+
+function renderTopPicks(results) {
+  const eligible = results
+    .filter(r => r.state.phase !== 'none')
+    .filter(r => r.scoring && !r.scoring.disqualified)
+    .sort((a, b) => b.scoring.score - a.scoring.score);
+
+  const top = eligible.slice(0, 10);
+  const container = $('topPicksContent');
+
+  if (top.length === 0) {
+    container.innerHTML = '<div class="empty">No qualifying signals today. Either all candidates were filtered out by liquidity rules, or no signals are strong enough to score.</div>';
+    return;
+  }
+
+  container.innerHTML = top.map((r, i) => {
+    const s = r.state;
+    const sc = r.scoring;
+    const dirBadge = s.direction === 'buy'
+      ? '<span class="badge badge-buy">Buy</span>'
+      : '<span class="badge badge-sell">Sell</span>';
+    const phaseBadge = s.phase === 'setup'
+      ? `<span class="badge badge-setup">Setup ${s.count}/9</span>`
+      : `<span class="badge badge-countdown">Countdown ${s.count}/13</span>`;
+    const todayPill = s.completedToday ? '<span class="pill pill-yes">today</span>' : '';
+    const stars = '★'.repeat(sc.stars) + '<span class="empty-star">' + '★'.repeat(5 - sc.stars) + '</span>';
+    const reasonsHtml = sc.reasons.map(r =>
+      `<span class="reason ${r.points > 0 ? 'pos' : 'neg'}">${r.label} ${r.points > 0 ? '+' : ''}${r.points}</span>`
+    ).join('');
+    const liq = `$${(sc.avgDollarVol / 1e6).toFixed(1)}M avg $-vol`;
+
+    return `
+      <div class="pick-card">
+        <div class="pick-rank">${i + 1}</div>
+        <div class="pick-main">
+          <div class="pick-header">
+            <span class="pick-ticker">${r.ticker}</span>
+            <span class="pick-price">$${s.lastClose.toFixed(2)}</span>
+            ${dirBadge} ${phaseBadge} ${todayPill}
+            <span style="color: var(--text-3); font-size: 11px;">${liq}</span>
+          </div>
+          <div class="pick-reasons">${reasonsHtml}</div>
+        </div>
+        <div class="pick-score">
+          <div class="pick-stars">${stars}</div>
+          <div class="pick-score-num">${sc.score}</div>
+          <div class="pick-score-label">score</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function applyFiltersAndRender() {
+  const phaseFilters = Array.from(document.querySelectorAll('.filter[data-filter="phase"]:checked')).map(el => el.dataset.value);
+  const dirFilters = Array.from(document.querySelectorAll('.filter[data-filter="dir"]:checked')).map(el => el.dataset.value);
+  const minCount = parseInt($('minCount').value) || 0;
+  const completedOnly = $('completedOnly').checked;
+
+  let filtered = allResults
+    .filter(r => r.state.phase !== 'none')
+    .filter(r => r.scoring && !r.scoring.disqualified)
+    .filter(r => phaseFilters.includes(r.state.phase))
+    .filter(r => dirFilters.includes(r.state.direction))
+    .filter(r => r.state.count >= minCount)
+    .filter(r => !completedOnly || r.state.completedToday);
+
+  // Sort
+  const { key, desc } = currentSort;
+  filtered.sort((a, b) => {
+    let va, vb;
+    switch (key) {
+      case 'score': va = a.scoring.score; vb = b.scoring.score; break;
+      case 'ticker': va = a.ticker; vb = b.ticker; break;
+      case 'close': va = a.state.lastClose; vb = b.state.lastClose; break;
+      case 'dir': va = a.state.direction || ''; vb = b.state.direction || ''; break;
+      case 'phase': va = a.state.phase; vb = b.state.phase; break;
+      case 'count': va = a.state.count; vb = b.state.count; break;
+      case 'perfected': va = a.state.perfected ? 1 : 0; vb = b.state.perfected ? 1 : 0; break;
+      case 'qualifier': va = a.state.qualifierMet ? 1 : 0; vb = b.state.qualifierMet ? 1 : 0; break;
+      case 'tdst': va = a.state.tdstSupport || a.state.tdstResistance || 0; vb = b.state.tdstSupport || b.state.tdstResistance || 0; break;
+      case 'barsSince': va = a.state.barsSinceSignalStart; vb = b.state.barsSinceSignalStart; break;
+      default: va = 0; vb = 0;
+    }
+    if (typeof va === 'string') return desc ? vb.localeCompare(va) : va.localeCompare(vb);
+    return desc ? vb - va : va - vb;
+  });
+
+  // Render rows
+  const body = $('resultsBody');
+  if (filtered.length === 0) {
+    body.innerHTML = '';
+    $('emptyMsg').style.display = 'block';
+  } else {
+    $('emptyMsg').style.display = 'none';
+    body.innerHTML = filtered.map(r => {
+      const s = r.state;
+      const sc = r.scoring;
+      const dirBadge = s.direction === 'buy'
+        ? '<span class="badge badge-buy">Buy</span>'
+        : '<span class="badge badge-sell">Sell</span>';
+      const phaseBadge = s.phase === 'setup'
+        ? '<span class="badge badge-setup">Setup</span>'
+        : '<span class="badge badge-countdown">Countdown</span>';
+      const target = s.phase === 'setup' ? 9 : 13;
+      const countDisplay = `<span class="num">${s.count}/${target}</span>${s.completedToday ? ' <span class="pill pill-yes">today</span>' : ''}`;
+
+      let perfDisplay = '<span class="pill pill-no">—</span>';
+      if (s.phase === 'setup' && s.perfected !== null) {
+        perfDisplay = s.perfected
+          ? '<span class="pill pill-yes">Yes</span>'
+          : '<span class="pill pill-no">No</span>';
+      }
+
+      let qualDisplay = '<span class="pill pill-no">—</span>';
+      if (s.phase === 'countdown' && s.count === 13 && s.qualifierMet !== null) {
+        qualDisplay = s.qualifierMet
+          ? '<span class="pill pill-yes">Yes</span>'
+          : '<span class="pill pill-no">No</span>';
+      }
+
+      const tdst = s.direction === 'buy' ? s.tdstSupport : s.tdstResistance;
+      const tdstDisplay = tdst ? `<span class="num">${tdst.toFixed(2)}</span>` : '<span class="pill pill-no">—</span>';
+
+      const sparkline = makeSparkline(r.bars.map(b => b.close), s.direction);
+      const starsStr = '★'.repeat(sc.stars) + '<span class="empty-star">' + '★'.repeat(5 - sc.stars) + '</span>';
+
+      return `
+        <tr>
+          <td><div class="score-cell"><span class="score-num">${sc.score}</span><span class="score-stars">${starsStr}</span></div></td>
+          <td class="ticker">${r.ticker}</td>
+          <td class="num">${s.lastClose.toFixed(2)}</td>
+          <td>${dirBadge}</td>
+          <td>${phaseBadge}</td>
+          <td>${countDisplay}</td>
+          <td>${perfDisplay}</td>
+          <td>${qualDisplay}</td>
+          <td>${tdstDisplay}</td>
+          <td class="num">${s.barsSinceSignalStart}</td>
+          <td>${sparkline}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Update sort indicator
+  document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.sort === currentSort.key);
+  });
+}
+
+function makeSparkline(values, dir) {
+  if (!values || values.length < 2) return '';
+  const w = 80, h = 24;
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - ((v - min) / range) * h;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const stroke = dir === 'buy' ? '#0f6e56' : dir === 'sell' ? '#993c1d' : '#888780';
+  return `<svg class="sparkline" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${stroke}" stroke-width="1.5"/></svg>`;
+}
+
+// Event listeners
+$('scanBtn').addEventListener('click', () => doScan(false));
+$('dryRunBtn').addEventListener('click', () => doScan(true));
+$('testBtn').addEventListener('click', testConnection);
+
+async function testConnection() {
+  const apiKey = $('apiKey').value.trim();
+  if (!apiKey) { alert('Please enter your Polygon API key.'); return; }
+  $('testBtn').disabled = true;
+  $('statusLine').textContent = 'Testing connection with single SPY fetch...';
+  $('progressWrap').style.display = 'block';
+  $('progressBar').style.width = '50%';
+  const t0 = Date.now();
+  try {
+    const bars = await fetchBars('SPY', apiKey, 30);
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+    const lastBar = bars[bars.length - 1];
+    $('progressBar').style.width = '100%';
+    $('statusLine').innerHTML = `<span style="color: var(--buy);">✓ Connection works.</span> Fetched ${bars.length} SPY bars in ${elapsed}s. Latest: ${lastBar.date} close ${lastBar.close.toFixed(2)}.`;
+  } catch (err) {
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+    $('progressBar').style.width = '0%';
+    $('statusLine').innerHTML = `<span style="color: var(--danger);">✗ Failed after ${elapsed}s:</span> ${err.message}<br/><span style="color: var(--text-3); font-size: 11px;">Open browser DevTools (F12) → Console &amp; Network tabs for details.</span>`;
+    console.error('Test connection error:', err);
+  }
+  $('testBtn').disabled = false;
+}
+
+document.querySelectorAll('.filter').forEach(el => el.addEventListener('change', applyFiltersAndRender));
+$('minCount').addEventListener('input', applyFiltersAndRender);
+$('completedOnly').addEventListener('change', applyFiltersAndRender);
+
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.sort;
+    if (currentSort.key === key) currentSort.desc = !currentSort.desc;
+    else { currentSort.key = key; currentSort.desc = true; }
+    applyFiltersAndRender();
+  });
+});
+</script>
+</body>
+</html>
