@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VCP Scanner — Bull / Bear</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --surface: #ffffff;
+    --surface-2: #f4f3ee;
+    --border: #e5e4dd;
+    --border-strong: #d3d1c7;
+    --text: #2c2c2a;
+    --text-2: #5f5e5a;
+    --text-3: #888780;
+    --accent: #185fa5;
+    --accent-bg: #e6f1fb;
+    --buy: #0f6e56;
+    --buy-bg: #e1f5ee;
+    --sell: #993c1d;
+    --sell-bg: #faece7;
+    --warn: #854f0b;
+    --warn-bg: #faeeda;
+    --danger: #a32d2d;
+    --danger-bg: #fcebeb;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); margin: 0; padding: 24px; font-size: 14px; line-height: 1.5; }
+  .container { max-width: 1280px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  h2 { font-size: 16px; font-weight: 500; margin: 0 0 12px; }
+  .subtitle { color: var(--text-2); margin: 0 0 24px; font-size: 13px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+  label { font-size: 12px; font-weight: 500; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; }
+  input[type="text"], input[type="password"], textarea, select {
+    font-family: var(--font); font-size: 14px; padding: 8px 10px; border: 1px solid var(--border-strong);
+    border-radius: var(--radius); background: var(--surface); color: var(--text); width: 100%;
+  }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  textarea { font-family: var(--mono); font-size: 13px; resize: vertical; min-height: 90px; }
+  button {
+    font-family: var(--font); font-size: 14px; font-weight: 500; padding: 9px 18px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius);
+    background: var(--surface); color: var(--text); cursor: pointer; transition: background 0.1s, border-color 0.1s;
+  }
+  button:hover { background: var(--surface-2); border-color: var(--text-3); }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary { background: var(--text); color: var(--surface); border-color: var(--text); }
+  button.primary:hover { background: #1a1a18; border-color: #1a1a18; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+  .checkbox-row input { width: 16px; height: 16px; }
+
+  /* Direction toggle */
+  .dir-toggle { display: flex; gap: 0; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
+  .dir-toggle button {
+    border: none; border-radius: 0; padding: 8px 18px; background: var(--surface);
+    font-size: 13px; font-weight: 500; color: var(--text-2); transition: all 0.1s;
+  }
+  .dir-toggle button:hover { background: var(--surface-2); }
+  .dir-toggle button.active { background: var(--text); color: var(--surface); }
+  .dir-toggle button.active:hover { background: var(--text); }
+
+  /* Regime indicator */
+  .regime-banner { padding: 10px 16px; border-radius: var(--radius); display: flex; align-items: center; gap: 12px; font-size: 13px; margin-bottom: 16px; }
+  .regime-bull { background: var(--buy-bg); color: var(--buy); border: 1px solid #c5e8d8; }
+  .regime-bear { background: var(--sell-bg); color: var(--sell); border: 1px solid #f0d0c0; }
+  .regime-neutral { background: var(--warn-bg); color: var(--warn); border: 1px solid #f0d8a8; }
+  .regime-unknown { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+  .regime-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* Progress */
+  .progress-wrap { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin-top: 12px; }
+  .progress-bar { height: 100%; background: var(--accent); width: 0; transition: width 0.2s; }
+  .status-line { font-size: 13px; color: var(--text-2); margin-top: 8px; font-family: var(--mono); }
+
+  /* Summary stats */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--surface-2); border-radius: var(--radius); padding: 12px 14px; }
+  .stat-label { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 500; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tab { padding: 10px 18px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); }
+  .tab-count { display: inline-block; background: var(--surface-2); padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 6px; color: var(--text-2); }
+  .tab.active .tab-count { background: var(--text); color: var(--surface); }
+
+  /* Pick cards */
+  .pick-card-wrapper { margin-bottom: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+  .pick-card { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; padding: 14px 16px; }
+  .pick-rank { font-size: 28px; font-weight: 300; color: var(--text-3); font-variant-numeric: tabular-nums; min-width: 32px; text-align: center; }
+  .pick-main { min-width: 0; }
+  .pick-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .pick-ticker { font-family: var(--mono); font-weight: 600; font-size: 17px; }
+  .pick-price { font-family: var(--mono); color: var(--text-2); font-size: 13px; }
+  .pick-reasons { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11px; color: var(--text-2); }
+  .pick-reasons .reason { background: var(--surface-2); padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+  .pick-reasons .reason.pos { background: var(--buy-bg); color: var(--buy); }
+  .pick-reasons .reason.neg { background: var(--sell-bg); color: var(--sell); }
+  .pick-score { text-align: right; min-width: 80px; }
+  .pick-stars { color: #d4a017; font-size: 16px; letter-spacing: 1px; line-height: 1; }
+  .pick-stars .empty-star { color: var(--border-strong); }
+  .pick-score-num { font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .pick-score-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+  .badge-buy { background: var(--buy-bg); color: var(--buy); }
+  .badge-sell { background: var(--sell-bg); color: var(--sell); }
+  .badge-firing { background: var(--accent-bg); color: var(--accent); }
+  .badge-forming { background: var(--warn-bg); color: var(--warn); }
+  .pill { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; background: var(--surface-2); color: var(--text-2); }
+  .pill-yes { background: var(--buy-bg); color: var(--buy); }
+  .pill-no { background: var(--surface-2); color: var(--text-3); }
+  .num { font-variant-numeric: tabular-nums; font-family: var(--mono); }
+
+  /* Errors */
+  .errors-card { border-color: var(--danger-bg); }
+  .errors-list { font-family: var(--mono); font-size: 12px; color: var(--text-2); max-height: 160px; overflow-y: auto; }
+  .errors-list div { padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .empty { padding: 40px; text-align: center; color: var(--text-3); }
+
+  /* About */
+  .about { font-size: 12px; color: var(--text-2); line-height: 1.6; }
+  .about code { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+  .about p { margin: 0 0 10px; }
+
+  /* Options section */
+  .options-section { border-top: 1px solid var(--border); background: var(--surface-2); padding: 10px 14px 12px; }
+  .options-error { color: var(--text-2); font-size: 12px; font-style: italic; }
+  .options-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .options-title { font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; }
+  .opt-tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--surface); color: var(--text-3); border: 1px solid var(--border); }
+  .opt-tag-warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-bg); }
+  .opt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .opt-table th { background: transparent; padding: 4px 8px; border-bottom: 1px solid var(--border); font-size: 11px; text-align: left; }
+  .opt-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .opt-table tr:last-child td { border-bottom: none; }
+  .opt-row-warn td { background: rgba(133, 79, 11, 0.04); }
+  .opt-tier { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; }
+  .opt-tier-itm { background: #e1f5ee; color: #0f6e56; }
+  .opt-tier-atm { background: #e6f1fb; color: #185fa5; }
+  .opt-tier-otm { background: #faece7; color: #993c1d; }
+  .opt-iv-tag { display: inline-block; padding: 0 5px; border-radius: 3px; font-size: 10px; margin-left: 4px; }
+  .opt-iv-high { background: var(--sell-bg); color: var(--sell); }
+  .opt-iv-low { background: var(--buy-bg); color: var(--buy); }
+  .opt-iv-normal { background: var(--surface); color: var(--text-3); }
+  .opt-warning { color: var(--warn); font-size: 11px; cursor: help; }
+  .sparkline { display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>VCP scanner — bull / bear</h1>
+  <p class="subtitle">Volatility Contraction Pattern (Minervini / SEPA). 376 S&amp;P 500 single names. Polygon.io daily bars.</p>
+
+  <div class="card">
+    <h2>Configuration</h2>
+    <div class="row">
+      <div class="field" style="flex: 2;">
+        <label for="apiKey">Polygon API key</label>
+        <input type="password" id="apiKey" placeholder="paste your key" autocomplete="off" />
+        <div class="checkbox-row">
+          <input type="checkbox" id="rememberKey" />
+          <label for="rememberKey" style="text-transform: none; letter-spacing: normal; font-size: 12px;">Remember in browser (localStorage)</label>
+        </div>
+      </div>
+      <div class="field" style="flex: 0 0 200px;">
+        <label>Direction</label>
+        <div class="dir-toggle" id="dirToggle">
+          <button data-dir="bull" class="active">Bull</button>
+          <button data-dir="bear">Bear</button>
+          <button data-dir="both">Both</button>
+        </div>
+      </div>
+      <div class="field" style="flex: 0 0 120px;">
+        <label for="historyDays">History (days)</label>
+        <input type="text" id="historyDays" value="300" />
+      </div>
+      <div class="field" style="flex: 0 0 120px;">
+        <label for="concurrency">Concurrency</label>
+        <input type="text" id="concurrency" value="10" />
+      </div>
+    </div>
+    <div class="row" style="margin-top: 16px;">
+      <div class="field">
+        <label for="tickers">Universe — <span id="tickerCount">0</span> S&amp;P 500 names (editable)</label>
+        <textarea id="tickers"></textarea>
+        <div style="display: flex; gap: 8px; margin-top: 6px;">
+          <button id="resetTickers" type="button" style="font-size: 12px; padding: 4px 10px;">Reset universe</button>
+          <button id="collapseTickers" type="button" style="font-size: 12px; padding: 4px 10px;">Hide list</button>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top: 12px; align-items: center; gap: 16px;">
+      <div class="checkbox-row">
+        <input type="checkbox" id="filterEarnings" checked />
+        <label for="filterEarnings" style="text-transform: none; letter-spacing: normal; font-size: 13px;">Exclude tickers with upcoming earnings (filters by recency of last 10-Q/10-K filing)</label>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2);">
+        <label for="earningsMaxDays" style="text-transform: none; letter-spacing: normal; font-size: 12px;">Max days since last filing:</label>
+        <input type="text" id="earningsMaxDays" value="45" style="width: 50px; padding: 4px 6px;" />
+      </div>
+      <button id="clearEarningsCache" type="button" style="font-size: 12px; padding: 4px 10px; margin-left: auto;">Clear earnings cache</button>
+    </div>
+    <div class="row" style="margin-top: 16px; justify-content: flex-end; align-items: center;">
+      <div class="checkbox-row" style="margin-right: auto;">
+        <input type="checkbox" id="fetchOptions" checked />
+        <label for="fetchOptions" style="text-transform: none; letter-spacing: normal; font-size: 13px;">Fetch options for top 10 picks per tab</label>
+      </div>
+      <button id="testBtn">Test connection</button>
+      <button id="dryRunBtn">Dry run (first 10)</button>
+      <button id="scanBtn" class="primary">Run scan</button>
+    </div>
+    <div class="progress-wrap" id="progressWrap" style="display: none;">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="status-line" id="statusLine"></div>
+  </div>
+
+  <div id="resultsArea" style="display: none;">
+    <div id="regimeBanner" class="regime-banner regime-unknown">
+      <span class="regime-dot" style="background: var(--text-3);"></span>
+      <span id="regimeText">Market regime: unknown</span>
+    </div>
+    <div class="summary-grid" id="summaryGrid"></div>
+
+    <!-- Bull section -->
+    <div class="card" id="bullSection">
+      <h2 style="color: var(--buy);">Bullish setups</h2>
+      <div class="tabs">
+        <div class="tab active" data-tab="bull-firing">Firing <span class="tab-count" id="bullFiringCount">0</span></div>
+        <div class="tab" data-tab="bull-forming">Forming <span class="tab-count" id="bullFormingCount">0</span></div>
+      </div>
+      <div id="bullFiringContent" class="tab-content"></div>
+      <div id="bullFormingContent" class="tab-content" style="display: none;"></div>
+    </div>
+
+    <!-- Bear section -->
+    <div class="card" id="bearSection">
+      <h2 style="color: var(--sell);">Bearish setups</h2>
+      <div class="tabs">
+        <div class="tab active" data-tab="bear-firing">Firing <span class="tab-count" id="bearFiringCount">0</span></div>
+        <div class="tab" data-tab="bear-forming">Forming <span class="tab-count" id="bearFormingCount">0</span></div>
+      </div>
+      <div id="bearFiringContent" class="tab-content"></div>
+      <div id="bearFormingContent" class="tab-content" style="display: none;"></div>
+    </div>
+
+    <div class="card errors-card" id="errorsCard" style="display: none;">
+      <h2>Failed / excluded tickers</h2>
+      <div class="errors-list" id="errorsList"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>About this scanner</h2>
+    <div class="about">
+      <p>This scanner implements a programmatic version of the <strong>Volatility Contraction Pattern (VCP)</strong> as described by Mark Minervini in <em>Trade Like a Stock Market Wizard</em>, combined with his <strong>Trend Template</strong> qualifying criteria. It runs in both bullish (long breakout) and bearish (short breakdown) modes.</p>
+      <p><strong>Trend Template (gating):</strong> A stock must satisfy ALL criteria to enter scoring. Bull version requires price &gt; 150-day &amp; 200-day MAs, 150-day &gt; 200-day, 200-day rising for at least 20 bars, 50 &gt; 150 &gt; 200 MA stacking, price within 25% of 52-week high, price at least 30% above 52-week low, and 6-month relative strength rank in the top 30% of the scan universe. Bear version inverts each criterion.</p>
+      <p><strong>VCP pattern detection:</strong> The scanner identifies contractions as N% pullbacks from local highs (or rallies from local lows for bear). A valid base requires 2+ progressively smaller contractions over 5-65 trading days, with volume contracting through the base. The <strong>pivot point</strong> is the high of the most recent contraction (or low for bear) — this is the breakout/breakdown trigger price.</p>
+      <p><strong>Two phases:</strong> "<strong>Firing</strong>" = price has broken the pivot on the most recent bar with volume confirmation. "<strong>Forming</strong>" = base is set up and price is within a defined distance of the pivot, waiting to trigger.</p>
+      <p><strong>Composite score (0-100):</strong> Base points by stage (40 for firing today, 25 for firing 1-2 bars ago, 20 for forming within 3% of pivot, 10 for deeper-in-base), plus pattern quality modifiers (more contractions, tighter final contraction, declining volume), trend context (RS rank, distance from highs, MA slope), breakout volume quality, and market regime alignment.</p>
+      <p><strong>Options selection (Top 10 firing picks per direction):</strong> 14-28 DTE for firing breakouts (faster moves than TD reversals), 28-45 DTE for forming setups (haven't triggered yet). Same 3-strike slate as TD scanner (ITM/ATM/OTM by delta).</p>
+      <p><strong>Earnings filter:</strong> When enabled, the scanner queries Polygon's <code>/vX/reference/financials</code> endpoint for each trend-template-passing candidate and excludes any whose most recent 10-Q/10-K filing was more than the threshold (default 45 days) ago. VCP trades typically hold for 2-6 weeks, so the threshold is more conservative than the TD scanner's 70 days — if a stock filed 45+ days ago, its next earnings likely falls inside your hold window. Filing date is a proxy for the earnings announcement date (typically within a week, but not identical). Q4 results often fold into the annual 10-K which extends the gap to 4-5 months. Always verify earnings dates in your broker's calendar before trading. Earnings dates are cached in browser localStorage for 7 days to minimize API calls.</p>
+      <p><strong>Important caveats:</strong> Algorithmic VCP detection is heuristic, not deterministic. The scanner will surface candidates that don't look like clean VCPs on visual inspection — chart-check every top pick before trading. The trend template is conservative — many valid VCPs from the Minervini playbook will be filtered out by strict template enforcement. This is a candidate-narrowing tool, not a signal-generation tool. Options data is end-of-day from Polygon — always verify live prices in your broker.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// S&P 500 single-name universe
+// ============================================================
+const DEFAULT_UNIVERSE = ["AAL","AAPL","ABBV","ABNB","ABT","ACN","ADBE","ADI","ADM","ADP","ADSK","AEE","AEP","AES","AFL","AFRM","AIG","AIZ","AJG","ALB","ALGN","ALK","ALL","ALLE","ALNY","AMAT","AMCR","AMD","AME","AMGN","AMT","AMZN","ANET","ANSS","AON","AOS","APA","APD","APTV","ARE","ATO","AVB","AVGO","AVY","AWK","AXP","AZO","BA","BAC","BALL","BAX","BBWI","BBY","BDX","BIIB","BK","BKNG","BKR","BLK","BMRN","BMY","BRK.B","BRO","BSX","BXP","C","CAG","CARR","CAT","CB","CBRE","CCI","CCL","CDNS","CDW","CE","CEG","CF","CFG","CHD","CHRW","CHTR","CINF","CL","CLF","CLX","CMA","CMCSA","CMG","CMI","CMS","CNP","COIN","COP","COST","CPB","CPRT","CPT","CRM","CRWD","CSCO","CSGP","CSX","CTAS","CTLT","CTRA","CTSH","CTVA","CVX","CZR","D","DAL","DASH","DD","DDOG","DE","DELL","DG","DHI","DHR","DIS","DISH","DLR","DLTR","DOC","DOCU","DOV","DOW","DPZ","DRI","DTE","DUK","DVN","DXC","DXCM","EA","EBAY","ECL","ED","EFX","EIX","EL","ELV","EMN","EMR","EOG","EPAM","EPD","EQIX","EQR","EQT","ES","ESS","ET","ETN","ETR","ETSY","EVRG","EW","EXC","EXPD","EXPE","EXR","F","FAST","FCX","FDX","FFIV","FITB","FMC","FOX","FOXA","FRT","FTNT","FTV","GD","GE","GEN","GILD","GIS","GLW","GM","GNRC","GOOG","GOOGL","GPC","GRMN","GS","GWW","HAL","HAS","HBAN","HD","HES","HIG","HII","HLT","HOLX","HON","HOOD","HPE","HPQ","HRL","HST","HSY","HUBB","HWM","IBM","IDXX","IEX","INCY","INTC","INTU","INVH","IPG","IR","IRM","ISRG","ITW","J","JAZZ","JBHT","JBLU","JCI","JKHY","JNJ","JPM","K","KDP","KEY","KEYS","KHC","KLAC","KMB","KMI","KMX","KO","KR","L","LC","LDOS","LEN","LHX","LIN","LKQ","LLY","LMT","LNG","LOW","LRCX","LULU","LUV","LVS","LYFT","LYV","MA","MAR","MAS","MCD","MDB","MDLZ","MDT","MET","META","MGM","MMC","MMM","MPC","MRK","MRNA","MRO","MRVL","MS","MSFT","MSTR","MTCH","MTD","MU","NCLH","NEE","NEM","NET","NFLX","NOW","NTAP","NTRS","NUE","NVDA","NWS","NWSA","OKE","OKTA","ORCL","ORGN","OXY","PAA","PANW","PARA","PAYC","PEP","PFE","PFG","PG","PGR","PINS","PLTR","PM","PNC","PODD","PRU","PSX","PTC","PYPL","QCOM","RCL","REGN","RF","RMD","ROKU","ROP","RTX","SCHW","SHOP","SLB","SMCI","SNAP","SNOW","SNPS","SOFI","SOLV","SPGI","SPLK","SQ","STE","STLD","STT","STX","SYK","T","TEAM","TFC","TFX","TJX","TMO","TMUS","TSLA","TWLO","TXN","TYL","U","UAL","UBER","UNH","UNP","UPS","UPST","USB","V","VLO","VRTX","VTRS","VZ","WAT","WBD","WDAY","WDC","WFC","WMB","WMT","WYNN","X","XOM","ZION","ZM","ZS","ZTS"];
+const UNIVERSE = [...new Set(DEFAULT_UNIVERSE)];
+
+// ============================================================
+// Technical indicators
+// ============================================================
+
+function sma(values, period) {
+  if (values.length < period) return null;
+  let sum = 0;
+  for (let i = values.length - period; i < values.length; i++) sum += values[i];
+  return sum / period;
+}
+
+// Returns array of SMA values, NaN where insufficient data
+function smaSeries(values, period) {
+  const out = new Array(values.length).fill(NaN);
+  if (values.length < period) return out;
+  let sum = 0;
+  for (let i = 0; i < period; i++) sum += values[i];
+  out[period - 1] = sum / period;
+  for (let i = period; i < values.length; i++) {
+    sum += values[i] - values[i - period];
+    out[i] = sum / period;
+  }
+  return out;
+}
+
+function computeATR(bars, period = 14) {
+  if (bars.length < period + 1) return null;
+  const trs = [];
+  for (let i = bars.length - period; i < bars.length; i++) {
+    const cur = bars[i];
+    const prev = bars[i - 1];
+    if (!prev) continue;
+    const tr = Math.max(cur.high - cur.low, Math.abs(cur.high - prev.close), Math.abs(cur.low - prev.close));
+    trs.push(tr);
+  }
+  return trs.reduce((a, b) => a + b, 0) / trs.length;
+}
+
+function computeAvgDollarVolume(bars, period = 20) {
+  const slice = bars.slice(-period);
+  if (slice.length === 0) return 0;
+  return slice.reduce((acc, b) => acc + b.close * b.volume, 0) / slice.length;
+}
+
+function computeHistoricalVolatility(bars, period = 20) {
+  if (bars.length < period + 1) return null;
+  const slice = bars.slice(-period - 1);
+  const logReturns = [];
+  for (let i = 1; i < slice.length; i++) logReturns.push(Math.log(slice[i].close / slice[i - 1].close));
+  const mean = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
+  const variance = logReturns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / (logReturns.length - 1);
+  return Math.sqrt(variance) * Math.sqrt(252);
+}
+
+// 6-month price performance (% change over ~126 trading days)
+function performance6m(bars) {
+  if (bars.length < 126) return null;
+  const start = bars[bars.length - 126].close;
+  const end = bars[bars.length - 1].close;
+  return ((end - start) / start) * 100;
+}
+
+// ============================================================
+// Trend Template (gating)
+// Returns { passed: bool, reasons: [strings], direction: 'bull'|'bear' }
+// ============================================================
+function checkTrendTemplate(bars, direction) {
+  const reasons = [];
+  if (bars.length < 250) return { passed: false, reasons: ['Insufficient history (<250 bars)'], direction };
+
+  const closes = bars.map(b => b.close);
+  const last = closes[closes.length - 1];
+  const ma50Arr = smaSeries(closes, 50);
+  const ma150Arr = smaSeries(closes, 150);
+  const ma200Arr = smaSeries(closes, 200);
+  const ma50 = ma50Arr[ma50Arr.length - 1];
+  const ma150 = ma150Arr[ma150Arr.length - 1];
+  const ma200 = ma200Arr[ma200Arr.length - 1];
+  const ma200_20ago = ma200Arr[ma200Arr.length - 21];
+
+  // 52-week high/low
+  const last252 = bars.slice(-252);
+  const high52 = Math.max(...last252.map(b => b.high));
+  const low52 = Math.min(...last252.map(b => b.low));
+
+  const checks = [];
+
+  if (direction === 'bull') {
+    checks.push(['Price > 150-day MA', last > ma150]);
+    checks.push(['Price > 200-day MA', last > ma200]);
+    checks.push(['150-day MA > 200-day MA', ma150 > ma200]);
+    checks.push(['200-day MA rising (vs 20 bars ago)', ma200 > ma200_20ago]);
+    checks.push(['50 > 150 > 200 MA stacking', ma50 > ma150 && ma150 > ma200]);
+    checks.push(['Within 25% of 52-week high', last >= high52 * 0.75]);
+    checks.push(['At least 30% above 52-week low', last >= low52 * 1.30]);
+  } else {
+    checks.push(['Price < 150-day MA', last < ma150]);
+    checks.push(['Price < 200-day MA', last < ma200]);
+    checks.push(['150-day MA < 200-day MA', ma150 < ma200]);
+    checks.push(['200-day MA falling (vs 20 bars ago)', ma200 < ma200_20ago]);
+    checks.push(['50 < 150 < 200 MA stacking', ma50 < ma150 && ma150 < ma200]);
+    checks.push(['Within 25% of 52-week low', last <= low52 * 1.25]);
+    checks.push(['At least 30% below 52-week high', last <= high52 * 0.70]);
+  }
+
+  const failed = checks.filter(c => !c[1]).map(c => c[0]);
+  const passed = failed.length === 0;
+  return { passed, reasons: passed ? [] : failed, direction };
+}
+
+// ============================================================
+// VCP pattern detection
+// Identifies contractions in the price action and finds a valid base.
+// For bull: contraction = pullback from local high. For bear: rally from local low.
+// Returns { valid: bool, contractions: [...], pivot: number, baseStart: idx, baseEnd: idx }
+// ============================================================
+function detectVCPBase(bars, direction, lookback = 100) {
+  if (bars.length < 20) return { valid: false, reason: 'Too few bars' };
+
+  // Look at the last `lookback` bars
+  const window = bars.slice(-lookback);
+  const baseOffset = bars.length - lookback;
+
+  // Identify swing highs/lows using a simple rolling extrema method.
+  // A bar is a swing high if its high is the highest in a +/- N bar window.
+  function findSwings(barsArr, n = 3) {
+    const highs = [], lows = [];
+    for (let i = n; i < barsArr.length - n; i++) {
+      let isHigh = true, isLow = true;
+      for (let j = i - n; j <= i + n; j++) {
+        if (j === i) continue;
+        if (barsArr[j].high >= barsArr[i].high) isHigh = false;
+        if (barsArr[j].low <= barsArr[i].low) isLow = false;
+      }
+      if (isHigh) highs.push({ idx: i, price: barsArr[i].high, type: 'high' });
+      if (isLow) lows.push({ idx: i, price: barsArr[i].low, type: 'low' });
+    }
+    return { highs, lows };
+  }
+
+  const swings = findSwings(window, 3);
+
+  // For BULL: a contraction = swing high -> subsequent swing low. Depth = (high - low) / high.
+  // We want a sequence of swing highs where each successive contraction (high to next low) is smaller.
+  // For BEAR: a contraction = swing low -> subsequent swing high. Depth = (high - low) / low.
+
+  let contractions = [];
+  if (direction === 'bull') {
+    // Walk swings: pair each swing high with the immediately following swing low.
+    // Order all swings by index.
+    const ordered = [...swings.highs, ...swings.lows].sort((a, b) => a.idx - b.idx);
+    let lastHigh = null;
+    for (const s of ordered) {
+      if (s.type === 'high') {
+        lastHigh = s;
+      } else if (s.type === 'low' && lastHigh && s.idx > lastHigh.idx) {
+        const depth = (lastHigh.price - s.price) / lastHigh.price;
+        if (depth > 0.02) {  // ignore noise < 2%
+          contractions.push({
+            highIdx: lastHigh.idx, highPrice: lastHigh.price,
+            lowIdx: s.idx, lowPrice: s.price,
+            depth: depth * 100,  // percent
+            durationBars: s.idx - lastHigh.idx
+          });
+        }
+        lastHigh = null;
+      }
+    }
+  } else {
+    const ordered = [...swings.highs, ...swings.lows].sort((a, b) => a.idx - b.idx);
+    let lastLow = null;
+    for (const s of ordered) {
+      if (s.type === 'low') {
+        lastLow = s;
+      } else if (s.type === 'high' && lastLow && s.idx > lastLow.idx) {
+        const depth = (s.price - lastLow.price) / lastLow.price;
+        if (depth > 0.02) {
+          contractions.push({
+            highIdx: s.idx, highPrice: s.price,
+            lowIdx: lastLow.idx, lowPrice: lastLow.price,
+            depth: depth * 100,
+            durationBars: s.idx - lastLow.idx
+          });
+        }
+        lastLow = null;
+      }
+    }
+  }
+
+  if (contractions.length < 2) return { valid: false, reason: `Only ${contractions.length} contraction(s)` };
+
+  // Filter to "recent base" — contractions whose endpoints fall within the last 50 bars of the window.
+  // Walk backward from the most recent contraction, including only those that are part of the same consolidation cluster.
+  const windowEndIdx = window.length - 1;
+  const recentCutoff = Math.max(0, windowEndIdx - 50);
+
+  // Take all contractions with both endpoints within the recent base window
+  let basePool = contractions.filter(c =>
+    c.highIdx >= recentCutoff && c.lowIdx >= recentCutoff
+  );
+  // Take the last 4 max (Minervini's 'proper VCP' is 2-4 contractions)
+  let recent = basePool.slice(-Math.min(basePool.length, 4));
+
+  if (recent.length < 2) return { valid: false, reason: `Only ${recent.length} recent contraction(s)` };
+
+  // Check progressive tightening: each contraction's depth should be smaller than the prior
+  let tightening = true;
+  for (let i = 1; i < recent.length; i++) {
+    if (recent[i].depth > recent[i - 1].depth * 1.1) { // 10% tolerance
+      tightening = false;
+      break;
+    }
+  }
+
+  // Base spans from first contraction's high to last contraction's low (or current bar)
+  const baseStartLocalIdx = recent[0].highIdx;
+  const baseEndLocalIdx = recent[recent.length - 1].lowIdx;
+  const baseLengthBars = window.length - baseStartLocalIdx;
+
+  if (baseLengthBars < 5 || baseLengthBars > 65) {
+    return { valid: false, reason: `Base length ${baseLengthBars} bars (outside 5-65)` };
+  }
+
+  // Pivot = highest high in the most recent contraction's price area (bull)
+  //         lowest low in the most recent contraction's price area (bear)
+  let pivot;
+  if (direction === 'bull') {
+    pivot = recent[recent.length - 1].highPrice;
+  } else {
+    pivot = recent[recent.length - 1].lowPrice;
+  }
+
+  // Convert local indices to global bar indices
+  const baseStartGlobal = baseOffset + baseStartLocalIdx;
+  const baseEndGlobal = baseOffset + baseEndLocalIdx;
+
+  // Volume contraction: avg volume during base vs avg volume in 20 bars before base
+  let volContraction = null;
+  if (baseStartGlobal >= 20) {
+    const preVol = bars.slice(baseStartGlobal - 20, baseStartGlobal).reduce((s, b) => s + b.volume, 0) / 20;
+    const baseVol = bars.slice(baseStartGlobal, baseEndGlobal + 1).reduce((s, b) => s + b.volume, 0) / (baseEndGlobal - baseStartGlobal + 1);
+    volContraction = baseVol < preVol;
+  }
+
+  return {
+    valid: true,
+    contractions: recent,
+    pivot,
+    baseStart: baseStartGlobal,
+    baseEnd: baseEndGlobal,
+    baseLengthBars,
+    tightening,
+    finalContractionDepth: recent[recent.length - 1].depth,
+    numContractions: recent.length,
+    volContraction
+  };
+}
+
+// ============================================================
+// Phase determination (firing vs forming)
+// ============================================================
+function determinePhase(bars, vcp, direction) {
+  if (!vcp.valid) return { phase: null };
+  const last = bars[bars.length - 1];
+  const lookback = 3; // bars in which a fresh breakout counts as "firing"
+
+  // Compute average volume over last 20 bars for breakout volume check
+  const avgVol = bars.slice(-20).reduce((s, b) => s + b.volume, 0) / 20;
+
+  for (let lb = 0; lb < lookback; lb++) {
+    const idx = bars.length - 1 - lb;
+    if (idx < 0) break;
+    const bar = bars[idx];
+    const fired = direction === 'bull' ? (bar.close > vcp.pivot) : (bar.close < vcp.pivot);
+    if (fired) {
+      return {
+        phase: 'firing',
+        barsSinceFire: lb,
+        firedToday: lb === 0,
+        breakoutVolumeRatio: bar.volume / avgVol,
+        breakoutBarRangePosition: bar.high === bar.low ? 0.5 : (direction === 'bull' ? (bar.close - bar.low) / (bar.high - bar.low) : (bar.high - bar.close) / (bar.high - bar.low))
+      };
+    }
+  }
+
+  // Not firing — is it forming and near the pivot?
+  const distancePct = direction === 'bull' ? (vcp.pivot - last.close) / last.close * 100 : (last.close - vcp.pivot) / last.close * 100;
+  // For bull: positive distance = price below pivot (still in base, waiting to break out)
+  // For bear: positive distance = price above pivot (still in base, waiting to break down)
+  if (distancePct < 0) {
+    // Already broken through pivot (more than `lookback` bars ago) — stale
+    return { phase: null, reason: 'Pivot broken >3 bars ago (stale)' };
+  }
+  if (distancePct > 15) {
+    return { phase: null, reason: `Too far from pivot (${distancePct.toFixed(1)}%)` };
+  }
+
+  return {
+    phase: 'forming',
+    distanceToPivotPct: distancePct
+  };
+}
+
+// ============================================================
+// Scoring
+// ============================================================
+function scoreVCP(bars, direction, trendTemplate, vcp, phaseInfo, marketRegime, relativeStrengthRank) {
+  const reasons = [];
+  let score = 0;
+  const avgDollarVol = computeAvgDollarVolume(bars, 20);
+
+  // Hard disqualifiers
+  if (avgDollarVol < 1_000_000) {
+    return { score: 0, stars: 0, reasons: [], disqualified: true, disqualifyReason: `Liquidity: $${(avgDollarVol/1e6).toFixed(2)}M (<$1M)`, avgDollarVol };
+  }
+  if (avgDollarVol < 5_000_000) {
+    return { score: 0, stars: 0, reasons: [], disqualified: true, disqualifyReason: `Liquidity: $${(avgDollarVol/1e6).toFixed(2)}M (<$5M filter)`, avgDollarVol };
+  }
+  if (!trendTemplate.passed) {
+    return { score: 0, stars: 0, reasons: [], disqualified: true, disqualifyReason: `Trend template failed: ${trendTemplate.reasons[0]}`, avgDollarVol };
+  }
+  if (!vcp.valid) {
+    return { score: 0, stars: 0, reasons: [], disqualified: true, disqualifyReason: `No valid VCP base: ${vcp.reason}`, avgDollarVol };
+  }
+  if (!phaseInfo.phase) {
+    return { score: 0, stars: 0, reasons: [], disqualified: true, disqualifyReason: phaseInfo.reason || 'No phase', avgDollarVol };
+  }
+
+  // Base points by phase / stage
+  if (phaseInfo.phase === 'firing') {
+    if (phaseInfo.firedToday) {
+      score += 40;
+      reasons.push({ label: 'Breakout today', points: 40 });
+    } else {
+      score += 25;
+      reasons.push({ label: `Broke ${phaseInfo.barsSinceFire} bar(s) ago`, points: 25 });
+    }
+  } else if (phaseInfo.phase === 'forming') {
+    if (phaseInfo.distanceToPivotPct <= 3) {
+      score += 20;
+      reasons.push({ label: `Near pivot (${phaseInfo.distanceToPivotPct.toFixed(1)}% away)`, points: 20 });
+    } else {
+      score += 10;
+      reasons.push({ label: `Deeper in base (${phaseInfo.distanceToPivotPct.toFixed(1)}% away)`, points: 10 });
+    }
+  }
+
+  // Pattern quality
+  if (vcp.numContractions >= 3) {
+    score += 10;
+    reasons.push({ label: `${vcp.numContractions} contractions`, points: 10 });
+  }
+  if (vcp.tightening) {
+    score += 10;
+    reasons.push({ label: 'Progressive tightening', points: 10 });
+  } else {
+    score -= 5;
+    reasons.push({ label: 'Not progressively tighter', points: -5 });
+  }
+  if (vcp.volContraction === true) {
+    score += 10;
+    reasons.push({ label: 'Volume contracting in base', points: 10 });
+  }
+  if (vcp.finalContractionDepth <= 5) {
+    score += 15;
+    reasons.push({ label: `Very tight final (${vcp.finalContractionDepth.toFixed(1)}%)`, points: 15 });
+  } else if (vcp.finalContractionDepth <= 10) {
+    score += 8;
+    reasons.push({ label: `Tight final (${vcp.finalContractionDepth.toFixed(1)}%)`, points: 8 });
+  }
+  if (vcp.baseLengthBars >= 5 && vcp.baseLengthBars <= 35) {
+    score += 5;
+    reasons.push({ label: `Base ${vcp.baseLengthBars} bars`, points: 5 });
+  } else if (vcp.baseLengthBars > 50) {
+    score -= 5;
+    reasons.push({ label: `Long base (${vcp.baseLengthBars} bars)`, points: -5 });
+  }
+
+  // Breakout quality (firing only)
+  if (phaseInfo.phase === 'firing') {
+    if (phaseInfo.breakoutVolumeRatio >= 2) {
+      score += 10;
+      reasons.push({ label: `Vol ${phaseInfo.breakoutVolumeRatio.toFixed(1)}× avg`, points: 10 });
+    } else if (phaseInfo.breakoutVolumeRatio >= 1.5) {
+      score += 5;
+      reasons.push({ label: `Vol ${phaseInfo.breakoutVolumeRatio.toFixed(1)}× avg`, points: 5 });
+    } else {
+      score -= 5;
+      reasons.push({ label: `Weak breakout vol (${phaseInfo.breakoutVolumeRatio.toFixed(1)}×)`, points: -5 });
+    }
+    if (phaseInfo.breakoutBarRangePosition >= 0.66) {
+      score += 5;
+      reasons.push({ label: 'Closed in top of range', points: 5 });
+    }
+  }
+
+  // Trend context
+  if (relativeStrengthRank !== null) {
+    if (direction === 'bull' && relativeStrengthRank >= 90) {
+      score += 10;
+      reasons.push({ label: `RS rank ${relativeStrengthRank}`, points: 10 });
+    } else if (direction === 'bull' && relativeStrengthRank >= 70) {
+      score += 5;
+      reasons.push({ label: `RS rank ${relativeStrengthRank}`, points: 5 });
+    } else if (direction === 'bear' && relativeStrengthRank <= 10) {
+      score += 10;
+      reasons.push({ label: `RS rank ${relativeStrengthRank} (weakest)`, points: 10 });
+    } else if (direction === 'bear' && relativeStrengthRank <= 30) {
+      score += 5;
+      reasons.push({ label: `RS rank ${relativeStrengthRank}`, points: 5 });
+    }
+  }
+
+  // Market regime alignment
+  if (marketRegime === 'bull' && direction === 'bull') {
+    score += 5;
+    reasons.push({ label: 'Bull setup, bull market', points: 5 });
+  } else if (marketRegime === 'bear' && direction === 'bear') {
+    score += 5;
+    reasons.push({ label: 'Bear setup, bear market', points: 5 });
+  } else if (marketRegime === 'bear' && direction === 'bull') {
+    score -= 10;
+    reasons.push({ label: 'Bull setup against bear market', points: -10 });
+  } else if (marketRegime === 'bull' && direction === 'bear') {
+    score -= 10;
+    reasons.push({ label: 'Bear setup against bull market', points: -10 });
+  }
+
+  score = Math.max(0, Math.min(100, score));
+  let stars;
+  if (score >= 80) stars = 5;
+  else if (score >= 65) stars = 4;
+  else if (score >= 50) stars = 3;
+  else if (score >= 35) stars = 2;
+  else stars = 1;
+
+  return { score, stars, reasons, disqualified: false, disqualifyReason: null, avgDollarVol };
+}
+
+// ============================================================
+// Polygon data fetchers
+// ============================================================
+
+// Robust fetch with timeout, Firefox DataCloneError handling, single retry on transient errors.
+async function robustFetch(url, timeoutMs, label) {
+  function isTransient(err) {
+    const msg = (err && err.message) ? err.message.toLowerCase() : '';
+    if (err && err.name === 'DataCloneError') return true;
+    if (msg.includes('cloned') || msg.includes('clone')) return true;
+    if (err && err.name === 'TypeError' && msg.includes('fetch')) return true;
+    if (msg.includes('networkerror')) return true;
+    return false;
+  }
+  async function attempt() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return resp;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        const e = new Error(`Timeout after ${timeoutMs/1000}s`);
+        e._abort = true;
+        throw e;
+      }
+      throw err;
+    }
+  }
+  try {
+    return await attempt();
+  } catch (err) {
+    if (err._abort) throw new Error(err.message);
+    if (isTransient(err)) {
+      await new Promise(r => setTimeout(r, 250 + Math.random() * 250));
+      try {
+        return await attempt();
+      } catch (err2) {
+        if (err2._abort) throw new Error(err2.message);
+        if (isTransient(err2)) throw new Error(`${label || 'Network'} transient error (retried once): ${err2.name || 'Error'}: ${err2.message}`);
+        throw new Error(`${label || 'Network'} error: ${err2.message}`);
+      }
+    }
+    throw new Error(`${label || 'Network'} error: ${err.message}`);
+  }
+}
+
+async function fetchBars(ticker, apiKey, days, timeoutMs = 20000) {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - Math.ceil(days * 1.5) - 30);
+  const fromStr = from.toISOString().slice(0, 10);
+  const toStr = to.toISOString().slice(0, 10);
+  const url = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/range/1/day/${fromStr}/${toStr}?adjusted=true&sort=asc&limit=50000&apiKey=${encodeURIComponent(apiKey)}`;
+  const resp = await robustFetch(url, timeoutMs, `[${ticker}] bars`);
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    if (resp.status === 401 || resp.status === 403) throw new Error(`Auth failed (HTTP ${resp.status})`);
+    if (resp.status === 429) throw new Error(`Rate limited`);
+    throw new Error(`HTTP ${resp.status}: ${text.slice(0, 120)}`);
+  }
+  const data = await resp.json();
+  if (data.status === 'ERROR') throw new Error(data.error || 'Polygon error');
+  if (!data.results || data.results.length === 0) throw new Error('No bars returned');
+  const bars = data.results.map(r => ({
+    date: new Date(r.t).toISOString().slice(0, 10),
+    open: r.o, high: r.h, low: r.l, close: r.c, volume: r.v
+  }));
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return bars.filter(b => b.date < todayStr);
+}
+
+// ============================================================
+// Earnings: most recent SEC financials filing date per ticker
+// Uses /vX/reference/financials. Cached in localStorage with 7-day TTL.
+// ============================================================
+const EARNINGS_CACHE_KEY = 'vcp_earnings_cache_v1';
+const EARNINGS_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function readEarningsCache() {
+  try { const raw = localStorage.getItem(EARNINGS_CACHE_KEY); return raw ? JSON.parse(raw) : {}; }
+  catch { return {}; }
+}
+function writeEarningsCache(cache) {
+  try { localStorage.setItem(EARNINGS_CACHE_KEY, JSON.stringify(cache)); } catch {}
+}
+
+async function fetchLastEarningsDate(ticker, apiKey, timeoutMs = 15000) {
+  const cache = readEarningsCache();
+  const cached = cache[ticker];
+  if (cached && (Date.now() - cached.ts) < EARNINGS_CACHE_TTL_MS) {
+    return cached.filingDate;
+  }
+  const url = `https://api.polygon.io/vX/reference/financials?ticker=${encodeURIComponent(ticker)}&limit=1&order=desc&sort=filing_date&apiKey=${encodeURIComponent(apiKey)}`;
+  const resp = await robustFetch(url, timeoutMs, `[${ticker}] earnings`);
+  if (!resp.ok) {
+    if (resp.status === 401 || resp.status === 403) throw new Error(`Earnings auth denied (HTTP ${resp.status})`);
+    if (resp.status === 404) {
+      cache[ticker] = { filingDate: null, ts: Date.now() };
+      writeEarningsCache(cache);
+      return null;
+    }
+    if (resp.status === 429) throw new Error('Rate limited');
+    throw new Error(`Earnings HTTP ${resp.status}`);
+  }
+  const data = await resp.json();
+  let filingDate = null;
+  if (data.results && data.results.length > 0) filingDate = data.results[0].filing_date || null;
+  cache[ticker] = { filingDate, ts: Date.now() };
+  writeEarningsCache(cache);
+  return filingDate;
+}
+
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return Math.floor((new Date() - d) / 86400000);
+}
+
+async function fetchOptionsChain(ticker, apiKey, timeoutMs = 25000) {
+  const baseUrl = `https://api.polygon.io/v3/snapshot/options/${encodeURIComponent(ticker)}?limit=250&apiKey=${encodeURIComponent(apiKey)}`;
+  let url = baseUrl;
+  const all = [];
+  let pages = 0;
+  while (url && pages < 8) {
+    const resp = await robustFetch(url, timeoutMs, `[${ticker}] options`);
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      if (resp.status === 401 || resp.status === 403) throw new Error(`Options access denied`);
+      if (resp.status === 404) throw new Error('No options');
+      throw new Error(`Options HTTP ${resp.status}: ${text.slice(0, 100)}`);
+    }
+    const data = await resp.json();
+    if (data.results) all.push(...data.results);
+    if (data.next_url) {
+      const sep = data.next_url.includes('?') ? '&' : '?';
+      url = `${data.next_url}${sep}apiKey=${encodeURIComponent(apiKey)}`;
+    } else url = null;
+    pages++;
+  }
+  return all;
+}
+
+function selectOptionCandidates(chain, signalDirection, phase, lastClose, hv) {
+  if (!chain || chain.length === 0) return null;
+  // Firing breakouts: 14-28 DTE. Forming setups: 28-45 DTE.
+  let dteMin, dteMax;
+  if (phase === 'firing') { dteMin = 14; dteMax = 28; }
+  else { dteMin = 28; dteMax = 45; }
+
+  const targetType = signalDirection === 'bull' ? 'call' : 'put';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const typed = chain
+    .filter(c => c.details && c.details.contract_type === targetType)
+    .map(c => {
+      const exp = new Date(c.details.expiration_date);
+      const dte = Math.round((exp - today) / 86400000);
+      return { ...c, dte, expDate: c.details.expiration_date, strike: c.details.strike_price };
+    })
+    .filter(c => c.dte > 0);
+  if (typed.length === 0) return { error: `No ${targetType}s found` };
+
+  const expirations = [...new Set(typed.map(c => c.expDate))].sort();
+  function isMonthly(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00Z');
+    return d.getUTCDay() === 5 && d.getUTCDate() >= 15 && d.getUTCDate() <= 21;
+  }
+  let inWindow = expirations.map(e => {
+    const dte = typed.find(c => c.expDate === e).dte;
+    return { expDate: e, dte, isMonthly: isMonthly(e) };
+  }).filter(e => e.dte >= dteMin && e.dte <= dteMax);
+
+  let chosenExp = null;
+  let widened = false;
+  const midDTE = (dteMin + dteMax) / 2;
+  if (inWindow.length > 0) {
+    const monthlies = inWindow.filter(e => e.isMonthly);
+    if (monthlies.length > 0) {
+      monthlies.sort((a, b) => Math.abs(a.dte - midDTE) - Math.abs(b.dte - midDTE));
+      chosenExp = monthlies[0];
+    } else {
+      inWindow.sort((a, b) => Math.abs(a.dte - midDTE) - Math.abs(b.dte - midDTE));
+      chosenExp = inWindow[0];
+    }
+  } else {
+    widened = true;
+    const all = expirations.map(e => {
+      const dte = typed.find(c => c.expDate === e).dte;
+      return { expDate: e, dte, isMonthly: isMonthly(e) };
+    }).sort((a, b) => Math.abs(a.dte - midDTE) - Math.abs(b.dte - midDTE));
+    chosenExp = all[0];
+    if (!chosenExp) return { error: 'No usable expirations' };
+  }
+
+  const expContracts = typed.filter(c => c.expDate === chosenExp.expDate).sort((a, b) => a.strike - b.strike);
+  function absDelta(c) { return (c.greeks && typeof c.greeks.delta === 'number') ? Math.abs(c.greeks.delta) : null; }
+  function findByDelta(target) {
+    const wd = expContracts.filter(c => absDelta(c) !== null);
+    if (wd.length === 0) return null;
+    return wd.reduce((best, c) => Math.abs(absDelta(c) - target) < Math.abs(absDelta(best) - target) ? c : best, wd[0]);
+  }
+  function findByMoneyness(offset) {
+    const ts = lastClose * (1 + offset);
+    return expContracts.reduce((best, c) => Math.abs(c.strike - ts) < Math.abs(best.strike - ts) ? c : best, expContracts[0]);
+  }
+  let itm = findByDelta(0.65), atm = findByDelta(0.50), otm = findByDelta(0.35);
+  if (!itm || !atm || !otm) {
+    const itmOff = targetType === 'call' ? -0.03 : 0.03;
+    const otmOff = targetType === 'call' ? 0.03 : -0.03;
+    if (!itm) itm = findByMoneyness(itmOff);
+    if (!atm) atm = findByMoneyness(0);
+    if (!otm) otm = findByMoneyness(otmOff);
+  }
+
+  const uniq = [];
+  const seen = new Set();
+  for (const [tier, c] of [['ITM', itm], ['ATM', atm], ['OTM', otm]]) {
+    if (c && !seen.has(c.strike)) { seen.add(c.strike); uniq.push({ tier, contract: c }); }
+  }
+
+  const annotated = uniq.map(({ tier, contract }) => {
+    const oi = contract.open_interest ?? 0;
+    const vol = (contract.day && typeof contract.day.volume === 'number') ? contract.day.volume : 0;
+    const lq = contract.last_quote || {};
+    const bid = lq.bid ?? null, ask = lq.ask ?? null;
+    const mid = (bid !== null && ask !== null && ask > 0) ? (bid + ask) / 2 : ((contract.day && contract.day.close) || null);
+    let spreadPct = null;
+    if (bid !== null && ask !== null && mid && mid > 0) spreadPct = ((ask - bid) / mid) * 100;
+    const warns = [];
+    if (oi < 100) warns.push(`Low OI (${oi})`);
+    if (vol < 10) warns.push(`Low vol (${vol})`);
+    if (spreadPct !== null && spreadPct > 15) warns.push(`Wide spread (${spreadPct.toFixed(0)}%)`);
+    const iv = contract.implied_volatility ?? null;
+    const delta = absDelta(contract);
+    const ivHvRatio = (iv !== null && hv && hv > 0) ? iv / hv : null;
+    let ivLabel = null;
+    if (ivHvRatio !== null) {
+      if (ivHvRatio > 1.3) ivLabel = 'IV high vs HV';
+      else if (ivHvRatio < 0.9) ivLabel = 'IV low vs HV';
+      else ivLabel = 'IV ~ HV';
+    }
+    return { tier, ticker: contract.details.ticker, strike: contract.strike, expDate: contract.expDate, dte: contract.dte, bid, ask, mid, iv, delta, oi, vol, spreadPct, ivHvRatio, ivLabel, liquidityWarnings: warns };
+  });
+
+  return { contracts: annotated, chosenExp: chosenExp.expDate, chosenDTE: chosenExp.dte, isMonthly: chosenExp.isMonthly, widenedWindow: widened, targetType, hv };
+}
+
+// ============================================================
+// Market regime: SPY vs 50-day MA
+// ============================================================
+async function fetchMarketRegime(apiKey) {
+  try {
+    const bars = await fetchBars('SPY', apiKey, 100);
+    if (bars.length < 50) return { regime: 'unknown', note: 'Insufficient SPY data' };
+    const closes = bars.map(b => b.close);
+    const ma50 = sma(closes.slice(-50), 50);
+    const last = closes[closes.length - 1];
+    const aboveMA = last > ma50;
+    const ma50_10ago = sma(closes.slice(-60, -10), 50);
+    const slopeUp = ma50 > ma50_10ago;
+    let regime;
+    if (aboveMA && slopeUp) regime = 'bull';
+    else if (!aboveMA && !slopeUp) regime = 'bear';
+    else regime = 'neutral';
+    return { regime, spyClose: last, ma50, slopeUp };
+  } catch (err) {
+    return { regime: 'unknown', note: err.message };
+  }
+}
+
+// ============================================================
+// Scan orchestration
+// ============================================================
+async function runScan(tickers, apiKey, days, concurrency, onProgress) {
+  const results = [];
+  const errors = [];
+  let completed = 0;
+  const inFlight = new Set();
+  const queue = [...tickers];
+
+  async function worker() {
+    while (queue.length > 0) {
+      const ticker = queue.shift();
+      inFlight.add(ticker);
+      onProgress(completed, tickers.length, [...inFlight], errors.length);
+      try {
+        const bars = await fetchBars(ticker, apiKey, days);
+        if (bars.length < 250) {
+          errors.push({ ticker, error: `Only ${bars.length} bars` });
+        } else {
+          results.push({ ticker, bars });
+        }
+      } catch (err) {
+        errors.push({ ticker, error: err.message });
+      }
+      inFlight.delete(ticker);
+      completed++;
+      onProgress(completed, tickers.length, [...inFlight], errors.length);
+    }
+  }
+  const workers = [];
+  for (let i = 0; i < concurrency; i++) workers.push(worker());
+  await Promise.all(workers);
+  return { results, errors };
+}
+
+// Compute RS rank — percentile of 6-month performance across the result set
+function computeRSRanks(results) {
+  const perfs = results.map(r => ({ ticker: r.ticker, perf: performance6m(r.bars) })).filter(x => x.perf !== null);
+  perfs.sort((a, b) => a.perf - b.perf);
+  const rankMap = {};
+  perfs.forEach((p, i) => { rankMap[p.ticker] = Math.round((i + 1) / perfs.length * 100); });
+  return rankMap;
+}
+
+// Run trend template, VCP, phase, score for each direction
+function analyzeAll(results, direction, marketRegime, rsRanks, earningsMap, earningsConfig) {
+  const analyzed = [];
+  for (const r of results) {
+    const tt = checkTrendTemplate(r.bars, direction);
+    const vcp = tt.passed ? detectVCPBase(r.bars, direction) : { valid: false, reason: 'Trend template failed' };
+    const phaseInfo = vcp.valid ? determinePhase(r.bars, vcp, direction) : { phase: null };
+    const rs = rsRanks[r.ticker] || null;
+    const scoring = scoreVCP(r.bars, direction, tt, vcp, phaseInfo, marketRegime, rs);
+
+    // Layer earnings filter on top of scoring
+    const earnings = earningsMap[r.ticker] || null;
+    const earningsDays = earnings ? earnings.daysSince : null;
+    const earningsError = earnings ? earnings.error : null;
+    if (!scoring.disqualified && earningsConfig && earningsConfig.enabled) {
+      if (earningsDays === null && !earningsError && earningsConfig.excludeIfMissing) {
+        scoring.disqualified = true;
+        scoring.disqualifyReason = `Earnings: no filing data found`;
+      } else if (earningsDays !== null && earningsDays > earningsConfig.maxDays) {
+        scoring.disqualified = true;
+        scoring.disqualifyReason = `Earnings: last filed ${earningsDays}d ago (>${earningsConfig.maxDays}d threshold)`;
+      }
+      // earningsError tickers pass through — we don't penalize for transient API failures
+    }
+
+    analyzed.push({
+      ticker: r.ticker,
+      bars: r.bars.slice(-60),
+      direction,
+      trendTemplate: tt,
+      vcp,
+      phaseInfo,
+      scoring,
+      rsRank: rs,
+      lastClose: r.bars[r.bars.length - 1].close,
+      earningsDays,
+      earningsFilingDate: earnings ? earnings.filingDate : null,
+      earningsError
+    });
+  }
+  return analyzed;
+}
+
+// Fetch earnings dates concurrently for the supplied tickers
+async function fetchEarningsForTickers(tickers, apiKey, concurrency, onProgress) {
+  const map = {};
+  let completed = 0;
+  const queue = [...tickers];
+  async function worker() {
+    while (queue.length > 0) {
+      const ticker = queue.shift();
+      try {
+        const filingDate = await fetchLastEarningsDate(ticker, apiKey);
+        map[ticker] = { filingDate, daysSince: daysSince(filingDate), error: null };
+      } catch (err) {
+        console.warn(`[earnings ${ticker}]`, err.message);
+        map[ticker] = { filingDate: null, daysSince: null, error: err.message };
+      }
+      completed++;
+      onProgress(completed, tickers.length);
+    }
+  }
+  const workers = [];
+  for (let i = 0; i < Math.min(concurrency, tickers.length); i++) workers.push(worker());
+  await Promise.all(workers);
+  return map;
+}
+
+// ============================================================
+// UI
+// ============================================================
+const $ = (id) => document.getElementById(id);
+let currentDirection = 'bull';
+let allBullResults = [];
+let allBearResults = [];
+let marketRegime = 'unknown';
+
+window.addEventListener('DOMContentLoaded', () => {
+  const stored = localStorage.getItem('polygonKey');
+  if (stored) {
+    $('apiKey').value = stored;
+    $('rememberKey').checked = true;
+  }
+  $('tickers').value = UNIVERSE.join(', ');
+  updateTickerCount();
+});
+
+function parseTickers(text) {
+  return text.split(/[\s,]+/).map(t => t.trim().toUpperCase()).filter(t => t.length > 0 && t.length <= 10);
+}
+function updateTickerCount() {
+  $('tickerCount').textContent = parseTickers($('tickers').value).length;
+}
+$('tickers').addEventListener('input', updateTickerCount);
+$('resetTickers').addEventListener('click', () => { $('tickers').value = UNIVERSE.join(', '); $('tickers').style.display = ''; $('collapseTickers').textContent = 'Hide list'; updateTickerCount(); });
+$('collapseTickers').addEventListener('click', () => {
+  const ta = $('tickers');
+  if (ta.style.display === 'none') { ta.style.display = ''; $('collapseTickers').textContent = 'Hide list'; }
+  else { ta.style.display = 'none'; $('collapseTickers').textContent = 'Show list'; }
+});
+$('rememberKey').addEventListener('change', (e) => {
+  if (e.target.checked) localStorage.setItem('polygonKey', $('apiKey').value);
+  else localStorage.removeItem('polygonKey');
+});
+$('apiKey').addEventListener('input', (e) => { if ($('rememberKey').checked) localStorage.setItem('polygonKey', e.target.value); });
+
+document.querySelectorAll('#dirToggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#dirToggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentDirection = btn.dataset.dir;
+    updateSectionVisibility();
+  });
+});
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const tabId = tab.dataset.tab; // e.g. "bull-firing"
+    // Convert kebab-case to camelCase to match content element IDs (e.g. "bullFiring")
+    const camelId = tabId.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    const contentEl = document.getElementById(camelId + 'Content');
+    if (!contentEl) {
+      console.warn('Tab content not found for', tabId, '→', camelId + 'Content');
+      return;
+    }
+    // Find sibling tabs in the same section
+    const parent = tab.parentElement;
+    parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    // Hide all tab contents in this section, show selected
+    const sectionEl = parent.parentElement;
+    sectionEl.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    contentEl.style.display = '';
+  });
+});
+
+function updateSectionVisibility() {
+  $('bullSection').style.display = (currentDirection === 'bull' || currentDirection === 'both') ? '' : 'none';
+  $('bearSection').style.display = (currentDirection === 'bear' || currentDirection === 'both') ? '' : 'none';
+}
+
+$('scanBtn').addEventListener('click', () => doScan(false));
+$('dryRunBtn').addEventListener('click', () => doScan(true));
+$('testBtn').addEventListener('click', testConnection);
+$('clearEarningsCache').addEventListener('click', () => {
+  localStorage.removeItem(EARNINGS_CACHE_KEY);
+  alert('Earnings cache cleared. Next scan will re-fetch all earnings dates.');
+});
+
+async function testConnection() {
+  const apiKey = $('apiKey').value.trim();
+  if (!apiKey) { alert('Enter API key'); return; }
+  $('testBtn').disabled = true;
+  $('statusLine').textContent = 'Testing with single SPY fetch...';
+  $('progressWrap').style.display = 'block';
+  $('progressBar').style.width = '50%';
+  const t0 = Date.now();
+  try {
+    const bars = await fetchBars('SPY', apiKey, 30);
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+    const last = bars[bars.length - 1];
+    $('progressBar').style.width = '100%';
+    $('statusLine').innerHTML = `<span style="color: var(--buy);">✓ Connection works.</span> Fetched ${bars.length} SPY bars in ${elapsed}s. Latest: ${last.date} close ${last.close.toFixed(2)}.`;
+  } catch (err) {
+    $('progressBar').style.width = '0%';
+    $('statusLine').innerHTML = `<span style="color: var(--danger);">✗ Failed:</span> ${err.message}`;
+    console.error(err);
+  }
+  $('testBtn').disabled = false;
+}
+
+async function doScan(dryRun) {
+  const apiKey = $('apiKey').value.trim();
+  if (!apiKey) { alert('Enter API key'); return; }
+  let tickers = parseTickers($('tickers').value);
+  if (tickers.length === 0) { alert('No tickers'); return; }
+  if (dryRun) tickers = tickers.slice(0, 10);
+  const days = parseInt($('historyDays').value) || 300;
+  const concurrency = Math.max(1, Math.min(20, parseInt($('concurrency').value) || 10));
+
+  $('scanBtn').disabled = true; $('dryRunBtn').disabled = true;
+  $('progressWrap').style.display = 'block';
+  $('progressBar').style.width = '0%';
+
+  // Phase 0: market regime
+  $('statusLine').textContent = 'Determining market regime (SPY)...';
+  const regimeInfo = await fetchMarketRegime(apiKey);
+  marketRegime = regimeInfo.regime;
+  renderRegime(regimeInfo);
+
+  // Phase 1: equity bar fetch
+  const t0 = Date.now();
+  $('statusLine').textContent = `Fetching bars for ${tickers.length} tickers...`;
+  const { results, errors } = await runScan(tickers, apiKey, days, concurrency, (done, total, inFlight, errCount) => {
+    $('progressBar').style.width = (done / total * 100) + '%';
+    const inFlightStr = inFlight.length > 0 ? ` | in flight: ${inFlight.slice(0, 5).join(', ')}` : '';
+    $('statusLine').textContent = `${done}/${total} bars fetched, ${errCount} errors${inFlightStr}`;
+  });
+  const t1 = Date.now();
+
+  // Phase 2: RS rank + initial analysis (without earnings filter)
+  $('statusLine').textContent = 'Analyzing trend templates and VCP patterns...';
+  const rsRanks = computeRSRanks(results);
+
+  // Build the earnings config from UI
+  const earningsConfig = {
+    enabled: $('filterEarnings').checked,
+    maxDays: parseInt($('earningsMaxDays').value) || 45,
+    excludeIfMissing: true
+  };
+
+  // Phase 2.5: fetch earnings dates for tickers that pass at least one direction's trend template
+  // (skip earnings fetch for tickers that won't make it anyway — most of the universe)
+  let earningsMap = {};
+  if (earningsConfig.enabled && !dryRun) {
+    const candidatesForEarnings = new Set();
+    for (const r of results) {
+      const bull = checkTrendTemplate(r.bars, 'bull');
+      const bear = checkTrendTemplate(r.bars, 'bear');
+      if (bull.passed || bear.passed) candidatesForEarnings.add(r.ticker);
+    }
+    const earningsTickers = [...candidatesForEarnings];
+    if (earningsTickers.length > 0) {
+      $('statusLine').textContent = `Fetching earnings dates for ${earningsTickers.length} candidates...`;
+      $('progressBar').style.width = '0%';
+      earningsMap = await fetchEarningsForTickers(earningsTickers, apiKey, Math.min(concurrency, 10), (done, total) => {
+        $('progressBar').style.width = (done / total * 100) + '%';
+        $('statusLine').textContent = `Earnings: ${done}/${total}`;
+      });
+    }
+  }
+
+  allBullResults = analyzeAll(results, 'bull', marketRegime, rsRanks, earningsMap, earningsConfig);
+  allBearResults = analyzeAll(results, 'bear', marketRegime, rsRanks, earningsMap, earningsConfig);
+
+  renderResults(errors);
+
+  // Phase 3: options for top firing picks of currently-visible direction(s)
+  if (!dryRun && $('fetchOptions').checked) {
+    await fetchOptionsForTopPicks(apiKey);
+  }
+
+  const totalElapsed = ((Date.now() - t0) / 1000).toFixed(1);
+  $('statusLine').textContent = `Done in ${totalElapsed}s. ${results.length} processed, ${errors.length} errors.`;
+  $('scanBtn').disabled = false; $('dryRunBtn').disabled = false;
+}
+
+async function fetchOptionsForTopPicks(apiKey) {
+  // Gather top 10 firing picks for each direction we're showing
+  const targets = [];
+  if (currentDirection === 'bull' || currentDirection === 'both') {
+    targets.push(...getTopPicks(allBullResults, 'firing', 10));
+  }
+  if (currentDirection === 'bear' || currentDirection === 'both') {
+    targets.push(...getTopPicks(allBearResults, 'firing', 10));
+  }
+  if (targets.length === 0) return;
+
+  $('statusLine').textContent = `Fetching options for ${targets.length} top firing picks...`;
+  $('progressBar').style.width = '0%';
+  let done = 0;
+  const queue = [...targets];
+  async function optWorker() {
+    while (queue.length > 0) {
+      const pick = queue.shift();
+      try {
+        const hv = computeHistoricalVolatility(pick.bars, 20);
+        const chain = await fetchOptionsChain(pick.ticker, apiKey);
+        const sel = selectOptionCandidates(chain, pick.direction, pick.phaseInfo.phase, pick.lastClose, hv);
+        pick.options = sel === null ? { error: 'No options available' } : sel;
+        pick.optionsError = null;
+      } catch (err) {
+        console.error(`[opt ${pick.ticker}]`, err);
+        pick.options = null;
+        pick.optionsError = err.message;
+      }
+      done++;
+      $('progressBar').style.width = (done / targets.length * 100) + '%';
+      $('statusLine').textContent = `Options: ${done}/${targets.length}`;
+      renderResults([]); // re-render with updated options
+    }
+  }
+  const ws = [];
+  for (let i = 0; i < Math.min(5, targets.length); i++) ws.push(optWorker());
+  await Promise.all(ws);
+}
+
+function renderRegime(info) {
+  const banner = $('regimeBanner');
+  const text = $('regimeText');
+  banner.className = 'regime-banner regime-' + info.regime;
+  if (info.regime === 'bull') text.textContent = `Market regime: BULL — SPY ${info.spyClose?.toFixed(2)} > 50-day MA ${info.ma50?.toFixed(2)}, MA slope up`;
+  else if (info.regime === 'bear') text.textContent = `Market regime: BEAR — SPY ${info.spyClose?.toFixed(2)} < 50-day MA ${info.ma50?.toFixed(2)}, MA slope down`;
+  else if (info.regime === 'neutral') text.textContent = `Market regime: NEUTRAL — SPY ${info.spyClose?.toFixed(2)}, mixed signals`;
+  else text.textContent = `Market regime: unknown (${info.note || 'no data'})`;
+}
+
+function getTopPicks(analyzed, phase, n) {
+  return analyzed
+    .filter(a => !a.scoring.disqualified && a.phaseInfo.phase === phase)
+    .sort((a, b) => b.scoring.score - a.scoring.score)
+    .slice(0, n);
+}
+
+function renderResults(errors) {
+  $('resultsArea').style.display = 'block';
+  updateSectionVisibility();
+
+  // Summary stats
+  const totalAnalyzed = allBullResults.length;
+  const bullEligible = allBullResults.filter(a => !a.scoring.disqualified).length;
+  const bullFiring = allBullResults.filter(a => !a.scoring.disqualified && a.phaseInfo.phase === 'firing').length;
+  const bullForming = allBullResults.filter(a => !a.scoring.disqualified && a.phaseInfo.phase === 'forming').length;
+  const bearEligible = allBearResults.filter(a => !a.scoring.disqualified).length;
+  const bearFiring = allBearResults.filter(a => !a.scoring.disqualified && a.phaseInfo.phase === 'firing').length;
+  const bearForming = allBearResults.filter(a => !a.scoring.disqualified && a.phaseInfo.phase === 'forming').length;
+  // Count tickers excluded by earnings filter across both directions (dedupe)
+  const earningsExcludedTickers = new Set();
+  for (const a of [...allBullResults, ...allBearResults]) {
+    if (a.scoring.disqualified && a.scoring.disqualifyReason && a.scoring.disqualifyReason.startsWith('Earnings')) {
+      earningsExcludedTickers.add(a.ticker);
+    }
+  }
+  const earningsExcluded = earningsExcludedTickers.size;
+
+  $('summaryGrid').innerHTML = `
+    <div class="stat"><div class="stat-label">Scanned</div><div class="stat-value">${totalAnalyzed}</div></div>
+    <div class="stat"><div class="stat-label">Bull eligible</div><div class="stat-value">${bullEligible}</div></div>
+    <div class="stat"><div class="stat-label">Bull firing</div><div class="stat-value">${bullFiring}</div></div>
+    <div class="stat"><div class="stat-label">Bull forming</div><div class="stat-value">${bullForming}</div></div>
+    <div class="stat"><div class="stat-label">Bear eligible</div><div class="stat-value">${bearEligible}</div></div>
+    <div class="stat"><div class="stat-label">Bear firing</div><div class="stat-value">${bearFiring}</div></div>
+    <div class="stat"><div class="stat-label">Bear forming</div><div class="stat-value">${bearForming}</div></div>
+    <div class="stat"><div class="stat-label">Excluded (earnings)</div><div class="stat-value">${earningsExcluded}</div></div>
+  `;
+
+  // Tab counts
+  $('bullFiringCount').textContent = bullFiring;
+  $('bullFormingCount').textContent = bullForming;
+  $('bearFiringCount').textContent = bearFiring;
+  $('bearFormingCount').textContent = bearForming;
+
+  // Render each tab
+  $('bullFiringContent').innerHTML = renderPicksList(getTopPicks(allBullResults, 'firing', 10), 'bull');
+  $('bullFormingContent').innerHTML = renderPicksList(getTopPicks(allBullResults, 'forming', 10), 'bull');
+  $('bearFiringContent').innerHTML = renderPicksList(getTopPicks(allBearResults, 'firing', 10), 'bear');
+  $('bearFormingContent').innerHTML = renderPicksList(getTopPicks(allBearResults, 'forming', 10), 'bear');
+
+  // Errors
+  if (errors && errors.length > 0) {
+    $('errorsCard').style.display = 'block';
+    $('errorsList').innerHTML = errors.map(e => `<div><strong>${e.ticker}</strong>: ${e.error}</div>`).join('');
+  }
+}
+
+function renderPicksList(picks, direction) {
+  if (picks.length === 0) return '<div class="empty">No qualifying picks in this category.</div>';
+  return picks.map((p, i) => renderPickCard(p, i + 1, direction)).join('');
+}
+
+function renderPickCard(p, rank, direction) {
+  const sc = p.scoring;
+  const vcp = p.vcp;
+  const ph = p.phaseInfo;
+  const dirBadge = direction === 'bull'
+    ? '<span class="badge badge-buy">Bull</span>'
+    : '<span class="badge badge-sell">Bear</span>';
+  const phaseBadge = ph.phase === 'firing'
+    ? '<span class="badge badge-firing">Firing</span>'
+    : '<span class="badge badge-forming">Forming</span>';
+  const todayPill = (ph.phase === 'firing' && ph.firedToday) ? '<span class="pill pill-yes">today</span>' : '';
+  const stars = '★'.repeat(sc.stars) + '<span class="empty-star">' + '★'.repeat(5 - sc.stars) + '</span>';
+  const reasonsHtml = sc.reasons.map(r =>
+    `<span class="reason ${r.points > 0 ? 'pos' : 'neg'}">${r.label} ${r.points > 0 ? '+' : ''}${r.points}</span>`
+  ).join('');
+  const liq = `$${(sc.avgDollarVol / 1e6).toFixed(1)}M`;
+  const pivotInfo = `Pivot $${vcp.pivot.toFixed(2)}`;
+  const rsInfo = p.rsRank !== null ? ` · RS ${p.rsRank}` : '';
+  const distInfo = ph.phase === 'forming' ? ` · ${ph.distanceToPivotPct.toFixed(1)}% from pivot` : '';
+
+  // Earnings recency
+  let earningsTag = '';
+  if (p.earningsDays !== null && p.earningsDays !== undefined) {
+    const color = p.earningsDays <= 20 ? 'var(--buy)' : p.earningsDays <= 40 ? 'var(--text-3)' : 'var(--warn)';
+    earningsTag = ` <span style="color: ${color}; font-size: 11px;">· last earnings ${p.earningsDays}d ago</span>`;
+  } else if (p.earningsError) {
+    earningsTag = ` <span style="color: var(--text-3); font-size: 11px;" title="${p.earningsError}">· earnings n/a</span>`;
+  }
+
+  const optionsHtml = renderOptions(p, direction);
+
+  return `
+    <div class="pick-card-wrapper">
+      <div class="pick-card">
+        <div class="pick-rank">${rank}</div>
+        <div class="pick-main">
+          <div class="pick-header">
+            <span class="pick-ticker">${p.ticker}</span>
+            <span class="pick-price">$${p.lastClose.toFixed(2)}</span>
+            ${dirBadge} ${phaseBadge} ${todayPill}
+            <span style="color: var(--text-3); font-size: 11px;">${pivotInfo}${distInfo}${rsInfo} · ${liq}</span>
+            ${earningsTag}
+          </div>
+          <div class="pick-reasons">${reasonsHtml}</div>
+        </div>
+        <div class="pick-score">
+          <div class="pick-stars">${stars}</div>
+          <div class="pick-score-num">${sc.score}</div>
+          <div class="pick-score-label">score</div>
+        </div>
+      </div>
+      ${optionsHtml}
+    </div>
+  `;
+}
+
+function renderOptions(pick, direction) {
+  if (pick.optionsError) return `<div class="options-section options-error">Options: <span style="color: var(--danger);">${pick.optionsError}</span></div>`;
+  if (!pick.options) return '';
+  const opt = pick.options;
+  if (opt.error) return `<div class="options-section options-error">Options: ${opt.error}</div>`;
+  if (!opt.contracts || opt.contracts.length === 0) return `<div class="options-section options-error">No suitable contracts found.</div>`;
+
+  const targetType = opt.targetType.toUpperCase();
+  const monthlyTag = opt.isMonthly ? '<span class="opt-tag">monthly</span>' : '<span class="opt-tag opt-tag-warn">weekly</span>';
+  const widenedTag = opt.widenedWindow ? '<span class="opt-tag opt-tag-warn">outside ideal DTE</span>' : '';
+  const hvLabel = opt.hv ? `HV20: ${(opt.hv * 100).toFixed(0)}%` : '';
+
+  const rows = opt.contracts.map(c => {
+    const tierBadge = `<span class="opt-tier opt-tier-${c.tier.toLowerCase()}">${c.tier}</span>`;
+    const bidAsk = (c.bid !== null && c.ask !== null) ? `${c.bid.toFixed(2)}/${c.ask.toFixed(2)}` : '—';
+    const mid = c.mid !== null ? `$${c.mid.toFixed(2)}` : '—';
+    const ivStr = c.iv !== null ? `${(c.iv * 100).toFixed(0)}%` : '—';
+    const deltaStr = c.delta !== null ? c.delta.toFixed(2) : '—';
+    const ivLabel = c.ivLabel ? `<span class="opt-iv-tag opt-iv-${c.ivLabel.includes('high') ? 'high' : c.ivLabel.includes('low') ? 'low' : 'normal'}">${c.ivLabel}</span>` : '';
+    const warns = c.liquidityWarnings.length > 0 ? `<span class="opt-warning" title="${c.liquidityWarnings.join('; ')}">⚠</span>` : '';
+    return `<tr class="${c.liquidityWarnings.length > 0 ? 'opt-row-warn' : ''}">
+      <td>${tierBadge}</td><td class="num">$${c.strike}</td><td class="num">${mid}</td>
+      <td class="num" style="color: var(--text-3); font-size: 11px;">${bidAsk}</td>
+      <td class="num">${deltaStr}</td><td class="num">${ivStr} ${ivLabel}</td>
+      <td class="num">${c.oi.toLocaleString()}</td><td class="num">${c.vol.toLocaleString()}</td>
+      <td class="num">${c.spreadPct !== null ? c.spreadPct.toFixed(0) + '%' : '—'}</td><td>${warns}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="options-section">
+    <div class="options-header">
+      <span class="options-title">${targetType} · exp ${opt.chosenExp} (${opt.chosenDTE} DTE)</span>
+      ${monthlyTag} ${widenedTag}
+      <span style="color: var(--text-3); font-size: 11px; margin-left: auto;">${hvLabel}</span>
+    </div>
+    <table class="opt-table">
+      <thead><tr><th>Tier</th><th>Strike</th><th>Mid</th><th>Bid/Ask</th><th>Δ</th><th>IV</th><th>OI</th><th>Vol</th><th>Spread</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+</script>
+</body>
+</html>
