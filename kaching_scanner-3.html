@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KaChing Weekly Scanner</title>
+<style>
+  /* ---- Design tokens ----
+     Subject: a weekly-options income screener for a working retail trader.
+     Direction: an "instrument panel" — slate field, amber/teal signal lights,
+     a single warm accent for the action. Monospace for all numbers so columns
+     align and read like a terminal; a tight grotesque for labels. The signature
+     is the per-row spread economics readout with a pass/fail return light. */
+  :root{
+    --bg:#0e1419;
+    --panel:#151d25;
+    --panel-2:#1b2530;
+    --line:#27333f;
+    --ink:#e6edf3;
+    --ink-dim:#8da0b0;
+    --ink-faint:#5d6f7e;
+    --amber:#e7b75f;      /* caution / earnings-unknown */
+    --teal:#4fd1c5;       /* pass / signal good */
+    --red:#e0696b;        /* fail */
+    --accent:#f0814f;     /* action */
+    --mono:"SFMono-Regular",ui-monospace,"Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+    --sans:"Inter","Helvetica Neue",Arial,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.45}
+  a{color:var(--accent)}
+  .wrap{max-width:1280px;margin:0 auto;padding:24px 20px 80px}
+
+  /* Header */
+  header{display:flex;flex-wrap:wrap;align-items:baseline;gap:14px;
+    border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:20px}
+  .logo{font-family:var(--mono);font-weight:600;font-size:18px;letter-spacing:.02em}
+  .logo .k{color:var(--accent)}
+  .tag{color:var(--ink-faint);font-size:12px;font-family:var(--mono)}
+  .spacer{flex:1}
+  .clock{font-family:var(--mono);font-size:12px;color:var(--ink-dim)}
+
+  /* Config panel */
+  .config{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:16px 18px;margin-bottom:18px}
+  .config h2{margin:0 0 12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-size:11px;color:var(--ink-dim);font-family:var(--mono)}
+  .field input,.field select{background:var(--panel-2);border:1px solid var(--line);
+    color:var(--ink);border-radius:5px;padding:8px 10px;font-family:var(--mono);font-size:13px}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+  .field .hint{font-size:10px;color:var(--ink-faint)}
+  .api-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+  .api-row .field{flex:1;min-width:260px}
+
+  .actions{display:flex;gap:12px;align-items:center;margin-top:16px;flex-wrap:wrap}
+  button.run{background:var(--accent);color:#160d07;border:none;border-radius:6px;
+    padding:11px 22px;font-weight:600;font-size:14px;cursor:pointer;font-family:var(--sans)}
+  button.run:hover{filter:brightness(1.08)}
+  button.run:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:transparent;color:var(--ink-dim);border:1px solid var(--line);
+    border-radius:6px;padding:10px 16px;cursor:pointer;font-size:13px}
+  button.ghost:hover{color:var(--ink);border-color:var(--ink-dim)}
+  .universe-note{font-size:11px;color:var(--ink-faint);font-family:var(--mono)}
+
+  /* Earnings degraded banner */
+  .earn-banner{display:flex;gap:10px;align-items:flex-start;background:rgba(231,183,95,.08);
+    border:1px solid rgba(231,183,95,.3);border-radius:6px;padding:10px 14px;margin-top:14px;
+    font-size:12px;color:var(--amber);line-height:1.5}
+  .earn-banner strong{color:var(--ink)}
+  .earn-banner .dot{flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:var(--amber);margin-top:5px}
+
+  /* Progress */
+  .progress{margin:18px 0;display:none}
+  .progress.on{display:block}
+  .bar{height:4px;background:var(--panel-2);border-radius:3px;overflow:hidden}
+  .bar > i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  .progress .lbl{font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-top:6px}
+
+  /* Results */
+  .summary{display:flex;gap:24px;flex-wrap:wrap;margin:6px 0 14px;font-family:var(--mono);
+    font-size:12px;color:var(--ink-dim)}
+  .summary b{color:var(--ink);font-size:15px;display:block}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
+  thead th{text-align:right;padding:9px 10px;color:var(--ink-faint);font-weight:600;
+    font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:var(--bg);cursor:pointer;white-space:nowrap}
+  thead th:first-child,tbody td:first-child{text-align:left}
+  thead th.sorted{color:var(--accent)}
+  tbody td{padding:10px;text-align:right;border-bottom:1px solid var(--panel-2)}
+  tbody tr:hover{background:var(--panel)}
+  .tkr{font-weight:600;color:var(--ink);font-size:13px}
+  .sub{color:var(--ink-faint);font-size:10.5px}
+  .light{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+  .pass{color:var(--teal)} .pass .light{background:var(--teal)}
+  .warn{color:var(--amber)} .warn .light{background:var(--amber)}
+  .fail{color:var(--red)} .fail .light{background:var(--red)}
+  .ret-cell b{font-size:13px}
+  .empty,.err{padding:40px 20px;text-align:center;color:var(--ink-dim);font-family:var(--mono);font-size:13px}
+  .err{color:var(--red)}
+  /* diagnostic funnel */
+  .funnel{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:14px 18px;margin:8px 0 18px}
+  .funnel h2{margin:0 0 12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-faint);font-weight:600}
+  .funnel-rows{display:flex;flex-direction:column;gap:7px}
+  .frow{display:grid;grid-template-columns:200px 1fr 36px;align-items:center;gap:12px;
+    font-family:var(--mono);font-size:12px;color:var(--ink-dim)}
+  .frow .fbar{height:10px;background:var(--panel-2);border-radius:3px;overflow:hidden}
+  .frow .fbar > i{display:block;height:100%;background:var(--ink-faint);border-radius:3px}
+  .frow.fgood .fbar > i{background:var(--teal)}
+  .frow.fgood{color:var(--teal)}
+  .frow .fn{text-align:right;color:var(--ink)}
+  @media (max-width:680px){ .frow{grid-template-columns:130px 1fr 30px} }
+
+  /* score control panel */
+  .score-ctl{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:14px 18px;margin-bottom:14px}
+  .sc-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+  .sc-head h2{margin:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+  .sc-opts{display:flex;gap:14px}
+  .sc-cap{font-family:var(--mono);font-size:11px;color:var(--ink-dim);display:flex;gap:6px;align-items:center}
+  .sc-cap select{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:4px;padding:3px 6px;font-family:var(--mono);font-size:11px}
+  .sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 18px}
+  .slider label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-bottom:4px}
+  .slider label span{color:var(--accent)}
+  .slider input[type=range]{width:100%;accent-color:var(--accent)}
+  .sc-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint)}
+  .sc-legend span{display:flex;align-items:center;gap:5px}
+  .sc-legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+  /* sub-score color key (shared by legend + score bar) */
+  .sc-calm{background:var(--teal)} .sc-trend{background:var(--accent)}
+  .sc-liq{background:#6fa8dc} .sc-ret{background:var(--amber)} .sc-eff{background:#b08fd8}
+
+  /* score cell */
+  .score-cell{text-align:left;min-width:78px}
+  .score-num{font-family:var(--mono);font-weight:600;font-size:15px;line-height:1}
+  .score-num.pass{color:var(--teal)} .score-num.warn{color:var(--amber)} .score-num.fail{color:var(--red)}
+  .score-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:4px;background:var(--panel-2);min-width:64px}
+  .score-bar i{display:block;min-width:0}
+  .flags{font-size:10px;color:var(--ink-faint);text-align:left}
+  .flags span{display:inline-block;margin-right:6px}
+
+  footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:11px;color:var(--ink-faint);line-height:1.6}
+  @media (max-width:680px){
+    .hide-sm{display:none}
+    .wrap{padding:16px 12px 60px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="logo"><span class="k">Ka</span>Ching Scanner</span>
+    <span class="tag">weekly diagonal put income · S&amp;P 500 + ETFs</span>
+    <span class="spacer"></span>
+    <span class="clock" id="clock"></span>
+  </header>
+
+  <div class="config">
+    <div class="api-row">
+      <div class="field">
+        <label>Polygon / Massive API key</label>
+        <input id="apiKey" type="password" placeholder="paste your key — stays in this tab only" autocomplete="off">
+        <span class="hint">Held in memory only; never stored or sent anywhere but api.polygon.io</span>
+      </div>
+      <div class="field" style="flex:0 0 160px">
+        <label>Universe</label>
+        <select id="universe">
+          <option value="sp500">S&amp;P 500 core</option>
+          <option value="etf">Liquid ETFs</option>
+          <option value="both" selected>Both</option>
+          <option value="custom">Custom list…</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field" id="customWrap" style="display:none;margin-bottom:14px">
+      <label>Custom tickers (comma or space separated)</label>
+      <input id="customList" placeholder="SCHW NTR DASH GLD UNG …">
+    </div>
+
+    <h2>Lawrence criteria</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Price floor ($)</label>
+        <input id="priceMin" type="number" value="20" step="1">
+        <span class="hint">Below this, premiums get no love</span>
+      </div>
+      <div class="field">
+        <label>Price ceiling ($)</label>
+        <input id="priceMax" type="number" value="400" step="1">
+        <span class="hint">Above this, names move too violently</span>
+      </div>
+      <div class="field">
+        <label>Trend filter</label>
+        <select id="trendMode">
+          <option value="rising50" selected>Price &gt; rising 50-day SMA</option>
+          <option value="above50">Price &gt; 50-day SMA (any slope)</option>
+          <option value="off">Off</option>
+        </select>
+        <span class="hint">"up or sideways"</span>
+      </div>
+      <div class="field">
+        <label>Anti-bottle-rocket</label>
+        <select id="rocketMode">
+          <option value="on" selected>Reject recent gap / ATR spike</option>
+          <option value="off">Off</option>
+        </select>
+        <span class="hint">Spikes blow out the long-put spread</span>
+      </div>
+      <div class="field">
+        <label>Max 1-day move (%)</label>
+        <input id="maxGap" type="number" value="7" step="0.5">
+        <span class="hint">Reject if any of last 10 days exceeds</span>
+      </div>
+      <div class="field">
+        <label>Min weekly return on risk (%)</label>
+        <input id="hurdle" type="number" value="0.5" step="0.05">
+        <span class="hint">Lawrence's ½–1% / week hurdle</span>
+      </div>
+      <div class="field">
+        <label>Short put target</label>
+        <select id="shortTarget">
+          <option value="atm" selected>At-the-money (~50Δ)</option>
+          <option value="otm1">1 strike OTM</option>
+          <option value="otm2">2 strikes OTM</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Long put delta (insurance)</label>
+        <select id="longDelta">
+          <option value="0.25" selected>~25Δ (baseline)</option>
+          <option value="0.35">~35Δ (risk-on)</option>
+          <option value="0.40">~40Δ (risk-on+)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Long put DTE target</label>
+        <input id="longDte" type="number" value="105" step="5">
+        <span class="hint">Lawrence: 90–120 days</span>
+      </div>
+      <div class="field">
+        <label>Min option open interest</label>
+        <input id="minOi" type="number" value="100" step="50">
+        <span class="hint">Liquidity gate on the chain</span>
+      </div>
+    </div>
+
+    <div class="earn-banner">
+      <span class="dot"></span>
+      <div>
+        <strong>Earnings filter running in degraded mode.</strong>
+        Your plan does not include the Benzinga earnings calendar, so the scanner cannot
+        confirm next-report dates. Each result shows <em>earnings: unknown</em> rather than a
+        guessed date. Selling weeklies into an earnings gap is this strategy's main failure mode —
+        check the report date manually before entering any flagged name. You can paste known
+        earnings dates below to suppress specific tickers.
+        <div class="field" style="margin-top:10px;max-width:520px">
+          <label style="color:var(--amber)">Manual earnings blackout (TICKER:YYYY-MM-DD, comma separated)</label>
+          <input id="earnOverride" placeholder="e.g. SCHW:2026-07-18, DASH:2026-08-06">
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="run" id="runBtn">Run scan</button>
+      <button class="ghost" id="demoBtn">Load demo data</button>
+      <span class="universe-note" id="uniNote"></span>
+    </div>
+  </div>
+
+  <div class="progress" id="progress">
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="lbl" id="progLbl">Initializing…</div>
+  </div>
+
+  <div class="score-ctl" id="scoreCtl" style="display:none">
+    <div class="sc-head">
+      <h2>Composite ranking</h2>
+      <div class="sc-opts">
+        <label class="sc-cap">Show top
+          <select id="topN">
+            <option value="0">all</option>
+            <option value="10">10</option>
+            <option value="15" selected>15</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+        </label>
+        <label class="sc-cap">Max per sector
+          <select id="sectorCap">
+            <option value="0">no cap</option>
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="sliders" id="sliders"></div>
+    <div class="sc-legend">
+      <span><i class="sc-calm"></i> calmness</span>
+      <span><i class="sc-trend"></i> trend</span>
+      <span><i class="sc-liq"></i> liquidity</span>
+      <span><i class="sc-ret"></i> return adequacy</span>
+      <span><i class="sc-eff"></i> spread efficiency</span>
+    </div>
+  </div>
+  <div id="results"></div>
+
+  <footer>
+    Educational tool, not financial advice. The "KaChing" diagonal put strategy is summarized from
+    T.R. Lawrence, <em>Options Trading: How to Turn Every Friday into Payday</em> (2023). Spread
+    economics are estimates from delayed/aggregated chain data and ignore commissions, assignment
+    risk, slippage, and gap risk through the long-put strike. Verify every setup in your broker
+    before trading. Data: Polygon.io / Massive.
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const BASE = "https://api.polygon.io";
+
+// ---- small curated universes (extend freely) ----
+const ETFS = ["SPY","QQQ","IWM","DIA","MDY","RSP","GLD","SLV","GDX","GDXJ","SLX",
+  "XLE","XLF","XLK","XLV","XLI","XLP","XLU","XLY","XLB","XLRE","XLC",
+  "XBI","IBB","SMH","SOXX","XOP","OIH","XME","XRT","XHB","ITB","KRE","KBE",
+  "ARKK","ARKG","TLT","IEF","HYG","LQD","AGG","UNG","USO","DBA","CORN","WEAT",
+  "EEM","EFA","FXI","EWZ","EWJ","EWG","EWW","INDA","VEA","VWO","VNQ","IYR",
+  "JETS","TAN","ICLN","LIT","COPX","URA","FCG","MOO","WOOD"];
+// Broad liquid optionable S&P / large-cap set — Lawrence's "brand name" style.
+const SP500 = [
+  "MSFT","NVDA","AMZN","GOOGL","GOOG","META","AVGO","TSLA","BRK.B","LLY","JPM","V","MA","UNH","XOM",
+  "JNJ","PG","HD","CVX","ABBV","KO","PEP","COST","MRK","ADBE","CRM","NFLX","AMD","TMO","WMT","BAC",
+  "DIS","ABT","WFC","SCHW","INTC","QCOM","TXN","CAT","GE","BA","UNP","HON","LOW","SBUX","GS","MS",
+  "BLK","NKE","DE","MMM","NTR","DASH","UBER","PYPL","SHOP","SNOW","CRWD","PLTR","COIN","HOOD","DKNG",
+  "IBM","ORCL","CSCO","ACN","NOW","INTU","AMAT","LRCX","MU","ADI","KLAC","PANW","FTNT","ANET","DELL",
+  "WDAY","TEAM","DDOG","NET","ZS","MDB","ABNB","SPOT","PINS","SNAP","ROKU","RBLX","U","TWLO","DOCU",
+  "F","GM","RIVN","LCID","TGT","COF","AXP","C","USB","PNC","TFC","SPGI","MCO","ICE","CME","CB","PGR",
+  "MMC","AON","MET","PRU","AIG","ALL","TRV","BK","STT","DFS","SYF","KEY","FITB","HBAN","RF","CFG",
+  "PFE","BMY","AMGN","GILD","BIIB","VRTX","REGN","MRNA","CVS","CI","HUM","CNC","ELV","ZTS","ISRG",
+  "MDT","SYK","BDX","BSX","EW","DXCM","HCA","MCK","CAH","COR","DHR","A","IQV","RMD","WST","IDXX",
+  "PM","MO","MDLZ","CL","KMB","GIS","K","HSY","STZ","KHC","KDP","MNST","KR","SYY","ADM","TSN","HRL",
+  "MCD","CMG","YUM","DRI","MAR","HLT","BKNG","RCL","CCL","NCLH","LVS","WYNN","MGM","ULTA","ROST","TJX",
+  "ORLY","AZO","BBY","DG","DLTR","LULU","RL","DECK","WSM","TPR","NWL",
+  "GD","LMT","NOC","RTX","TDG","LHX","HWM","TXT","EMR","ETN","ITW","PH","ROK","DOV","CMI","PCAR","CSX",
+  "NSC","FDX","UPS","ODFL","CHRW","JBHT","WM","RSG","URI","FAST","GWW","SWK","PWR","AME","ROP","FTV",
+  "COP","SLB","EOG","MPC","PSX","VLO","OXY","HES","DVN","FANG","HAL","BKR","WMB","KMI","OKE","LNG","TRGP",
+  "FCX","NEM","NUE","STLD","DOW","DD","LIN","APD","SHW","ECL","PPG","ALB","CF","MOS","CTVA","VMC","MLM",
+  "NEE","DUK","SO","D","AEP","EXC","SRE","XEL","ED","PEG","WEC","ES","AWK","PCG","EIX","DTE","FE","PPL",
+  "AMT","PLD","CCI","EQIX","PSA","O","SPG","WELL","DLR","VICI","AVB","EQR","SBAC","WY","ARE","INVH",
+  "T","VZ","TMUS","CMCSA","CHTR","WBD","PARA","FOXA","OMC","IPG","EA","TTWO","LYV","MTCH"];
+// Names Lawrence explicitly avoids + Chinese ADRs.
+const BLOCK = new Set(["AAPL","BABA","JD","PDD","BIDU","NIO","LI","XPEV","TCOM","BILI","TME","NTES","BEKE","YUMC","ZTO"]);
+
+let lastRows = [], sortKey = "score", sortDir = -1;
+
+function tickClock(){
+  const d = new Date();
+  $("clock").textContent = d.toUTCString().replace("GMT","UTC");
+}
+setInterval(tickClock, 1000); tickClock();
+
+$("universe").addEventListener("change", e=>{
+  $("customWrap").style.display = e.target.value==="custom" ? "flex":"none";
+  updateUniNote();
+});
+function buildUniverse(){
+  const u = $("universe").value;
+  if(u==="custom"){
+    return ($("customList").value||"").toUpperCase().split(/[\s,]+/).filter(Boolean);
+  }
+  let list = [];
+  if(u==="sp500"||u==="both") list = list.concat(SP500);
+  if(u==="etf"||u==="both") list = list.concat(ETFS);
+  return [...new Set(list)].filter(t=>!BLOCK.has(t));
+}
+function updateUniNote(){
+  const n = buildUniverse().length;
+  $("uniNote").textContent = n ? `${n} tickers queued` : "";
+}
+updateUniNote();
+$("customList").addEventListener("input", updateUniNote);
+
+// ---- helpers ----
+const sma = (arr,n)=> arr.length<n ? null : arr.slice(-n).reduce((a,b)=>a+b,0)/n;
+async function jget(url){
+  const r = await fetch(url);
+  if(r.status===401||r.status===403) throw new Error("AUTH");
+  if(r.status===429) throw new Error("RATE");
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+function parseOverrides(){
+  const map = {};
+  ($("earnOverride").value||"").split(",").forEach(p=>{
+    const [t,d] = p.split(":").map(s=>(s||"").trim());
+    if(t&&d) map[t.toUpperCase()] = d;
+  });
+  return map;
+}
+
+// ---- per-ticker evaluation ----
+async function evalTicker(tkr, cfg, key){
+  const out = {tkr, status:"fail", flags:[], earnings:"unknown"};
+  // 1) daily bars (last ~80 sessions) for price + trend + rocket
+  const end = new Date(), start = new Date(Date.now()-150*864e5);
+  const fmt = d=>d.toISOString().slice(0,10);
+  const aggUrl = `${BASE}/v2/aggs/ticker/${tkr}/range/1/day/${fmt(start)}/${fmt(end)}?adjusted=true&sort=asc&limit=200&apiKey=${key}`;
+  const agg = await jget(aggUrl);
+  if(!agg.results || agg.results.length<55){ out.note="insufficient history"; return out; }
+  const closes = agg.results.map(b=>b.c);
+  const price = closes[closes.length-1];
+  out.price = price;
+
+  // hard price gate
+  if(price < cfg.priceMin || price > cfg.priceMax){ out.note="price out of band"; return out; }
+
+  // --- raw metrics for the composite score (computed regardless of gate toggles) ---
+  const s50now = sma(closes,50), s50prev = sma(closes.slice(0,-5),50);
+  // trend distance: % above the 50-day; slope: 5-day change in the average
+  out.m_trendDist = s50now ? (price/s50now - 1)*100 : 0;
+  out.m_trendSlope = (s50now && s50prev) ? (s50now/s50prev - 1)*100 : 0;
+  // realized vol: stdev of last 20 daily log returns, annualized-ish (kept as daily %)
+  const rets20 = [];
+  for(let i=closes.length-20;i<closes.length;i++){ if(i>0) rets20.push(Math.log(closes[i]/closes[i-1])); }
+  const mean = rets20.reduce((a,b)=>a+b,0)/rets20.length;
+  const variance = rets20.reduce((a,b)=>a+(b-mean)**2,0)/rets20.length;
+  out.m_rvol = Math.sqrt(variance)*100;           // daily realized vol %
+  // average abs daily move over last 10 (calmness corroborator)
+  const r10 = closes.slice(-11);
+  let sumMove=0,maxMove=0;
+  for(let i=1;i<r10.length;i++){ const mv=Math.abs(r10[i]/r10[i-1]-1)*100; sumMove+=mv; if(mv>maxMove)maxMove=mv; }
+  out.m_avgMove = sumMove/(r10.length-1);
+  out.maxMove = maxMove;
+
+  // trend gate
+  if(cfg.trendMode!=="off"){
+    if(s50now==null){ out.note="no SMA"; return out; }
+    if(price < s50now){ out.note="below 50d"; return out; }
+    if(cfg.trendMode==="rising50" && s50prev!=null && s50now < s50prev){ out.note="50d falling"; return out; }
+    out.flags.push("trend✓");
+  }
+
+  // anti-bottle-rocket: any of last 10 daily moves over maxGap%
+  if(cfg.rocketMode==="on"){
+    if(maxMove > cfg.maxGap){ out.note=`gap ${maxMove.toFixed(1)}%`; return out; }
+    out.flags.push("calm✓");
+  }
+
+  // 2) options chain — find long put (target delta, ~longDte) and short weekly put.
+  // Bound expirations server-side to the window we care about (weekly → ~longDte+buffer)
+  // and limit strikes to a band around price, trimming far OTM/ITM noise and the 250-row cap.
+  const today = new Date();
+  const dte = ds => Math.round((new Date(ds)-today)/864e5);
+  const expHi = new Date(Date.now()+(cfg.longDte+45)*864e5).toISOString().slice(0,10);
+  const sLo = (price*0.80).toFixed(0), sHi = (price*1.05).toFixed(0);
+  const chainUrl = `${BASE}/v3/snapshot/options/${tkr}?contract_type=put`+
+    `&expiration_date.lte=${expHi}&strike_price.gte=${sLo}&strike_price.lte=${sHi}`+
+    `&limit=250&sort=expiration_date&apiKey=${key}`;
+  let chain;
+  try{ chain = await jget(chainUrl); }
+  catch(e){ if(e.message==="AUTH"){ out.note="no options entitlement"; return out;} throw e; }
+  const puts = (chain.results||[]).filter(o=>o.details && o.details.expiration_date);
+  if(!puts.length){ out.note="no put chain"; return out; }
+
+  // short weekly: nearest expiry 5–10 dte, strike per target
+  const weeklies = puts.filter(o=>{const d=dte(o.details.expiration_date); return d>=2 && d<=10;});
+  const shortExp = weeklies.length ? weeklies.reduce((a,b)=> dte(a.details.expiration_date)<=dte(b.details.expiration_date)?a:b).details.expiration_date : null;
+  if(!shortExp){ out.note="no weekly expiry"; return out; }
+  const shortRow = pickShort(puts.filter(o=>o.details.expiration_date===shortExp), price, cfg.shortTarget, cfg.minOi);
+  if(!shortRow){ out.note="weekly illiquid"; return out; }
+
+  // long put: expiry closest to longDte, strike at target delta
+  const longCand = puts.filter(o=>{const d=dte(o.details.expiration_date); return d>=70 && d<=140;});
+  if(!longCand.length){ out.note="no LEAP-ish put"; return out; }
+  const longExp = longCand.reduce((a,b)=> Math.abs(dte(a.details.expiration_date)-cfg.longDte)<=Math.abs(dte(b.details.expiration_date)-cfg.longDte)?a:b).details.expiration_date;
+  const longRow = pickByDelta(puts.filter(o=>o.details.expiration_date===longExp), cfg.longDelta, cfg.minOi);
+  if(!longRow){ out.note="no long-put match"; return out; }
+
+  // economics
+  const shortStrike = shortRow.details.strike_price;
+  const longStrike = longRow.details.strike_price;
+  const shortPrem = mid(shortRow);
+  const longPrem = mid(longRow);
+  if(shortPrem==null||longPrem==null){ out.note="no quotes"; return out; }
+  const width = shortStrike - longStrike;
+  if(width<=0){ out.note="inverted spread"; return out; }
+  const netCredit = shortPrem;                       // weekly credit collected
+  const riskPerShare = width - netCredit;            // defined risk on the diagonal
+  const weeklyRet = riskPerShare>0 ? (netCredit/riskPerShare)*100 : null;
+
+  out.shortExp=shortExp; out.longExp=longExp;
+  out.shortStrike=shortStrike; out.longStrike=longStrike;
+  out.shortPrem=shortPrem; out.longPrem=longPrem;
+  out.width=width; out.risk=riskPerShare; out.ret=weeklyRet;
+  out.shortDte=dte(shortExp); out.longDte=dte(longExp);
+
+  // liquidity metrics for scoring: min OI across legs + relative bid-ask spread
+  const oiShort = shortRow.open_interest||0, oiLong = longRow.open_interest||0;
+  out.m_minOi = Math.min(oiShort, oiLong);
+  const relSpread = o=>{ const q=o.last_quote; if(q&&q.bid>0&&q.ask>0){ const m=(q.bid+q.ask)/2; return m>0?(q.ask-q.bid)/m:null; } return null; };
+  const rsS = relSpread(shortRow), rsL = relSpread(longRow);
+  out.m_relSpread = (rsS!=null && rsL!=null) ? Math.max(rsS,rsL) : (rsS??rsL); // null if no quotes
+
+  // earnings — degraded
+  const ov = cfg.overrides[tkr];
+  if(ov){
+    const ed = dte(ov);
+    out.earnings = ov;
+    if(ed>=0 && ed<=cfg.shortDte+1){ out.note="earnings inside window"; out.status="fail"; out.earnFail=true; return out; }
+    out.flags.push("earn-clear");
+  }
+
+  // return hurdle
+  out._hurdleVal = cfg.hurdle;
+  if(weeklyRet==null || weeklyRet < cfg.hurdle){ out.note=`ret ${weeklyRet?weeklyRet.toFixed(2):"—"}%`; out.status="warn"; return out; }
+  out.status = "pass";
+  return out;
+}
+
+function mid(o){
+  const q=o.last_quote;
+  if(q){
+    if(q.midpoint>0) return q.midpoint;
+    if(q.bid>0 && q.ask>0) return (q.bid+q.ask)/2;
+  }
+  if(o.day){
+    if(o.day.close>0) return o.day.close;
+    if(o.day.previous_close>0) return o.day.previous_close;
+  }
+  if(o.last_trade && o.last_trade.price>0) return o.last_trade.price;
+  if(o.fmv>0) return o.fmv;           // fair market value, if entitled
+  return null;
+}
+function oiOk(o,minOi){ return (o.open_interest||0) >= minOi; }
+function pickShort(rows, price, target, minOi){
+  const liq = rows.filter(o=>oiOk(o,minOi));
+  if(!liq.length) return null;
+  // ATM = strike closest to price; OTM steps = next lower strikes
+  liq.sort((a,b)=>a.details.strike_price-b.details.strike_price);
+  const atmIdx = liq.reduce((best,o,i)=> Math.abs(o.details.strike_price-price)<Math.abs(liq[best].details.strike_price-price)?i:best,0);
+  let idx = atmIdx;
+  if(target==="otm1") idx = Math.max(0, atmIdx-1);
+  if(target==="otm2") idx = Math.max(0, atmIdx-2);
+  return liq[idx]||null;
+}
+function pickByDelta(rows, target, minOi){
+  const liq = rows.filter(o=>oiOk(o,minOi) && o.greeks && o.greeks.delta!=null);
+  if(!liq.length){
+    // fall back: approximate by strike distance if greeks absent
+    const any = rows.filter(o=>oiOk(o,minOi));
+    return any.length? any[Math.floor(any.length*0.25)] : null;
+  }
+  // put deltas are negative; compare absolute
+  return liq.reduce((a,b)=> Math.abs(Math.abs(b.greeks.delta)-target) < Math.abs(Math.abs(a.greeks.delta)-target) ? b : a);
+}
+
+// ---- run ----
+async function run(){
+  const key = $("apiKey").value.trim();
+  if(!key){ renderErr("Enter your Polygon / Massive API key to run a live scan, or use “Load demo data”."); return; }
+  const tickers = buildUniverse();
+  if(!tickers.length){ renderErr("No tickers in the selected universe."); return; }
+
+  const cfg = {
+    priceMin:+$("priceMin").value, priceMax:+$("priceMax").value,
+    trendMode:$("trendMode").value, rocketMode:$("rocketMode").value,
+    maxGap:+$("maxGap").value, hurdle:+$("hurdle").value,
+    shortTarget:$("shortTarget").value, longDelta:+$("longDelta").value,
+    longDte:+$("longDte").value, minOi:+$("minOi").value,
+    overrides:parseOverrides()
+  };
+
+  $("runBtn").disabled = true;
+  $("progress").classList.add("on");
+  $("results").innerHTML = "";
+  const rows = [];
+  let done=0, authFailed=false;
+
+  // gentle concurrency to respect rate limits
+  const queue = [...tickers];
+  const WORKERS = 4;
+  async function worker(){
+    while(queue.length){
+      const t = queue.shift();
+      $("progLbl").textContent = `Scanning ${t} … (${done}/${tickers.length})`;
+      try{ rows.push(await evalTicker(t, cfg, key)); }
+      catch(e){
+        if(e.message==="AUTH"){ authFailed=true; queue.length=0; }
+        else if(e.message==="RATE"){ await new Promise(r=>setTimeout(r,1500)); queue.unshift(t); }
+        else rows.push({tkr:t,status:"fail",note:"error",flags:[]});
+      }
+      done++;
+      $("barFill").style.width = (done/tickers.length*100)+"%";
+    }
+  }
+  await Promise.all(Array.from({length:WORKERS}, worker));
+
+  $("progress").classList.remove("on");
+  $("runBtn").disabled = false;
+  if(authFailed){ renderErr("API key rejected, or your plan lacks options-snapshot access. Check the key and your Polygon entitlements."); return; }
+  lastRows = rows;
+  computeScores();
+  renderTable();
+}
+
+// ---- composite KaChing score ----
+// Default weights: calmness highest, then trend, then liquidity, return as adequacy lever.
+let WEIGHTS = { calm:35, trend:25, liq:20, ret:15, eff:5 };
+
+function computeScores(){
+  const pass = lastRows.filter(r=>r.status==="pass");
+  if(!pass.length) return;
+
+  // normalize a metric across the passing cohort -> 0..1 (dir=+1 higher better, -1 lower better)
+  function norm(key, dir){
+    const vals = pass.map(r=>r[key]).filter(v=>v!=null && !isNaN(v));
+    if(!vals.length) return ()=>0.5;
+    const lo=Math.min(...vals), hi=Math.max(...vals);
+    return v=>{
+      if(v==null||isNaN(v)) return 0.5;          // neutral if missing
+      if(hi===lo) return 0.5;
+      const t=(v-lo)/(hi-lo);
+      return dir>0 ? t : 1-t;
+    };
+  }
+  const nCalm  = norm("m_rvol", -1);             // lower realized vol = better
+  const nMove  = norm("m_avgMove", -1);          // lower avg daily move = better
+  const nTrend = norm("m_trendDist", +1);        // more above 50d = better (capped below)
+  const nSlope = norm("m_trendSlope", +1);       // steeper rising avg = better
+  const nLiq   = norm("m_minOi", +1);            // more OI = better
+  const nSpread= norm("m_relSpread", -1);        // tighter bid-ask = better
+
+  pass.forEach(r=>{
+    // calmness: blend realized vol (2/3) and avg move (1/3); cap trend distance so a
+    // name 40% above its average (overextended) doesn't outscore a steady 5%-above name.
+    const calm = 0.67*nCalm(r.m_rvol) + 0.33*nMove(r.m_avgMove);
+    const trendDistCapped = Math.min(r.m_trendDist, 12);   // beyond +12% adds nothing
+    const trend = 0.6*norm("m_trendDist",+1)(trendDistCapped) + 0.4*nSlope(r.m_trendSlope);
+    // liquidity: OI (70%) + bid-ask tightness (30%, neutral if no quotes)
+    const liq = 0.7*nLiq(r.m_minOi) + 0.3*(r.m_relSpread!=null?nSpread(r.m_relSpread):0.5);
+    // return adequacy: diminishing returns above hurdle, hard cap so high-vol premium
+    // can't climb the ranking. Reward = saturating curve of cushion over the hurdle.
+    const cushion = Math.max(0, (r.ret - r._hurdleVal));
+    const retAdq = 1 - Math.exp(-cushion/0.6);   // ~0 at hurdle, ~0.8 at +1%, flattens
+    // spread efficiency: credit / width
+    const eff = r.width>0 ? Math.min(r.shortPrem/r.width, 0.5)/0.5 : 0;
+
+    r._sub = { calm, trend, liq, ret:retAdq, eff };
+  });
+  applyWeights();
+}
+
+function applyWeights(){
+  const pass = lastRows.filter(r=>r.status==="pass" && r._sub);
+  const W = WEIGHTS, tot = W.calm+W.trend+W.liq+W.ret+W.eff || 1;
+  pass.forEach(r=>{
+    const s = r._sub;
+    r.score = 100*(W.calm*s.calm + W.trend*s.trend + W.liq*s.liq + W.ret*s.ret + W.eff*s.eff)/tot;
+  });
+}
+
+// compact sector map for the per-sector cap (extend as needed; unknown -> "other")
+const SECTOR = {
+  tech:["MSFT","NVDA","AVGO","ORCL","CSCO","ACN","NOW","INTU","AMAT","LRCX","MU","ADI","KLAC","PANW","FTNT","ANET","DELL","WDAY","TEAM","DDOG","NET","ZS","MDB","CRM","ADBE","AMD","QCOM","TXN","INTC","IBM","SMH","SOXX","XLK","U","TWLO","DOCU","SNOW","CRWD","PLTR"],
+  comm:["GOOGL","GOOG","META","NFLX","DIS","T","VZ","TMUS","CMCSA","CHTR","WBD","PARA","FOXA","OMC","IPG","EA","TTWO","LYV","MTCH","SPOT","PINS","SNAP","ROKU","RBLX","XLC"],
+  cons_disc:["AMZN","TSLA","HD","LOW","SBUX","NKE","MCD","CMG","YUM","DRI","MAR","HLT","BKNG","RCL","CCL","NCLH","LVS","WYNN","MGM","ULTA","ROST","TJX","ORLY","AZO","BBY","DG","DLTR","LULU","RL","DECK","WSM","TPR","NWL","F","GM","RIVN","LCID","TGT","ABNB","DASH","UBER","DKNG","HOOD","XLY","XRT","XHB","ITB"],
+  cons_stap:["PG","KO","PEP","COST","WMT","PM","MO","MDLZ","CL","KMB","GIS","K","HSY","STZ","KHC","KDP","MNST","KR","SYY","ADM","TSN","HRL","XLP"],
+  health:["LLY","UNH","JNJ","MRK","ABBV","ABT","TMO","PFE","BMY","AMGN","GILD","BIIB","VRTX","REGN","MRNA","CVS","CI","HUM","CNC","ELV","ZTS","ISRG","MDT","SYK","BDX","BSX","EW","DXCM","HCA","MCK","CAH","COR","DHR","A","IQV","RMD","WST","IDXX","XLV","XBI","IBB"],
+  fin:["BRK.B","JPM","V","MA","BAC","WFC","SCHW","GS","MS","BLK","COF","AXP","C","USB","PNC","TFC","SPGI","MCO","ICE","CME","CB","PGR","MMC","AON","MET","PRU","AIG","ALL","TRV","BK","STT","DFS","SYF","KEY","FITB","HBAN","RF","CFG","PYPL","XLF","KRE","KBE"],
+  indus:["GE","BA","UNP","HON","CAT","DE","MMM","GD","LMT","NOC","RTX","TDG","LHX","HWM","TXT","EMR","ETN","ITW","PH","ROK","DOV","CMI","PCAR","CSX","NSC","FDX","UPS","ODFL","CHRW","JBHT","WM","RSG","URI","FAST","GWW","SWK","PWR","AME","ROP","FTV","XLI","JETS"],
+  energy:["XOM","CVX","COP","SLB","EOG","MPC","PSX","VLO","OXY","HES","DVN","FANG","HAL","BKR","WMB","KMI","OKE","LNG","TRGP","XLE","XOP","OIH","USO","UNG","FCG"],
+  materials:["NTR","FCX","NEM","NUE","STLD","DOW","DD","LIN","APD","SHW","ECL","PPG","ALB","CF","MOS","CTVA","VMC","MLM","XLB","XME","GDX","GDXJ","SLX","COPX","LIT","MOO","WOOD","GLD","SLV"],
+  utils:["NEE","DUK","SO","D","AEP","EXC","SRE","XEL","ED","PEG","WEC","ES","AWK","PCG","EIX","DTE","FE","PPL","XLU"],
+  reit:["AMT","PLD","CCI","EQIX","PSA","O","SPG","WELL","DLR","VICI","AVB","EQR","SBAC","WY","ARE","INVH","XLRE","VNQ","IYR"]
+};
+const SEC_OF = {};
+Object.entries(SECTOR).forEach(([s,arr])=>arr.forEach(t=>SEC_OF[t]=s));
+function sectorOf(t){ return SEC_OF[t]||"other"; }
+
+const SLIDER_DEFS = [
+  {k:"calm", t:"Calmness"}, {k:"trend", t:"Trend"}, {k:"liq", t:"Liquidity"},
+  {k:"ret", t:"Return adequacy"}, {k:"eff", t:"Spread efficiency"}
+];
+function buildSliders(){
+  const el = $("sliders");
+  el.innerHTML = SLIDER_DEFS.map(d=>`
+    <div class="slider">
+      <label>${d.t} <span id="w_${d.k}">${WEIGHTS[d.k]}</span></label>
+      <input type="range" min="0" max="50" value="${WEIGHTS[d.k]}" data-w="${d.k}">
+    </div>`).join("");
+  el.querySelectorAll('input[type=range]').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      WEIGHTS[e.target.dataset.w] = +e.target.value;
+      $(`w_${e.target.dataset.w}`).textContent = e.target.value;
+      applyWeights();
+      renderTable();
+    });
+  });
+}
+
+// ---- render ----
+const cols = [
+  {k:"tkr",  t:"Ticker", al:"left"},
+  {k:"score",t:"Score", f:v=>v!=null?Math.round(v):"—", score:true},
+  {k:"price",t:"Price",  f:v=>v?("$"+v.toFixed(2)):"—"},
+  {k:"ret",  t:"Wk Ret%",f:v=>v!=null?v.toFixed(2):"—", ret:true},
+  {k:"shortStrike",t:"Short P", f:v=>v?("$"+v):"—"},
+  {k:"shortPrem",t:"Credit", f:v=>v!=null?("$"+v.toFixed(2)):"—"},
+  {k:"longStrike", t:"Long P", f:v=>v?("$"+v):"—"},
+  {k:"width", t:"Width", f:v=>v!=null?("$"+v.toFixed(1)):"—", sm:true},
+  {k:"risk",  t:"Risk/sh", f:v=>v!=null?("$"+v.toFixed(2)):"—", sm:true},
+  {k:"longDte",t:"LongDTE", f:v=>v!=null?v+"d":"—", sm:true},
+  {k:"earnings",t:"Earnings", f:v=>v, earn:true},
+  {k:"flags", t:"Notes", al:"left", flags:true},
+];
+
+function buildFunnel(){
+  const buckets = {};
+  lastRows.forEach(r=>{
+    let key = r.status==="pass" ? "✓ passed hurdle"
+            : r.status==="warn" ? "below return hurdle"
+            : (r.note||"other");
+    if(/^gap /.test(key)) key="rejected: recent gap/spike";
+    else if(/^ret /.test(key)) key="below return hurdle";
+    else if(key==="price out of band") key="rejected: price band";
+    else if(key==="below 50d"||key==="50d falling") key="rejected: trend filter";
+    else if(key==="weekly illiquid"||key==="no weekly expiry") key="no liquid weekly put";
+    else if(key==="no quotes"||key==="no put chain") key="no usable option prices";
+    else if(key==="no long-put match"||key==="no LEAP-ish put"||key==="inverted spread") key="no long-put match";
+    else if(key==="earnings inside window") key="rejected: earnings blackout";
+    else if(key==="no options entitlement") key="no options entitlement";
+    else if(key==="insufficient history"||key==="no SMA") key="insufficient price history";
+    buckets[key]=(buckets[key]||0)+1;
+  });
+  const order = ["✓ passed hurdle","below return hurdle","no liquid weekly put",
+    "no long-put match","no usable option prices","rejected: recent gap/spike",
+    "rejected: trend filter","rejected: price band","rejected: earnings blackout",
+    "no options entitlement","insufficient price history","error","other"];
+  const entries = Object.entries(buckets).sort((a,b)=>{
+    const ia=order.indexOf(a[0]), ib=order.indexOf(b[0]);
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+  const max = Math.max(...entries.map(e=>e[1]),1);
+  let h = `<div class="funnel"><h2>Where candidates dropped out</h2><div class="funnel-rows">`;
+  entries.forEach(([k,n])=>{
+    const good = k.startsWith("✓");
+    h += `<div class="frow ${good?'fgood':''}">
+      <span class="fl">${k}</span>
+      <span class="fbar"><i style="width:${n/max*100}%"></i></span>
+      <span class="fn">${n}</span></div>`;
+  });
+  h += `</div></div>`;
+  return h;
+}
+
+function renderTable(){
+  const passN = lastRows.filter(r=>r.status==="pass").length;
+  const warnN = lastRows.filter(r=>r.status==="warn").length;
+  let scored = lastRows.filter(r=>r.ret!=null);
+  scored.sort((a,b)=>{
+    const av=a[sortKey], bv=b[sortKey];
+    if(av==null) return 1; if(bv==null) return -1;
+    if(typeof av==="string") return sortDir*av.localeCompare(bv);
+    return sortDir*(av-bv);
+  });
+
+  // sector cap + topN apply only to passing names, only when sorting by score desc
+  const passScored = scored.filter(r=>r.status==="pass");
+  const cap = +($("sectorCap")?.value||0);
+  const topN = +($("topN")?.value||0);
+  let capped = scored, hiddenBySector = 0;
+  if(sortKey==="score" && (cap||topN)){
+    const seen = {}; const keep = [];
+    // iterate score-desc; passes go through cap, warns kept at end untouched
+    const ordered = [...passScored];
+    ordered.forEach(r=>{
+      const s = sectorOf(r.tkr);
+      if(cap && (seen[s]||0) >= cap){ hiddenBySector++; return; }
+      seen[s]=(seen[s]||0)+1; keep.push(r);
+    });
+    capped = topN ? keep.slice(0,topN) : keep;
+  }
+
+  let html = `<div class="summary">
+    <span><b>${lastRows.length}</b> scanned</span>
+    <span><b class="pass">${passN}</b> pass hurdle</span>
+    <span><b class="warn">${warnN}</b> below hurdle</span>
+    <span><b>${capped.length}</b> shown${hiddenBySector?` · ${hiddenBySector} hidden by sector cap`:""}</span>
+  </div>`;
+
+  if(scored.length < 5) html += buildFunnel();
+
+  if(!scored.length){
+    $("scoreCtl").style.display="none";
+    html += `<div class="empty">No candidates produced a full diagonal-spread quote.
+      The funnel above shows where names dropped out. If it's “no usable option prices,”
+      your plan may lack options quotes — the tool falls back to daily close, so also check
+      whether option <em>day</em> data is populated (markets may be closed / data stale).
+      If it's the trend or gap filters, loosen them.</div>`;
+    $("results").innerHTML = html; return;
+  }
+
+  // show + populate controls (once)
+  if(passScored.length){
+    $("scoreCtl").style.display="block";
+    if(!$("sliders").children.length){
+      buildSliders();
+      $("topN").addEventListener("change", renderTable);
+      $("sectorCap").addEventListener("change", renderTable);
+    }
+  }
+  scored = capped;
+
+  html += "<table><thead><tr>";
+  cols.forEach(c=>{
+    html += `<th class="${c.k===sortKey?'sorted':''} ${c.sm?'hide-sm':''}" data-k="${c.k}">${c.t}</th>`;
+  });
+  html += "</tr></thead><tbody>";
+
+  scored.forEach(r=>{
+    html += "<tr>";
+    cols.forEach(c=>{
+      let v = r[c.k];
+      let cls = c.sm?"hide-sm":"";
+      if(c.flags){
+        const fl = (r.flags||[]).map(f=>`<span>${f}</span>`).join("") +
+                   (r.note?`<span style="color:var(--ink-dim)">${r.note}</span>`:"");
+        html += `<td class="flags ${cls}">${fl||"—"}</td>`; return;
+      }
+      if(c.score){
+        const sub = r._sub;
+        const tip = sub ? `calm ${(sub.calm*100|0)} · trend ${(sub.trend*100|0)} · liq ${(sub.liq*100|0)} · ret ${(sub.ret*100|0)} · eff ${(sub.eff*100|0)}` : "";
+        const val = v!=null?Math.round(v):0;
+        const tone = val>=70?"pass":(val>=50?"warn":"fail");
+        html += `<td class="score-cell ${cls}" title="${tip}">
+          <div class="score-num ${tone}">${v!=null?Math.round(v):"—"}</div>
+          ${sub?`<div class="score-bar">
+            <i class="sc-calm" style="flex:${sub.calm}"></i><i class="sc-trend" style="flex:${sub.trend}"></i><i class="sc-liq" style="flex:${sub.liq}"></i><i class="sc-ret" style="flex:${sub.ret}"></i><i class="sc-eff" style="flex:${sub.eff}"></i>
+          </div>`:""}
+        </td>`; return;
+      }
+      if(c.earn){
+        html += `<td class="${cls} ${r.earnFail?'fail':'warn'}"><span class="light"></span>${v}</td>`; return;
+      }
+      if(c.ret){
+        const sc = r.status==="pass"?"pass":(r.status==="warn"?"warn":"fail");
+        html += `<td class="ret-cell ${sc} ${cls}"><span class="light"></span><b>${c.f(v)}</b></td>`; return;
+      }
+      if(c.k==="tkr"){
+        html += `<td><span class="tkr">${r.tkr}</span><div class="sub">${r.shortExp?('exp '+r.shortExp.slice(5)):''}</div></td>`; return;
+      }
+      html += `<td class="${cls}">${c.f?c.f(v):(v??"—")}</td>`;
+    });
+    html += "</tr>";
+  });
+  html += "</tbody></table>";
+  $("results").innerHTML = html;
+
+  document.querySelectorAll("thead th").forEach(th=>{
+    th.addEventListener("click", ()=>{
+      const k = th.dataset.k;
+      if(k===sortKey) sortDir*=-1; else { sortKey=k; sortDir=-1; }
+      renderTable();
+    });
+  });
+}
+
+function renderErr(m){ $("results").innerHTML = `<div class="err">${m}</div>`; }
+
+// ---- demo data (no API needed) ----
+function demo(){
+  // mk now carries the raw metrics the scorer needs: rvol, avgMove, trendDist, trendSlope, minOi, relSpread
+  const mk=(t,price,ret,sS,cr,lS,ld,st,earn,fl,note,rvol,avgMove,tDist,tSlope,oi,rs)=>({
+    tkr:t,status:st,price,ret,shortStrike:sS,shortPrem:cr,longStrike:lS,
+    width:sS-lS,risk:(sS-lS)-cr,longDte:ld,shortExp:"2026-06-19",earnings:earn,
+    flags:fl,note:note||"",earnFail:false,_hurdleVal:0.5,
+    m_rvol:rvol,m_avgMove:avgMove,m_trendDist:tDist,m_trendSlope:tSlope,m_minOi:oi,m_relSpread:rs
+  });
+  lastRows = [
+    //          tkr   price  ret  sS  cr   lS  ld  st     earn       flags                      note  rvol move tDist tSlope  oi   rs
+    mk("SCHW",  74.10,0.86, 74, 1.28, 70,103,"pass","unknown",["trend✓","calm✓"],"",          1.1, 0.9,  4.2, 0.8, 4200, .03),
+    mk("NTR",   56.40,0.71, 56, 0.92, 52,110,"pass","unknown",["trend✓","calm✓"],"",          1.4, 1.1,  3.1, 0.5, 1800, .05),
+    mk("GLD",  214.50,0.63,214, 1.55,208, 98,"pass","unknown",["trend✓","calm✓"],"",          0.8, 0.6,  2.4, 0.6, 9500, .02),
+    mk("UNG",   22.30,1.35, 22, 0.46, 20,101,"pass","unknown",["trend✓","calm✓"],"",          3.6, 3.0,  8.9, 1.4, 1200, .09),
+    mk("KO",    62.10,0.58, 62, 0.74, 58,104,"pass","unknown",["trend✓","calm✓"],"",          0.7, 0.5,  1.9, 0.4, 6100, .02),
+    mk("XLE",   91.40,0.69, 91, 0.95, 86, 99,"pass","unknown",["trend✓","calm✓"],"",          1.6, 1.3,  5.1, 0.9, 7300, .03),
+    mk("DVN",   46.80,1.12, 46, 0.88, 42,102,"pass","unknown",["trend✓","calm✓"],"",          2.8, 2.4,  6.8, 1.1, 2100, .07),
+    mk("SBUX",  78.90,0.41, 78, 0.74, 74,107,"warn","unknown",["trend✓","calm✓"],"ret 0.41%", 1.3, 1.0,  2.2, 0.3, 3300, .04),
+  ];
+  // DASH: fails on earnings inside window (illustrates the red earnings light)
+  const dash = mk("DASH",148.20,0.94,148,2.10,142,105,"fail","2026-06-17",["trend✓","calm✓"],"earnings inside window",2.2,1.9,7.0,1.0,2600,.06);
+  dash.earnFail=true;
+  lastRows.push(dash);
+  computeScores();
+  renderTable();
+}
+
+$("runBtn").addEventListener("click", run);
+$("demoBtn").addEventListener("click", demo);
+</script>
+</body>
+</html>
