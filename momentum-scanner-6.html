@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Momentum Options Scanner</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --line:#2a3441;
+    --ink:#e6edf3; --dim:#8b96a4; --faint:#5a6573;
+    --bull:#3fb950; --bear:#f85149; --neutral:#d29922; --crash:#ff6b6b;
+    --accent:#58a6ff; --accent2:#a371f7;
+    --mono:'SFMono-Regular',ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.4}
+  header{padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:20}
+  .titlerow{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.3px}
+  h1 span{color:var(--faint);font-weight:400;font-size:11px;margin-left:8px}
+  .wrap{max-width:1340px;margin:0 auto;padding:0 18px}
+  /* regime banner */
+  .regime{margin-top:12px;display:flex;align-items:center;gap:16px;padding:11px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);flex-wrap:wrap}
+  .regbadge{font-family:var(--mono);font-weight:700;font-size:14px;padding:4px 12px;border-radius:5px;letter-spacing:.5px}
+  .reg-bull{background:rgba(63,185,80,.15);color:var(--bull);border:1px solid var(--bull)}
+  .reg-bear{background:rgba(248,81,73,.15);color:var(--bear);border:1px solid var(--bear)}
+  .reg-neutral{background:rgba(210,153,34,.15);color:var(--neutral);border:1px solid var(--neutral)}
+  .reg-unknown{background:rgba(90,101,115,.15);color:var(--dim);border:1px solid var(--faint)}
+  .crashflag{background:rgba(255,107,107,.18);color:var(--crash);border:1px solid var(--crash);font-family:var(--mono);font-weight:700;font-size:11px;padding:4px 10px;border-radius:5px;animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+  .regmeta{font-family:var(--mono);font-size:11px;color:var(--dim);display:flex;gap:18px;flex-wrap:wrap}
+  .regmeta b{color:var(--ink);font-weight:600}
+  /* controls */
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  input[type=password],input[type=text]{background:var(--bg);border:1px solid var(--line);color:var(--ink);padding:7px 10px;border-radius:6px;font-family:var(--mono);font-size:12px;width:280px}
+  input::placeholder{color:var(--faint)}
+  button{background:var(--accent);color:#06101e;border:none;padding:8px 16px;border-radius:6px;font-weight:600;font-size:12px;cursor:pointer;font-family:var(--sans)}
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--dim)}
+  button.ghost:hover{color:var(--ink);border-color:var(--faint)}
+  .hint{color:var(--faint);font-size:11px}
+  /* tabs */
+  .tabs{display:flex;gap:2px;margin-top:16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .tab{padding:9px 15px;cursor:pointer;color:var(--dim);font-size:12px;font-weight:500;border-bottom:2px solid transparent;position:relative;white-space:nowrap}
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+  .tab .ct{font-family:var(--mono);font-size:10px;color:var(--faint);margin-left:6px}
+  .tab.live::before{content:'';position:absolute;top:8px;right:6px;width:5px;height:5px;border-radius:50%;background:var(--bull)}
+  .tab.dim{opacity:.4}
+  /* sliders */
+  .weights{display:none;gap:18px;flex-wrap:wrap;padding:14px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;margin-top:14px}
+  .weights.show{display:flex}
+  .wctl{display:flex;flex-direction:column;gap:5px;min-width:150px}
+  .wctl label{font-size:11px;color:var(--dim);display:flex;justify-content:space-between}
+  .wctl label b{color:var(--accent);font-family:var(--mono)}
+  input[type=range]{accent-color:var(--accent);width:100%}
+  .wsum{font-family:var(--mono);font-size:11px;align-self:center;color:var(--dim)}
+  .wsum.bad{color:var(--bear)}
+  /* table */
+  .panel{margin-top:14px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+  .tabnote{padding:9px 14px;font-size:11px;color:var(--dim);border-bottom:1px solid var(--line);background:var(--panel2)}
+  .tabnote b{color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+  th{text-align:right;padding:8px 12px;color:var(--faint);font-weight:500;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;user-select:none;font-size:10.5px;letter-spacing:.3px}
+  th:first-child,td:first-child{text-align:left}
+  th.sortable:hover{color:var(--ink)}
+  th .arr{color:var(--accent)}
+  td{text-align:right;padding:7px 12px;border-bottom:1px solid #20272f;white-space:nowrap}
+  tr:hover td{background:rgba(88,166,255,.04)}
+  .tick{color:var(--ink);font-weight:600;font-size:12px}
+  .score{font-weight:700}
+  .s-hi{color:var(--bull)} .s-mid{color:var(--neutral)} .s-lo{color:var(--dim)}
+  .pos{color:var(--bull)} .neg{color:var(--bear)} .muted{color:var(--faint)}
+  .chip{font-size:9.5px;padding:1px 6px;border-radius:3px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+  .chip.warn{color:var(--neutral);border-color:var(--neutral)}
+  .chip.xtab{color:var(--accent2);border-color:rgba(163,113,247,.5);background:rgba(163,113,247,.10)}
+  .chip.xtab.conflict{color:var(--bear);border-color:rgba(248,81,73,.5);background:rgba(248,81,73,.10)}
+  .chiplink{cursor:pointer;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+  .entrybadge{font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;white-space:nowrap}
+  .entrybadge.bull{background:rgba(63,185,80,.16);color:var(--bull);border:1px solid rgba(63,185,80,.5)}
+  .entrybadge.bear{background:rgba(248,81,73,.16);color:var(--bear);border:1px solid rgba(248,81,73,.5)}
+  /* status / progress */
+  .status{margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--dim);min-height:16px}
+  .bar{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-top:8px;display:none}
+  .bar.show{display:block}
+  .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+  .empty{padding:40px;text-align:center;color:var(--faint);font-size:12px}
+  /* chain drawer */
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(440px,92vw);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .22s;z-index:40;overflow-y:auto;box-shadow:-12px 0 40px rgba(0,0,0,.4)}
+  .drawer.open{transform:translateX(0)}
+  .drawer h2{font-size:14px;margin:0;padding:16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .drawer h2 .x{cursor:pointer;color:var(--dim);font-size:18px;line-height:1}
+  .dsec{padding:14px 16px;border-bottom:1px solid var(--line)}
+  .dsec h3{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);margin:0 0 8px}
+  .kv{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;padding:3px 0}
+  .kv span:first-child{color:var(--dim)}
+  .struct{padding:10px 12px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);font-size:12px;margin-top:6px}
+  .struct b{color:var(--accent2)}
+  .footer{padding:24px 0 40px;color:var(--faint);font-size:10.5px;line-height:1.6}
+  .footer code{background:var(--panel2);padding:1px 5px;border-radius:3px;color:var(--dim)}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35;display:none}
+  .overlay.show{display:block}
+  details summary{cursor:pointer;color:var(--dim);font-size:11px;padding:4px 0}
+  .seasonal{font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:5px;margin-top:10px;display:inline-block}
+  .seas-good{background:rgba(63,185,80,.12);color:var(--bull);border:1px solid rgba(63,185,80,.4)}
+  .seas-warn{background:rgba(210,153,34,.12);color:var(--neutral);border:1px solid rgba(210,153,34,.4)}
+  .seas-neutral{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
+
+  /* ---- mobile: phone screens ---- */
+  @media (max-width:640px){
+    body{font-size:13px}
+    /* header scrolls away instead of pinning, freeing the screen for the table */
+    header{position:static;padding:10px 12px}
+    .wrap{padding:0 12px}
+    .titlerow{gap:4px}
+    h1{font-size:13px;line-height:1.3}
+    h1 span{display:block;margin-left:0;margin-top:2px}
+    #univlabel{display:none}
+    .regime{margin-top:9px;padding:9px 11px;gap:9px}
+    .regbadge{font-size:13px}
+    .regmeta{gap:10px;font-size:10px;width:100%}
+    .seasonal{font-size:10px;padding:5px 8px}
+    .controls{gap:7px;margin-top:9px}
+    input[type=password],input[type=text]{width:100%}
+    .controls button{flex:1 1 auto;min-width:0;padding:9px 10px}
+    .weights{gap:12px;padding:11px}
+    .wctl{min-width:120px;flex:1 1 120px}
+    /* tabs: horizontal scroll strip, sticky so they stay reachable while the rest scrolls off */
+    .tabs{margin-top:12px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:0;background:var(--bg);z-index:20;border-bottom:1px solid var(--line)}
+    .tab{padding:10px 12px;font-size:12px;flex:0 0 auto}
+    /* table scrolls horizontally; rows stay compact vertically */
+    #tableHost{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    table{font-size:11px}
+    th,td{padding:6px 9px}
+    .tabnote{font-size:10.5px;padding:8px 11px}
+    .footer{font-size:10px;padding:18px 0 36px}
+    .drawer{width:100vw}
+  }
+  @media (max-width:380px){
+    h1{font-size:12px}
+    .regmeta{font-size:9.5px;gap:8px}
+    th,td{padding:5px 7px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="titlerow">
+      <h1>Momentum Options Scanner <span>Clenow · Gray/Vogel · Bensdorp — regime-aware, single scan</span></h1>
+      <div class="hint" id="univlabel">S&amp;P 500 single names</div>
+    </div>
+
+    <div class="regime" id="regimeBanner">
+      <div class="regbadge reg-unknown" id="regBadge">NO SCAN</div>
+      <div class="crashflag" id="crashFlag" style="display:none">⚠ CRASH — SPY 50-DAY LOW</div>
+      <div class="regmeta" id="regMeta">
+        <span>Run a scan to classify the SPY regime and rank candidates.</span>
+      </div>
+      <div class="seasonal seas-neutral" id="seasonal">season —</div>
+    </div>
+
+    <div class="controls">
+      <input type="password" id="apiKey" placeholder="Polygon.io API key (stored in memory only)">
+      <button id="scanBtn">Run scan</button>
+      <button class="ghost" id="weightsToggle">Weights</button>
+      <button class="ghost" id="entryToggle">Entry-ready only: off</button>
+      <button class="ghost" id="loadUniv">Edit universe</button>
+      <span class="hint" id="rateHint"></span>
+    </div>
+
+    <div class="weights" id="weightsPanel">
+      <div class="wctl"><label>Adjusted slope (Clenow) <b id="w0v">35</b></label><input type="range" id="w0" min="0" max="60" value="35"></div>
+      <div class="wctl"><label>2–12 momentum (Gray) <b id="w1v">25</b></label><input type="range" id="w1" min="0" max="60" value="25"></div>
+      <div class="wctl"><label>FIP smoothness (Gray) <b id="w2v">20</b></label><input type="range" id="w2" min="0" max="60" value="20"></div>
+      <div class="wctl"><label>R² fit (Clenow) <b id="w3v">10</b></label><input type="range" id="w3" min="0" max="40" value="10"></div>
+      <div class="wctl"><label>Trend structure <b id="w4v">10</b></label><input type="range" id="w4" min="0" max="40" value="10"></div>
+      <div class="wsum" id="wsum">Σ 100</div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="status" id="status"></div>
+  <div class="bar" id="bar"><i id="barfill"></i></div>
+  <div class="panel">
+    <div class="tabnote" id="tabnote"></div>
+    <div id="tableHost"><div class="empty">Enter your Polygon key and run a scan.</div></div>
+  </div>
+
+  <div class="footer">
+    Method: Clenow adjusted slope = annualized 90-day exp-regression slope × R². Gray FIP = sign(2–12 return) × (%down − %up) over 252d; 2–12 = 12-mo return skipping last month. Hard gates (zero score): below 100-day SMA · single-day gap &gt;15% in 90d · earnings inside window · below liquidity floor. Bensdorp tabs supply mean-reversion &amp; short/hedge legs per regime. <b>Entry column</b> ports the bull/bear screener triggers: bull = RSI(2) cross ↑10 or close&gt;prev-high &amp; close&gt;open; bear = RSI(2) cross ↓90 or close&lt;prev-low &amp; close&lt;open — computed locally, no extra calls. Ranking answers <i>which</i>, the entry badge answers <i>is today the day</i>. Options structures are heuristics from IV rank, not advice. Chains pulled on tap to avoid the 250-contract cap. <b>Last ern</b> = most recent quarterly filing_date (same source as the bull/bear screeners); it's recency of the last *report*, not the next scheduled date. Red = inside the 45-day window (gap/IV-crush risk); this also zeroes the long score.<br>
+    Universe stored in <code>localStorage</code> is intentionally avoided per artifact constraints; edit list in-session.
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="drawer" id="drawer">
+  <h2><span id="drawerTick">—</span><span class="x" id="drawerClose">×</span></h2>
+  <div id="drawerBody"></div>
+</div>
+
+<script>
+/* ===========================================================================
+   MOMENTUM OPTIONS SCANNER  —  single-file, Polygon.io
+   Pipeline:  bars -> per-stock engine -> regime classify -> tab routing -> tap=chain
+   =========================================================================== */
+
+const POLY = 'https://api.polygon.io';
+
+/* ---- universe: S&P 500 single names (no ETFs). Editable in-session. ---- */
+let UNIVERSE = ("AAPL MSFT NVDA AMZN GOOGL GOOG META BRK.B LLY AVGO TSLA JPM XOM UNH V MA COST HD PG JNJ WMT NFLX BAC ABBV CRM ORCL MRK CVX KO AMD PEP ADBE TMO LIN ACN MCD CSCO ABT WFC GE DHR INTU NOW VZ TXN QCOM PM CAT DIS IBM AMGN PFE CMCSA GS UNP RTX SPGI HON LOW AXP NEE ELV BKNG SYK ETN PGR T BLK VRTX TJX MS C BSX MDT LMT ADP UBER PLD CB MMC ISRG REGN AMAT DE FI SO BMY ZTS GILD ADI MO DUK SHW CME CI ICE WM SLB CVS TGT EOG MU BDX EQIX KLAC AON CL APH CSX ITW PYPL FCX NSC HCA MCK PNC USB MMM EMR GD MAR FDX MNST APD ORLY ROP CTAS NXPI PSX MSI AJG ECL ABNB CARR AZO TT TDG PCAR WELL OXY HLT MET TRV ROST F GM SRE PSA AIG O DLR MCHP NEM AFL CPRG HUM EW JCI D KMB STZ MPC AMP FIS PRU ALL OTIS CMG IDXX A GWW VLO PAYX KMI YUM CTSH KVUE BK DOW HES CCI VRSK ODFL CSGP RSG GEHC EXC PCG KDP DD FAST IQV GIS ACGL CTVA HSY XEL VICI EA KHC NUE LHX PWR DHI BKR ON IT WMB AME EFX FTNT MLM GPN ROK CDW GLW ANSS HIG TSCO MTD WEC DVN VMC PPG KR FANG WTW WST AVB DLTR ED ULTA EBAY APTV ALGN AWK ZBH WBD CHD RCL FITB TROW DG MKC GRMN URI EQR NDAQ KEYS DFS PH CAH HPQ STT TTWO BR LEN GPC EIX EXR VTR DAL CBRE WAT FE HBAN FTV CTRA INVH RJF TYL CINF MOH NTAP HOLX OMC PFG ES MRO CMS HRL DRI K ATO CFG SYF NVR PKG MAS PEG L IFF EXPD WRB CNP COO LVS CLX GDDY TXT TRGP TER VRSN AMCR SWKS BBY POOL DGX BG NTRS PNR INCY JBHT NDSN DPZ AKAM IP LDOS LYB CE EVRG ZBRA WY ROL HUBB MGM PAYC SNA CAG STX TAP UAL JKHY EMN BWA CPB MKTX HSIC BIO AOS WHR GEN TFX FFIV PNW HII NWSA").trim().split(/\s+/);
+
+const cfg = {
+  liqTrend: 50e6, liqShort: 25e6, liqMR: 10e6,
+  earningsWindowDays: 45, gapLimit: 0.15,
+  topN: 40, maxConcurrent: 6
+};
+
+/* ---- weights (default 35/25/20/10/10) ---- */
+let W = {slope:35, mom:25, fip:20, r2:10, trend:10};
+
+/* ---- state ---- */
+let RESULTS = [];        // per-stock computed metrics
+let SPY = null;          // regime info
+let REGIME = 'unknown';
+let CRASH = false;
+let activeTab = 'long';
+let sortState = {key:'score', dir:-1};
+let entryOnly = false;
+
+/* ===========================  MATH HELPERS  ============================= */
+function sma(arr,n){ if(arr.length<n) return null; let s=0; for(let i=arr.length-n;i<arr.length;i++) s+=arr[i]; return s/n; }
+function pctChange(arr,n){ if(arr.length<=n) return null; const a=arr[arr.length-1-n], b=arr[arr.length-1]; return a? (b/a-1):null; }
+
+// exponential regression slope (regress ln(price) vs day index) over last n
+function expRegression(closes,n){
+  if(closes.length<n) return {slope:null,r2:null,annual:null};
+  const seg=closes.slice(closes.length-n);
+  const ys=seg.map(p=>Math.log(p));
+  const N=n; let sx=0,sy=0,sxx=0,sxy=0;
+  for(let i=0;i<N;i++){ sx+=i; sy+=ys[i]; sxx+=i*i; sxy+=i*ys[i]; }
+  const denom=(N*sxx - sx*sx);
+  if(denom===0) return {slope:null,r2:null,annual:null};
+  const slope=(N*sxy - sx*sy)/denom;
+  const intercept=(sy - slope*sx)/N;
+  // R^2
+  let ssTot=0,ssRes=0; const ymean=sy/N;
+  for(let i=0;i<N;i++){ const yhat=intercept+slope*i; ssRes+=(ys[i]-yhat)**2; ssTot+=(ys[i]-ymean)**2; }
+  const r2= ssTot===0?0:1-ssRes/ssTot;
+  const annual=Math.pow(Math.exp(slope),250)-1;
+  return {slope,r2,annual};
+}
+function maxGap(closes,n){
+  const seg=closes.slice(Math.max(0,closes.length-n-1));
+  let mx=0;
+  for(let i=1;i<seg.length;i++){ const g=Math.abs(seg[i]/seg[i-1]-1); if(g>mx) mx=g; }
+  return mx;
+}
+function atr(bars,n){
+  if(bars.length<n+1) return null;
+  let s=0;
+  for(let i=bars.length-n;i<bars.length;i++){
+    const h=bars[i].h,l=bars[i].l,pc=bars[i-1].c;
+    s+=Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc));
+  }
+  return s/n;
+}
+function rsi(closes,n){
+  if(closes.length<n+1) return null;
+  let g=0,l=0;
+  for(let i=closes.length-n;i<closes.length;i++){
+    const d=closes[i]-closes[i-1];
+    if(d>0) g+=d; else l-=d;
+  }
+  const ag=g/n, al=l/n; if(al===0) return 100;
+  return 100-100/(1+ag/al);
+}
+// RSI(n) whose window ends at index `end` (inclusive). end=last -> today, end=last-1 -> yesterday.
+function rsiAt(closes,n,end){
+  if(end-n<0) return null;
+  let g=0,l=0;
+  for(let i=end-n+1;i<=end;i++){
+    const d=closes[i]-closes[i-1];
+    if(d>0) g+=d; else l-=d;
+  }
+  const ag=g/n, al=l/n; if(al===0) return 100;
+  return 100-100/(1+ag/al);
+}
+function adx(bars,n){
+  if(bars.length<2*n) return null;
+  let trs=[],pdm=[],ndm=[];
+  for(let i=1;i<bars.length;i++){
+    const up=bars[i].h-bars[i-1].h, dn=bars[i-1].l-bars[i].l;
+    pdm.push(up>dn&&up>0?up:0); ndm.push(dn>up&&dn>0?dn:0);
+    trs.push(Math.max(bars[i].h-bars[i].l,Math.abs(bars[i].h-bars[i-1].c),Math.abs(bars[i].l-bars[i-1].c)));
+  }
+  const sm=(a,p)=>{let r=[a.slice(0,p).reduce((x,y)=>x+y,0)];for(let i=p;i<a.length;i++)r.push(r[r.length-1]-r[r.length-1]/p+a[i]);return r;};
+  const tr=sm(trs,n),pd=sm(pdm,n),nd=sm(ndm,n),dx=[];
+  for(let i=0;i<tr.length;i++){
+    const pDI=100*pd[i]/tr[i], nDI=100*nd[i]/tr[i];
+    dx.push(100*Math.abs(pDI-nDI)/(pDI+nDI||1));
+  }
+  if(dx.length<n) return null;
+  return dx.slice(dx.length-n).reduce((x,y)=>x+y,0)/n;
+}
+function fip(closes){
+  const n=Math.min(252,closes.length-1);
+  if(n<60) return null;
+  let pos=0,neg=0;
+  for(let i=closes.length-n;i<closes.length;i++){
+    const d=closes[i]-closes[i-1];
+    if(d>0) pos++; else if(d<0) neg++;
+  }
+  const mom=closes[closes.length-1]/closes[closes.length-1-n]-1;
+  const sign=mom>=0?1:-1;
+  return sign*((neg/n)-(pos/n)); // more negative = smoother
+}
+function pctile(val,sorted){ // sorted ascending
+  if(val==null) return 0;
+  let lo=0,hi=sorted.length;
+  while(lo<hi){const m=(lo+hi)>>1; if(sorted[m]<val) lo=m+1; else hi=m;}
+  return sorted.length?lo/sorted.length:0;
+}
+
+/* ===========================  DATA FETCH  ============================= */
+async function fetchBars(ticker,key,days=420){
+  const end=new Date(), start=new Date(); start.setDate(start.getDate()-Math.ceil(days*1.55));
+  const f=d=>d.toISOString().slice(0,10);
+  const url=`${POLY}/v2/aggs/ticker/${encodeURIComponent(ticker)}/range/1/day/${f(start)}/${f(end)}?adjusted=true&sort=asc&limit=50000&apiKey=${key}`;
+  const r=await fetch(url);
+  if(!r.ok){ if(r.status===429) throw new Error('RATE'); throw new Error('HTTP '+r.status); }
+  const j=await r.json();
+  if(!j.results||!j.results.length) return null;
+  return j.results.map(b=>({c:b.c,h:b.h,l:b.l,o:b.o,v:b.v,t:b.t}));
+}
+async function fetchEarnings(ticker,key){
+  // Matches the bull/bear screeners: most recent quarterly filing_date (fallback period_of_report_date).
+  try{
+    const url=`${POLY}/vX/reference/financials?ticker=${encodeURIComponent(ticker)}&timeframe=quarterly&order=desc&sort=filing_date&limit=4&apiKey=${key}`;
+    const r=await fetch(url); if(!r.ok) return null;
+    const j=await r.json();
+    const results=j.results; if(!results||!results.length) return null;
+    const dates=results.map(x=>x.filing_date||x.period_of_report_date).filter(Boolean).sort((a,b)=>new Date(b)-new Date(a));
+    if(!dates.length) return null;
+    const reportDate=dates[0];
+    const daysAgo=Math.floor((Date.now()-new Date(reportDate).getTime())/864e5);
+    return {date:reportDate, daysAgo};
+  }catch(e){ return null; }
+}
+
+/* ===========================  ENGINE  ============================= */
+function computeStock(ticker,bars){
+  const closes=bars.map(b=>b.c);
+  const last=closes[closes.length-1];
+  const li=closes.length-1;
+  const dollarVol = bars.slice(-20).reduce((s,b)=>s+b.c*b.v,0)/Math.min(20,bars.length);
+  const reg=expRegression(closes,90);
+  // entry triggers, ported verbatim from bull/bear screeners (RSI(2) cross + price break)
+  const rsi2today = rsiAt(closes,2,li);
+  const rsi2yest  = rsiAt(closes,2,li-1);
+  const lastBar=bars[li], prevBar=bars[li-1];
+  const bullCross = rsi2yest!=null && rsi2today!=null && rsi2yest<=10 && rsi2today>10;
+  const bullBreak = prevBar && lastBar.c>prevBar.h && lastBar.c>lastBar.o;
+  const bearCross = rsi2yest!=null && rsi2today!=null && rsi2yest>=90 && rsi2today<90;
+  const bearBreak = prevBar && lastBar.c<prevBar.l && lastBar.c<lastBar.o;
+  const m={
+    ticker, price:last, dollarVol,
+    adjSlope: (reg.annual!=null&&reg.r2!=null)? reg.annual*reg.r2 : null,
+    annual: reg.annual, r2: reg.r2,
+    above100: last>(sma(closes,100)??Infinity),
+    above150: last>(sma(closes,150)??Infinity),
+    above200: last>(sma(closes,200)??Infinity),
+    sma50: sma(closes,50), sma200v: sma(closes,200),
+    gap90: maxGap(closes,90),
+    atr20: atr(bars,20), atr10: atr(bars,10),
+    atrPct: atr(bars,10)? atr(bars,10)/last : null,
+    mom_2_12: (closes.length>252)? (closes[closes.length-1-21]/closes[closes.length-1-252]-1) : null,
+    fip: fip(closes),
+    rsi3: rsi(closes,3), rsi4: rsi(closes,4),
+    rsi2today, rsi2yest,
+    adx7: adx(bars,7),
+    drop3: pctChange(closes,3),
+    surge6: pctChange(closes,6),
+    up2: bars.length>2 && bars[li].c>bars[li-1].c && bars[li-1].c>bars[li-2].c,
+    // bull-side ready (for long/pullback tabs), bear-side ready (for fade/hedge tabs)
+    bullReady: bullCross||bullBreak, bullTrigger: bullCross?'RSI(2)↑10':bullBreak?'breakout':null,
+    bearReady: bearCross||bearBreak, bearTrigger: bearCross?'RSI(2)↓90':bearBreak?'breakdown':null,
+    earnings:null, earningsFlag:false, earningsDate:null, earningsDaysAgo:null,
+  };
+  return m;
+}
+
+function classifyRegime(spyBars){
+  const c=spyBars.map(b=>b.c);
+  const last=c[c.length-1];
+  const s50=sma(c,50), s200=sma(c,200);
+  const low50=Math.min(...c.slice(-50));
+  let r='neutral';
+  if(s200!=null){
+    if(last>s200 && s50>s200) r='bull';
+    else if(last<s200) r='bear';
+    else r='neutral';
+  }
+  return {regime:r, last, s50, s200, crash: last<=low50*1.0001, low50};
+}
+
+/* hard gate: zero long score */
+function gated(m){
+  return (!m.above100) || (m.gap90>cfg.gapLimit) || m.earningsFlag || (m.dollarVol<cfg.liqTrend);
+}
+
+function scoreLongs(rows){
+  const valid=rows.filter(m=>m.adjSlope!=null);
+  const sl=valid.map(m=>m.adjSlope).sort((a,b)=>a-b);
+  const mo=valid.filter(m=>m.mom_2_12!=null).map(m=>m.mom_2_12).sort((a,b)=>a-b);
+  // FIP: more negative is better -> invert so higher pctile = better
+  const fp=valid.filter(m=>m.fip!=null).map(m=>-m.fip).sort((a,b)=>a-b);
+  rows.forEach(m=>{
+    if(m.adjSlope==null){ m.score=null; return; }
+    const pSlope=pctile(m.adjSlope,sl);
+    const pMom = m.mom_2_12!=null? pctile(m.mom_2_12,mo):0;
+    const pFip = m.fip!=null? pctile(-m.fip,fp):0;
+    const r2c = m.r2!=null? Math.max(0,Math.min(1,m.r2)):0;
+    let trend=0; if(m.above100)trend+=.4; if(m.above200)trend+=.3; if(m.sma50&&m.sma200v&&m.sma50>m.sma200v)trend+=.3;
+    let raw = W.slope*pSlope + W.mom*pMom + W.fip*pFip + W.r2*r2c + W.trend*trend;
+    raw = raw/(W.slope+W.mom+W.fip+W.r2+W.trend)*100;
+    m.score = gated(m)? 0 : Math.round(raw*10)/10;
+  });
+}
+
+/* ===========================  TAB ROUTING  ============================= */
+const TABS = {
+  long:{
+    label:'Long momentum', short:'long', side:'bull', dir:'BULL',
+    note:'Smoothest high-momentum names (Clenow slope×R² + Gray FIP/2–12). Bullish structures: <b>call debit spreads, diagonals, cash-secured puts</b>. Hard gates applied.',
+    filter:r=>r.filter(m=>m.score>0).sort((a,b)=>b.score-a.score),
+    cols:['ticker','entry','score','adjSlope','annual','r2','mom_2_12','fip','atrPct','price','earnings','flags']
+  },
+  pullback:{
+    label:'Long pullback', short:'pullback', side:'bull', dir:'BULL',
+    note:'Oversold dips inside uptrends (Bensdorp #3/#5). Bullish structures: <b>put credit spreads / bull put spreads</b> to harvest the bounce.',
+    filter:r=>r.filter(m=> (m.above150 && m.drop3!=null && m.drop3<=-0.125 && m.dollarVol>=cfg.liqMR)
+                          || (m.above100 && m.adx7>55 && m.rsi3!=null && m.rsi3<50 && m.atrPct>=0.04 && m.dollarVol>=cfg.liqMR))
+              .sort((a,b)=> (a.drop3??0)-(b.drop3??0)),
+    cols:['ticker','entry','drop3','rsi3','adx7','atrPct','above150','price','dollarVol','earnings','flags']
+  },
+  fade:{
+    label:'Short / fade', short:'fade', side:'bear', dir:'NEUTRAL',
+    note:'Overbought surges to fade (Bensdorp #2 RSI thrust, #6 six-day surge). Bearish structures: <b>call credit spreads / bear call spreads</b>.',
+    filter:r=>r.filter(m=> (m.rsi3!=null && m.rsi3>90 && m.up2 && m.atrPct>=0.03 && m.dollarVol>=cfg.liqShort)
+                          || (m.surge6!=null && m.surge6>=0.20 && m.up2 && m.dollarVol>=cfg.liqShort))
+              .sort((a,b)=> (b.surge6??0)-(a.surge6??0)),
+    cols:['ticker','entry','surge6','rsi3','adx7','atrPct','price','dollarVol','earnings','flags']
+  },
+  hedge:{
+    label:'Hedge / weakest', short:'hedge', side:'bear', dir:'BEAR',
+    note:'Mirror of the long ranking — weakest adjusted slope (downtrend leaders). Bearish structures: <b>long puts / put debit spreads</b>. The crash flag (SPY 50-day low) is the Bensdorp #7 trigger for index hedges.',
+    filter:r=>r.filter(m=>m.adjSlope!=null && !m.above200).sort((a,b)=>(a.adjSlope)-(b.adjSlope)),
+    cols:['ticker','entry','adjSlope','annual','r2','above200','atrPct','price','dollarVol','earnings','flags']
+  }
+};
+
+function tabAvailability(){
+  // which tabs are "live" given regime — others stay clickable but dimmed
+  const live={long:false,pullback:false,fade:false,hedge:false};
+  if(REGIME==='bull'){ live.long=true; live.pullback=true; }
+  else if(REGIME==='neutral'){ live.pullback=true; live.fade=true; live.long=true; }
+  else if(REGIME==='bear'){ live.fade=true; live.hedge=true; }
+  if(CRASH) live.hedge=true;
+  return live;
+}
+
+/* ===========================  RENDER  ============================= */
+const COLDEF={
+  ticker:{h:'TICKER'}, entry:{h:'ENTRY'}, score:{h:'SCORE'}, adjSlope:{h:'ADJ SLOPE'}, annual:{h:'ANN %'},
+  r2:{h:'R²'}, mom_2_12:{h:'2–12 %'}, fip:{h:'FIP'}, atrPct:{h:'ATR%'}, price:{h:'PRICE'},
+  flags:{h:'FLAGS'}, drop3:{h:'3D DROP'}, rsi3:{h:'RSI3'}, adx7:{h:'ADX7'},
+  above150:{h:'>150SMA'}, above200:{h:'>200SMA'}, dollarVol:{h:'$VOL'}, surge6:{h:'6D SURGE'}, earnings:{h:'LAST ERN'}
+};
+function fmt(m,k){
+  const v=m[k];
+  switch(k){
+    case 'ticker': return `<span class="tick">${v}</span>`;
+    case 'entry': {
+      const side=TABS[activeTab].side;
+      const ready = side==='bull'? m.bullReady : m.bearReady;
+      const trig  = side==='bull'? m.bullTrigger : m.bearTrigger;
+      if(!ready) return '<span class="muted">—</span>';
+      return `<span class="entrybadge ${side}">▸ ${trig}</span>`;
+    }
+    case 'score': { if(v==null) return '<span class="muted">—</span>'; const c=v>=70?'s-hi':v>=45?'s-mid':'s-lo'; return `<span class="score ${c}">${v.toFixed(1)}</span>`; }
+    case 'adjSlope': return v==null?'—':`<span class="${v>=0?'pos':'neg'}">${v.toFixed(3)}</span>`;
+    case 'annual': return v==null?'—':`<span class="${v>=0?'pos':'neg'}">${(v*100).toFixed(0)}%</span>`;
+    case 'r2': return v==null?'—':v.toFixed(2);
+    case 'mom_2_12': return v==null?'—':`<span class="${v>=0?'pos':'neg'}">${(v*100).toFixed(0)}%</span>`;
+    case 'fip': return v==null?'—':`<span class="${v<0?'pos':'neg'}">${v.toFixed(3)}</span>`;
+    case 'atrPct': return v==null?'—':(v*100).toFixed(1)+'%';
+    case 'price': return v==null?'—':'$'+v.toFixed(2);
+    case 'earnings': {
+      if(!m.earningsDate) return '<span class="muted" title="not fetched / no data">—</span>';
+      const d=m.earningsDaysAgo;
+      const inWin = d>=0 && d<=cfg.earningsWindowDays;
+      const cls = inWin?'neg':'muted';
+      const md = m.earningsDate.slice(5); // MM-DD
+      return `<span class="${cls}" title="last reported ${m.earningsDate} · ${d}d ago${inWin?' · inside '+cfg.earningsWindowDays+'d window':''}">${md} · ${d}d</span>`;
+    }
+    case 'drop3': return v==null?'—':`<span class="neg">${(v*100).toFixed(1)}%</span>`;
+    case 'surge6': return v==null?'—':`<span class="pos">+${(v*100).toFixed(1)}%</span>`;
+    case 'rsi3': case 'adx7': return v==null?'—':v.toFixed(0);
+    case 'above150': case 'above200': return v?'<span class="chip">yes</span>':'<span class="muted">no</span>';
+    case 'dollarVol': return v==null?'—':'$'+(v/1e6).toFixed(0)+'M';
+    case 'flags': {
+      let s=[];
+      if(m.gap90>cfg.gapLimit)s.push('<span class="chip warn">gap '+(m.gap90*100).toFixed(0)+'%</span>');
+      if(m.earningsFlag)s.push('<span class="chip warn">earnings</span>');
+      if(!m.above100)s.push('<span class="chip warn">&lt;100SMA</span>');
+      // cross-tab badges: other tabs this name also appears in
+      if(m._xtabs){
+        const side=TABS[activeTab].side;
+        m._xtabs.forEach(t=>{
+          const conflict = TABS[t].side!==side;
+          const title = conflict? 'Opposite-side signal — timing caution' : 'Also flagged here';
+          s.push(`<span class="chip xtab${conflict?' conflict':''}" title="${title}">also: ${TABS[t].short}</span>`);
+        });
+      }
+      s.push('<span class="chip chiplink" data-chain="'+m.ticker+'">chain ▸</span>');
+      return s.join(' ');
+    }
+    default: return v==null?'—':v;
+  }
+}
+function renderTable(){
+  const host=document.getElementById('tableHost');
+  const def=TABS[activeTab];
+  document.getElementById('tabnote').innerHTML=def.note;
+  if(!RESULTS.length){ host.innerHTML='<div class="empty">Enter your Polygon key and run a scan.</div>'; return; }
+  // cross-tab membership: which tabs each ticker appears in (computed once)
+  const membership={};
+  Object.entries(TABS).forEach(([k,d])=>{ d.filter(RESULTS.slice()).forEach(m=>{ (membership[m.ticker]||(membership[m.ticker]=[])).push(k); }); });
+  RESULTS.forEach(m=>{ m._xtabs=(membership[m.ticker]||[]).filter(t=>t!==activeTab); });
+  let rows=def.filter(RESULTS.slice());
+  if(entryOnly){ const side=def.side; rows=rows.filter(m=> side==='bull'? m.bullReady : m.bearReady); }
+  // apply sort if user clicked a header
+  if(sortState.key){
+    const sk = sortState.key==='earnings'?'earningsDaysAgo':sortState.key;
+    rows.sort((a,b)=>{ let x=a[sk],y=b[sk]; if(x==null)x=-Infinity; if(y==null)y=-Infinity; return (x<y?-1:x>y?1:0)*sortState.dir; });
+  }
+  if(!rows.length){ host.innerHTML='<div class="empty">'+(entryOnly?'No ranked names are entry-ready right now. Toggle “Entry-ready only” off to see the full ranking.':'No candidates match this tab right now.')+'</div>'; return; }
+  rows=rows.slice(0,cfg.topN);
+  const cols=def.cols;
+  let html='<table><thead><tr>';
+  cols.forEach(k=>{ const arr=sortState.key===k?`<span class="arr">${sortState.dir<0?'▼':'▲'}</span>`:''; html+=`<th class="sortable" data-k="${k}">${COLDEF[k].h} ${arr}</th>`; });
+  html+='</tr></thead><tbody>';
+  rows.forEach(m=>{ html+='<tr>'+cols.map(k=>`<td>${fmt(m,k)}</td>`).join('')+'</tr>'; });
+  html+='</tbody></table>';
+  host.innerHTML=html;
+  host.querySelectorAll('th.sortable').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k; if(sortState.key===k) sortState.dir*=-1; else {sortState.key=k;sortState.dir=-1;} renderTable();
+  });
+  host.querySelectorAll('[data-chain]').forEach(el=>el.onclick=e=>{e.stopPropagation();openChain(el.dataset.chain);});
+}
+
+function renderTabs(){
+  const live=tabAvailability();
+  const host=document.getElementById('tabs');
+  host.innerHTML='';
+  Object.entries(TABS).forEach(([k,def])=>{
+    let list = RESULTS.length? def.filter(RESULTS.slice()) : [];
+    if(entryOnly){ const side=def.side; list=list.filter(m=> side==='bull'? m.bullReady : m.bearReady); }
+    const count = list.length;
+    const el=document.createElement('div');
+    el.className='tab'+(k===activeTab?' active':'')+(live[k]?' live':' dim');
+    el.innerHTML=`${def.label}<span class="ct">${count}</span>`;
+    el.onclick=()=>{activeTab=k; sortState={key:null,dir:-1}; renderTabs(); renderTable();};
+    host.appendChild(el);
+  });
+}
+
+function renderRegime(){
+  const b=document.getElementById('regBadge');
+  const meta=document.getElementById('regMeta');
+  const cf=document.getElementById('crashFlag');
+  const map={bull:['reg-bull','BULL'],bear:['reg-bear','BEAR'],neutral:['reg-neutral','NEUTRAL'],unknown:['reg-unknown','NO SCAN']};
+  const [cls,txt]=map[REGIME]||map.unknown;
+  b.className='regbadge '+cls; b.textContent=txt;
+  cf.style.display=CRASH?'inline-block':'none';
+  if(SPY){
+    meta.innerHTML=`<span>SPY <b>$${SPY.last.toFixed(2)}</b></span><span>50SMA <b>${SPY.s50?SPY.s50.toFixed(2):'—'}</b></span><span>200SMA <b>${SPY.s200?SPY.s200.toFixed(2):'—'}</b></span><span>50d low <b>${SPY.low50.toFixed(2)}</b></span>`;
+  }
+  // seasonality
+  const mo=new Date().getMonth(); // 0=Jan
+  const seas=document.getElementById('seasonal');
+  if([1,4,7,10].includes(mo)){ seas.className='seasonal seas-good'; seas.textContent='season: rebalance window (Feb/May/Aug/Nov)'; }
+  else if(mo===0){ seas.className='seasonal seas-warn'; seas.textContent='season: January — weak for momentum-long'; }
+  else { seas.className='seasonal seas-neutral'; seas.textContent='season: hold'; }
+}
+
+/* ===========================  CHAIN DRAWER (on tap)  ============================= */
+async function openChain(ticker){
+  const key=document.getElementById('apiKey').value.trim();
+  const m=RESULTS.find(r=>r.ticker===ticker);
+  document.getElementById('drawerTick').textContent=ticker;
+  document.getElementById('drawerBody').innerHTML='<div class="dsec">Loading chain…</div>';
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+  if(!key){ document.getElementById('drawerBody').innerHTML='<div class="dsec">Enter your Polygon key first.</div>'; return; }
+
+  // server-side filtered snapshot: near-the-money, near-dated, to dodge 250-cap
+  const lo=(m.price*0.85).toFixed(0), hi=(m.price*1.15).toFixed(0);
+  const today=new Date(), exp=new Date(); exp.setDate(exp.getDate()+70);
+  const f=d=>d.toISOString().slice(0,10);
+  const url=`${POLY}/v3/snapshot/options/${encodeURIComponent(ticker)}?strike_price.gte=${lo}&strike_price.lte=${hi}&expiration_date.gte=${f(today)}&expiration_date.lte=${f(exp)}&limit=250&apiKey=${key}`;
+  let chain=[];
+  try{
+    const r=await fetch(url); const j=await r.json();
+    chain=(j.results||[]).filter(o=>o.day&&(o.open_interest!=null));
+  }catch(e){ document.getElementById('drawerBody').innerHTML='<div class="dsec">Chain fetch failed: '+e.message+'</div>'; return; }
+
+  // IV proxy from snapshot greeks (implied_volatility present on many plans)
+  const ivs=chain.map(o=>o.implied_volatility).filter(v=>v!=null);
+  const iv=ivs.length? ivs.reduce((a,b)=>a+b,0)/ivs.length : null;
+  // IV rank requires history we don't have here -> show current IV + relative posture
+  const ivLabel = iv==null?'n/a':(iv*100).toFixed(0)+'%';
+  const ivHigh = iv!=null && iv>0.40; // crude posture threshold
+
+  // structure suggestion: score + IV posture
+  let struct;
+  if(activeTab==='long' || activeTab==='pullback'){
+    struct = ivHigh
+      ? '<b>Put credit spread</b> (bull put) — high IV favors selling premium; sell put below support, buy lower put.'
+      : '<b>Call debit spread</b> or <b>diagonal</b> — low IV favors buying directional premium on the smooth uptrend.';
+  } else {
+    struct = ivHigh
+      ? '<b>Call credit spread</b> (bear call) — high IV favors selling the overbought pop.'
+      : '<b>Put debit spread</b> / <b>long put</b> — low IV favors buying downside on weakness.';
+  }
+
+  const oiTotal=chain.reduce((s,o)=>s+(o.open_interest||0),0);
+  const spreads=chain.map(o=>{const q=o.last_quote;return (q&&q.ask&&q.bid)?(q.ask-q.bid)/((q.ask+q.bid)/2):null;}).filter(v=>v!=null);
+  const medSpread=spreads.length? spreads.sort((a,b)=>a-b)[Math.floor(spreads.length/2)] : null;
+
+  document.getElementById('drawerBody').innerHTML=`
+    <div class="dsec">
+      <h3>Momentum snapshot</h3>
+      <div class="kv"><span>Composite score</span><span>${m.score!=null?m.score.toFixed(1):'—'}</span></div>
+      <div class="kv"><span>Adj slope (×R²)</span><span>${m.adjSlope!=null?m.adjSlope.toFixed(3):'—'}</span></div>
+      <div class="kv"><span>Annualized</span><span>${m.annual!=null?(m.annual*100).toFixed(0)+'%':'—'}</span></div>
+      <div class="kv"><span>FIP (smoother↓)</span><span>${m.fip!=null?m.fip.toFixed(3):'—'}</span></div>
+      <div class="kv"><span>Price</span><span>$${m.price.toFixed(2)}</span></div>
+      <div class="kv"><span>Last earnings</span><span>${m.earningsDate? m.earningsDate+' ('+m.earningsDaysAgo+'d)'+(m.earningsFlag?' ⚠':'') : '—'}</span></div>
+    </div>
+    <div class="dsec">
+      <h3>Options posture</h3>
+      <div class="kv"><span>Avg IV (NTM, ≤70d)</span><span>${ivLabel}</span></div>
+      <div class="kv"><span>IV posture</span><span>${iv==null?'—':ivHigh?'elevated':'subdued'}</span></div>
+      <div class="kv"><span>Contracts (filtered)</span><span>${chain.length}${chain.length>=250?' ⚠cap':''}</span></div>
+      <div class="kv"><span>Total OI (window)</span><span>${oiTotal.toLocaleString()}</span></div>
+      <div class="kv"><span>Median spread</span><span>${medSpread!=null?(medSpread*100).toFixed(1)+'%':'n/a (quote entitlement?)'}</span></div>
+      <div class="struct">${struct}</div>
+    </div>
+    <div class="dsec">
+      <h3>Notes</h3>
+      <div class="hint" style="font-family:var(--mono);font-size:11px;line-height:1.6">Strikes ${lo}–${hi}, exp ≤70d, server-side filtered. IV rank needs IV history (not pulled here) — posture is a current-level heuristic. Null median spread usually means no quote entitlement on your plan.</div>
+    </div>`;
+}
+function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+
+/* ===========================  SCAN ORCHESTRATION  ============================= */
+async function runScan(){
+  const key=document.getElementById('apiKey').value.trim();
+  if(!key){ setStatus('Enter your Polygon.io API key.'); return; }
+  const btn=document.getElementById('scanBtn'); btn.disabled=true;
+  const bar=document.getElementById('bar'), fill=document.getElementById('barfill');
+  bar.classList.add('show');
+  RESULTS=[];
+  let done=0, errors=0, rateHit=false;
+  const total=UNIVERSE.length+1;
+  const tick=()=>{ done++; fill.style.width=(done/total*100)+'%'; setStatus(`Scanning ${done}/${total} · ${errors} skipped`); };
+
+  // 1) SPY regime
+  try{
+    const spy=await fetchBars('SPY',key,420);
+    if(spy){ SPY=classifyRegime(spy); REGIME=SPY.regime; CRASH=SPY.crash; }
+  }catch(e){ if(e.message==='RATE') rateHit=true; }
+  tick(); renderRegime();
+
+  // 2) universe — bounded concurrency
+  const queue=UNIVERSE.slice();
+  async function worker(){
+    while(queue.length){
+      const t=queue.shift();
+      try{
+        const bars=await fetchBars(t,key,420);
+        if(bars&&bars.length>120){
+          const m=computeStock(t,bars);
+          RESULTS.push(m);
+        } else errors++;
+      }catch(e){ errors++; if(e.message==='RATE'){rateHit=true;} }
+      tick();
+    }
+  }
+  await Promise.all(Array.from({length:cfg.maxConcurrent},()=>worker()));
+
+  // 3) earnings dates — fetch for any name that surfaces in any tab (bounded union)
+  scoreLongs(RESULTS); // initial score so the long tab (filter: score>0) yields candidates
+  const seen=new Set(); const candidates=[];
+  Object.values(TABS).forEach(d=>{ d.filter(RESULTS.slice()).slice(0,cfg.topN).forEach(m=>{ if(!seen.has(m.ticker)){seen.add(m.ticker);candidates.push(m);} }); });
+  setStatus(`Fetching earnings dates (${candidates.length})…`);
+  const eq=candidates.slice(); let edone=0;
+  async function eworker(){
+    while(eq.length){
+      const m=eq.shift();
+      const e=await fetchEarnings(m.ticker,key);
+      if(e){ m.earningsDate=e.date; m.earningsDaysAgo=e.daysAgo; m.earningsFlag = e.daysAgo>=0 && e.daysAgo<=cfg.earningsWindowDays; }
+      edone++; setStatus(`Fetching earnings dates ${edone}/${candidates.length}…`);
+    }
+  }
+  await Promise.all(Array.from({length:cfg.maxConcurrent},()=>eworker())).catch(()=>{});
+  // Note: financials filing_date is the last *reported* quarter, matching your bull/bear screeners.
+  // It is recency of last report, not the next scheduled earnings date (that needs a calendar add-on).
+  scoreLongs(RESULTS); // re-score so earningsFlag gate applies
+  // pick a sensible default tab for the regime
+  if(REGIME==='bear') activeTab=CRASH?'hedge':'fade';
+  else if(REGIME==='neutral') activeTab='fade';
+  else activeTab='long';
+  sortState={key:'score',dir:-1};
+
+  bar.classList.remove('show'); fill.style.width='0';
+  setStatus(`Done · ${RESULTS.length} names ranked · ${errors} skipped${rateHit?' · ⚠ rate limit hit — some names incomplete':''}`);
+  document.getElementById('scanBtn').disabled=false;
+  renderRegime(); renderTabs(); renderTable();
+}
+
+function setStatus(s){ document.getElementById('status').textContent=s; }
+
+/* ===========================  WEIGHTS UI  ============================= */
+function syncWeights(){
+  ['slope','mom','fip','r2','trend'].forEach((k,i)=>{
+    const el=document.getElementById('w'+i); W[k]=+el.value; document.getElementById('w'+i+'v').textContent=el.value;
+  });
+  const sum=W.slope+W.mom+W.fip+W.r2+W.trend;
+  const ws=document.getElementById('wsum'); ws.textContent='Σ '+sum; ws.className='wsum'+(sum!==100?' bad':'');
+  if(RESULTS.length){ scoreLongs(RESULTS); renderTabs(); renderTable(); }
+}
+
+/* ===========================  WIRE-UP  ============================= */
+document.getElementById('scanBtn').onclick=runScan;
+document.getElementById('weightsToggle').onclick=()=>document.getElementById('weightsPanel').classList.toggle('show');
+document.getElementById('entryToggle').onclick=function(){ entryOnly=!entryOnly; this.textContent='Entry-ready only: '+(entryOnly?'on':'off'); this.style.color=entryOnly?'var(--accent)':''; this.style.borderColor=entryOnly?'var(--accent)':''; renderTabs(); renderTable(); };
+['w0','w1','w2','w3','w4'].forEach(id=>document.getElementById(id).oninput=syncWeights);
+document.getElementById('drawerClose').onclick=closeDrawer;
+document.getElementById('overlay').onclick=closeDrawer;
+document.getElementById('loadUniv').onclick=()=>{
+  const cur=UNIVERSE.join(' ');
+  const v=prompt('Edit universe (space-separated tickers, no ETFs):',cur);
+  if(v){ UNIVERSE=v.trim().split(/\s+/).filter(Boolean); document.getElementById('univlabel').textContent=UNIVERSE.length+' names'; }
+};
+document.getElementById('apiKey').addEventListener('keydown',e=>{ if(e.key==='Enter') runScan(); });
+renderRegime(); renderTabs();
+document.getElementById('univlabel').textContent='S&P '+UNIVERSE.length+' single names';
+</script>
+</body>
+</html>
