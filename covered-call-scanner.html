@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BCI Covered Call Scanner</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#0f141c; --panel2:#131a24; --border:#1e2733;
+    --txt:#c8d3e0; --dim:#6b7c93; --faint:#3d4a5c;
+    --green:#3fb950; --greendim:#1f6f30; --red:#f04b4b; --reddim:#7a2424;
+    --amber:#d8a657; --cyan:#56b6c2; --blue:#4d8fd6;
+    --gold:#e0b341;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:'SF Mono','Menlo','Consolas','Roboto Mono',monospace;
+    font-size:12px; line-height:1.45; padding:14px;
+  }
+  .head{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px;flex-wrap:wrap}
+  .head h1{font-size:14px;font-weight:700;letter-spacing:1px;color:var(--gold)}
+  .head .sub{font-size:11px;color:var(--dim)}
+  .head .ver{margin-left:auto;font-size:10px;color:var(--faint)}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;background:var(--panel);border:1px solid var(--border);padding:10px;border-radius:4px;margin-bottom:10px}
+  .fld{display:flex;flex-direction:column;gap:3px}
+  .fld label{font-size:10px;color:var(--dim);letter-spacing:.5px;text-transform:uppercase}
+  input,select,textarea{
+    background:var(--panel2);border:1px solid var(--border);color:var(--txt);
+    font-family:inherit;font-size:12px;padding:5px 7px;border-radius:3px;outline:none
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+  input[type=number]{width:78px}
+  textarea{width:340px;height:46px;resize:vertical;white-space:pre;overflow:auto}
+  button{
+    background:var(--greendim);border:1px solid var(--green);color:#dfffe6;
+    font-family:inherit;font-size:12px;font-weight:600;padding:6px 16px;border-radius:3px;cursor:pointer;letter-spacing:.5px
+  }
+  button:hover{background:var(--green);color:#04210a}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.sec{background:transparent;border-color:var(--border);color:var(--dim)}
+  button.sec:hover{border-color:var(--blue);color:var(--txt);background:transparent}
+  .gates{display:flex;gap:14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);padding:8px 10px;border-radius:4px;margin-bottom:10px;font-size:11px}
+  .gates .g{display:flex;align-items:center;gap:5px;color:var(--dim)}
+  .gates input[type=checkbox]{accent-color:var(--green)}
+  .status{font-size:11px;color:var(--dim);margin-bottom:8px;min-height:16px}
+  .status b{color:var(--cyan)}
+  .progress{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:10px}
+  .progress > div{height:100%;background:var(--green);width:0;transition:width .15s}
+  .regime{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;margin-left:6px}
+  .reg-bull{background:var(--greendim);color:#bff5c8}
+  .reg-bear{background:var(--reddim);color:#ffc9c9}
+  .reg-neutral{background:#3a3320;color:var(--gold)}
+  table{width:100%;border-collapse:collapse;font-size:11.5px}
+  th,td{text-align:right;padding:5px 7px;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{color:var(--dim);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.5px;cursor:pointer;position:sticky;top:0;background:var(--panel)}
+  th:hover{color:var(--txt)}
+  th.l,td.l{text-align:left}
+  tbody tr:hover{background:var(--panel2)}
+  td.tk{font-weight:700;color:var(--txt)}
+  .pill{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600}
+  .p-pos{background:var(--greendim);color:#bff5c8}
+  .p-mix{background:#3a3320;color:var(--gold)}
+  .p-neg{background:var(--reddim);color:#ffc9c9}
+  .chk{display:inline-block;width:13px;text-align:center;font-weight:700}
+  .yes{color:var(--green)} .no{color:var(--red)} .na{color:var(--faint)}
+  .score{font-weight:700}
+  .s-hi{color:var(--green)} .s-md{color:var(--gold)} .s-lo{color:var(--dim)}
+  .star{color:var(--gold);letter-spacing:-1px}
+  .opt-btn{background:transparent;border:1px solid var(--border);color:var(--cyan);font-size:10px;padding:2px 8px;cursor:pointer;border-radius:3px}
+  .opt-btn:hover{border-color:var(--cyan);background:var(--panel2);color:var(--cyan)}
+  .log{margin-top:14px;background:#070a0e;border:1px solid var(--border);border-radius:4px;max-height:200px;overflow:auto;padding:8px;font-size:10.5px;color:var(--dim);display:none}
+  .log.show{display:block}
+  .log .ok{color:var(--greendim)} .log .gate{color:var(--amber)} .log .err{color:var(--red)} .log .hl{color:var(--cyan)}
+  .tabs{display:flex;gap:2px;margin-bottom:8px}
+  .tab{padding:5px 12px;background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--dim);cursor:pointer;font-size:11px;border-radius:3px 3px 0 0}
+  .tab.active{background:var(--panel2);color:var(--gold);border-color:var(--blue)}
+  .wrap{background:var(--panel2);border:1px solid var(--border);border-radius:0 4px 4px 4px;overflow:auto;max-height:60vh}
+  .empty{padding:30px;text-align:center;color:var(--faint)}
+  .legend{font-size:10px;color:var(--faint);margin-top:8px;line-height:1.6}
+  .optrow td{background:#0c1118;border-bottom:1px solid var(--border)}
+  .optrow table{font-size:10.5px}
+  .muted{color:var(--faint)}
+  a{color:var(--blue)}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>BCI COVERED CALL SCANNER</h1>
+  <span class="sub">Ellman / Blue Collar Investor methodology · 20/100 EMA · MACD-Hist · Slow Stoch · Volume</span>
+  <span class="ver">v1.0 · daily bars · Polygon</span>
+</div>
+
+<div class="bar">
+  <div class="fld">
+    <label>Polygon API Key</label>
+    <input type="password" id="apiKey" placeholder="paste key" style="width:200px">
+  </div>
+  <div class="fld">
+    <label>Universe</label>
+    <select id="universe">
+      <option value="sp500">S&P 500 single names</option>
+      <option value="custom">Custom list →</option>
+    </select>
+  </div>
+  <div class="fld" id="customWrap" style="display:none">
+    <label>Tickers (space/comma sep)</label>
+    <textarea id="customList" placeholder="AAPL MSFT NVDA ..."></textarea>
+  </div>
+  <div class="fld">
+    <label>Min Price</label><input type="number" id="minPrice" value="20">
+  </div>
+  <div class="fld">
+    <label>Min Avg Vol (k)</label><input type="number" id="minVol" value="500">
+  </div>
+  <div class="fld">
+    <label>Earnings window (days)</label><input type="number" id="earnDays" value="35">
+  </div>
+  <div class="fld">
+    <button id="runBtn">▶ SCAN</button>
+  </div>
+  <div class="fld">
+    <button class="sec" id="logBtn">scan log</button>
+  </div>
+</div>
+
+<div class="gates">
+  <span class="muted">HARD GATES:</span>
+  <label class="g"><input type="checkbox" id="gMA" checked> 20-EMA &gt; 100-EMA (uptrend)</label>
+  <label class="g"><input type="checkbox" id="gPrice" checked> price ≥ 20-EMA (at/above support)</label>
+  <label class="g"><input type="checkbox" id="gEarn" checked> no earnings in contract window</label>
+  <label class="g"><input type="checkbox" id="gLiq" checked> price &amp; liquidity floor</label>
+  <label class="g"><input type="checkbox" id="gOpt"> optionable only</label>
+</div>
+
+<div class="status" id="status">Ready. Enter Polygon key and hit SCAN. Pulls ~1yr daily bars per name; computes BCI technicals; gates &amp; ranks.</div>
+<div class="progress"><div id="progBar"></div></div>
+
+<div class="tabs" id="tabs" style="display:none">
+  <div class="tab active" data-tab="pass">Candidates</div>
+  <div class="tab" data-tab="watch">Mixed / Watch</div>
+  <div class="tab" data-tab="rej">Rejected</div>
+</div>
+
+<div class="wrap" id="wrap">
+  <div class="empty">No scan run yet.</div>
+</div>
+
+<div class="legend" id="legend" style="display:none">
+  TREND = MA structure (20-EMA vs 100-EMA, price vs 20-EMA).
+  MACD = histogram sign &amp; slope. STOCH = slow %K(14,3) zone &amp; direction. VOL = recent vs 50-day avg.
+  TECH pill: <span class="pill p-pos">POSITIVE</span> all confirming →favors OTM/ATM calls ·
+  <span class="pill p-mix">MIXED</span> MA holds but momentum rolling →ITM calls ·
+  <span class="pill p-neg">NEGATIVE</span> avoid.
+  Stoch &gt;80 is treated NEUTRAL per BCI (strong names ride overbought). ★ = composite technical quality.
+</div>
+
+<div class="log" id="log"></div>
+
+<script>
+/* ============================================================
+   BCI Covered Call Scanner
+   Encodes Alan Ellman's Blue Collar Investor technical screen:
+     - Moving averages: 20-EMA & 100-EMA (the "king" indicator)
+         * uptrend = 20-EMA above 100-EMA
+         * price bars at/above 20-EMA (20-EMA as support)
+     - MACD(12,26,9) histogram: sign + momentum (slope)
+     - Slow Stochastic %K(14,3): zones; >80 treated NEUTRAL
+     - Volume: recent vs 50d avg; surge = 1.5x
+     - Earnings avoidance: never sell into a contract w/ earnings
+     - Price/liquidity floor
+   Stock is chosen on merit BEFORE looking at option premium (Ellman rule #2).
+   ============================================================ */
+
+const $ = id => document.getElementById(id);
+const POLY = 'https://api.polygon.io';
+let LAST = {pass:[], watch:[], rej:[]};
+let SORT = {key:'score', dir:-1};
+
+/* ---- S&P 500 single-name universe (large-cap, optionable) ---- */
+const SP500 = "AAPL MSFT NVDA AMZN META GOOGL GOOG BRK.B AVGO TSLA LLY JPM V XOM UNH MA JNJ COST HD PG WMT NFLX BAC ABBV CRM ORCL CVX KO MRK AMD PEP TMO ADBE LIN ACN MCD CSCO ABT WFC GE DHR IBM TXN QCOM CAT PM VZ INTU NOW ISRG CMCSA AMGN UNP SPGI PFE GS RTX HON AXP NEE LOW T BKNG MS UBER ELV PLD BLK SYK TJX VRTX C SCHW LMT BMY MDT ADP DE GILD MMC AMAT ETN CB BSX REGN PGR SBUX CI ADI MU SO BX ZTS FI KLAC DUK TT SLB ICE WM CL EQIX MO ITW SHW NOC APH PYP CME PYPL CDNS AON MCO PNC USB CSX MSI EOG FCX EMR GD SNPS APD MAR HCA ORLY ROP NXPI MMM AJG PSX TGT CARR PCAR MPC AZO TFC ECL TDG GM WELL ROST DXCM ADSK SPG OXY HLT KMB SRE COF CPRT MET TRV F NSC AEP D PAYX CHTR DOW CTAS MNST IDXX FTNT JCI ODFL AMP A ALL BK MCK GWW VLO HES KMI O AME CMG FAST EW EXC PRU OTIS KVUE BKR PEG VRSK CTSH DD ED LEN GIS CSGP HSY KR DLR YUM CCI WMB GEHC FICO IT IR EA RMD KHC NDAQ DG VMC EFX MLM CDW XEL MTD ANSS WST GLW DVN HIG FANG TSCO ON WEC AVB HPQ ROK STZ FITB EBAY KEYS WBD CBRE TROW DLTR PPG MPWR ZBH HPE NUE WTW BR APTV PHM CAH FTV CHD DAL MKC EIX VICI ULTA WY GPN PWR ETR IQV NTAP STT WAB BAX CMS GRMN STE COO HUBB EXR CNP DECK PFG ALGN MTB CINF MOH HBAN K LYB SYF VTR INVH RF DOV HWM TSN WRB ES NVR LH EQR PKG L EXPD GDDY BALL TYL CFG OMC ACGL DGX FE IFF ATO LDOS TRGP NRG WAT JBHT BG AVY STLD HOLX UAL CLX J SWKS IP ZBRA DPZ POOL TXT CE EG VRSN NWS CTRA TER LUV NDSN AKAM MAS UDR PODD JKHY CPB GEN BBY CPT HST CCL JNPR REG SJM EMN BWA AOS PNR TPR ALLE FFIV KIM AES BEN MGM MOS WBA CZR PARA RL CRL APA HSIC IPG MKTX FMC HII TAP NCLH AIZ FRT GNRC IVZ DVA BXP WYNN TFX NWL ROL XRAY";
+
+const TICKERS = SP500.split(/\s+/).map(t=>t.trim()).filter(t=>/^[A-Z.]{1,6}$/.test(t));
+
+/* ---- helpers ---- */
+function log(msg, cls=''){const el=$('log');const d=document.createElement('div');if(cls)d.className=cls;d.textContent=msg;el.appendChild(d);el.scrollTop=el.scrollHeight;}
+function setStatus(html){$('status').innerHTML=html;}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+/* robustFetch: retry with backoff, surfaces Polygon entitlement/auth issues */
+async function robustFetch(url, tries=3){
+  for(let i=0;i<tries;i++){
+    try{
+      const r = await fetch(url);
+      if(r.status===429){ await sleep(1200*(i+1)); continue; }
+      if(r.status===401||r.status===403){ const j=await r.json().catch(()=>({})); throw new Error('AUTH/ENTITLEMENT: '+(j.message||r.status)); }
+      if(!r.ok){ if(i<tries-1){await sleep(500*(i+1));continue;} throw new Error('HTTP '+r.status); }
+      return await r.json();
+    }catch(e){
+      if(String(e.message).startsWith('AUTH')) throw e;
+      if(i===tries-1) throw e;
+      await sleep(500*(i+1));
+    }
+  }
+}
+
+/* ---- indicator math ---- */
+function ema(vals, period){
+  const k=2/(period+1); const out=[]; let prev;
+  for(let i=0;i<vals.length;i++){
+    if(i===0){prev=vals[0];} else {prev=vals[i]*k+prev*(1-k);}
+    out.push(prev);
+  }
+  return out;
+}
+function emaSeed(vals, period){
+  // SMA-seeded EMA (closer to StockCharts behaviour)
+  const k=2/(period+1); const out=new Array(vals.length).fill(null);
+  if(vals.length<period) return out;
+  let sum=0; for(let i=0;i<period;i++) sum+=vals[i];
+  let prev=sum/period; out[period-1]=prev;
+  for(let i=period;i<vals.length;i++){prev=vals[i]*k+prev*(1-k);out[i]=prev;}
+  return out;
+}
+function macdHist(closes){
+  const e12=ema(closes,12), e26=ema(closes,26);
+  const macd=closes.map((_,i)=>e12[i]-e26[i]);
+  const sig=ema(macd,9);
+  return macd.map((m,i)=>m-sig[i]); // histogram
+}
+function slowStoch(highs,lows,closes,kP=14,d=3){
+  const n=closes.length; const fastK=new Array(n).fill(null);
+  for(let i=kP-1;i<n;i++){
+    let hi=-Infinity, lo=Infinity;
+    for(let j=i-kP+1;j<=i;j++){ if(highs[j]>hi)hi=highs[j]; if(lows[j]<lo)lo=lows[j]; }
+    fastK[i]= hi===lo ? 50 : (closes[i]-lo)/(hi-lo)*100;
+  }
+  // slow %K = 3-SMA of fast %K
+  const slowK=new Array(n).fill(null);
+  for(let i=0;i<n;i++){
+    if(i<kP-1+d-1) continue;
+    let s=0,c=0; for(let j=i-d+1;j<=i;j++){if(fastK[j]!=null){s+=fastK[j];c++;}}
+    if(c===d) slowK[i]=s/c;
+  }
+  return slowK;
+}
+
+/* ---- BCI technical evaluation ---- */
+function evaluate(bars){
+  // bars: array {t,o,h,l,c,v} ascending
+  const closes=bars.map(b=>b.c), highs=bars.map(b=>b.h), lows=bars.map(b=>b.l), vols=bars.map(b=>b.v);
+  const n=closes.length;
+  const e20=emaSeed(closes,20), e100=emaSeed(closes,100);
+  const hist=macdHist(closes);
+  const sk=slowStoch(highs,lows,closes);
+  const i=n-1;
+  const price=closes[i];
+  const ema20=e20[i], ema100=e100[i];
+  const ema20Prev=e20[i-3], ema100Prev=e100[i-3];
+
+  // average volume (50d) and recent
+  const recentVol = vols.slice(-3).reduce((a,b)=>a+b,0)/3;
+  const avgVol = vols.slice(-50).reduce((a,b)=>a+b,0)/Math.min(50,vols.length);
+  const volRatio = avgVol? recentVol/avgVol : 1;
+
+  // ---- TREND (moving averages) ----
+  const maUptrend = ema20>ema100;
+  const ema20Rising = ema20>ema20Prev;
+  const priceAtSupport = price>=ema20*0.985; // small tolerance ("at or above")
+  const priceAbove = price>=ema20;
+  let trendScore=0;
+  if(maUptrend) trendScore+=2;
+  if(priceAbove) trendScore+=1.5; else if(priceAtSupport) trendScore+=0.5;
+  if(ema20Rising) trendScore+=0.5;
+
+  // ---- MACD histogram ----
+  const h=hist[i], hPrev=hist[i-1], hPrev3=hist[i-3];
+  const macdPos = h>0;
+  const macdRising = h>hPrev3;
+  let macdScore=0;
+  if(macdPos) macdScore+=1.5; else macdScore-=1;
+  if(macdRising) macdScore+=0.5; else macdScore-=0.5;
+
+  // ---- Slow Stochastic ----
+  const k=sk[i], kPrev=sk[i-3];
+  let stochState, stochScore=0;
+  if(k==null){ stochState='n/a'; }
+  else if(k>80){ stochState='overbought(neutral)'; stochScore+=0.25; } // BCI: >80 neutral
+  else if(k<20){ stochState='oversold'; stochScore+=0.25; }
+  else { stochState='mid'; stochScore += (k>kPrev?0.75:0.25); } // ascending stoch bullish
+  const stochRising = (k!=null&&kPrev!=null)? k>kPrev : false;
+
+  // ---- Volume confirmation ----
+  let volScore=0, volNote;
+  if(volRatio>=1.5){ volNote='surge'; volScore+= macdPos&&maUptrend?1: -0.5; }
+  else if(volRatio>=1.0){ volNote='above avg'; volScore+=0.5; }
+  else { volNote='light'; volScore+=0; }
+
+  // ---- composite technical quality (0-10) ----
+  let raw = trendScore + macdScore + stochScore + volScore; // ~ -2.5 .. 6.0
+  let score = Math.max(0, Math.min(10, (raw+2.5)/8.5*10));
+
+  // ---- classification (Ellman positive / mixed / negative) ----
+  let tech;
+  if(maUptrend && priceAbove && macdPos && (stochRising||k>80||k==null||stochState==='mid'||stochState==='oversold'))
+    tech='POSITIVE';
+  else if(maUptrend && (priceAtSupport) && (!macdPos || !macdRising))
+    tech='MIXED';        // MA holds but momentum rolling -> ITM calls
+  else if(!maUptrend || price<ema20*0.97)
+    tech='NEGATIVE';
+  else tech='MIXED';
+
+  return {
+    price, ema20, ema100, maUptrend, ema20Rising, priceAbove, priceAtSupport,
+    macdHist:h, macdPos, macdRising, stochK:k, stochState, stochRising,
+    volRatio, volNote, avgVol, recentVol,
+    trendScore, macdScore, stochScore, volScore, score, tech
+  };
+}
+
+/* ---- earnings check via Polygon financials (report_period / filing dates) ---- */
+async function nextEarnings(tk, key){
+  // Polygon vX financials: most recent filing tells last report; we approximate next
+  // window by quarterly cadence (~91d after last period end). Degrades gracefully.
+  try{
+    const j = await robustFetch(`${POLY}/vX/reference/financials?ticker=${encodeURIComponent(tk)}&limit=1&apiKey=${key}`);
+    const r = j.results && j.results[0];
+    if(!r) return {date:null, mode:'unknown'};
+    const end = r.end_date || r.period_of_report_date || r.filing_date;
+    if(!end) return {date:null, mode:'unknown'};
+    // estimate next report ~ end_date + ~91d (quarter) then +~40d typical filing lag handled loosely
+    const last = new Date(end);
+    let est = new Date(last); est.setDate(est.getDate()+91+25);
+    const today=new Date();
+    // advance estimate until in future
+    while(est < today){ est.setDate(est.getDate()+91); }
+    return {date:est, mode:'estimated', last:end};
+  }catch(e){
+    return {date:null, mode:'error', err:String(e.message)};
+  }
+}
+
+/* ---- per-ticker scan ---- */
+async function scanTicker(tk, key, cfg){
+  const to = new Date().toISOString().slice(0,10);
+  const fromD = new Date(); fromD.setDate(fromD.getDate()-400);
+  const from = fromD.toISOString().slice(0,10);
+  const url=`${POLY}/v2/aggs/ticker/${encodeURIComponent(tk)}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=500&apiKey=${key}`;
+  const j = await robustFetch(url);
+  if(!j.results || j.results.length<120){ return {tk, stage:'data', note:`only ${j.results?j.results.length:0} bars`}; }
+  const bars = j.results.map(r=>({t:r.t,o:r.o,h:r.h,l:r.l,c:r.c,v:r.v}));
+  const ev = evaluate(bars);
+
+  // liquidity / price floor gate
+  const avgVolK = ev.avgVol/1000;
+  if(cfg.gLiq){
+    if(ev.price < cfg.minPrice) return {tk, ...ev, stage:'gate', gate:`price $${ev.price.toFixed(2)} < $${cfg.minPrice}`};
+    if(avgVolK < cfg.minVol) return {tk, ...ev, stage:'gate', gate:`avgVol ${avgVolK.toFixed(0)}k < ${cfg.minVol}k`};
+  }
+  // MA gates
+  if(cfg.gMA && !ev.maUptrend) return {tk, ...ev, stage:'gate', gate:'20-EMA not above 100-EMA'};
+  if(cfg.gPrice && !ev.priceAtSupport) return {tk, ...ev, stage:'gate', gate:'price below 20-EMA support'};
+
+  // earnings gate
+  let earn={date:null,mode:'skipped'};
+  if(cfg.gEarn){
+    earn = await nextEarnings(tk, key);
+    if(earn.date){
+      const days = Math.round((earn.date - new Date())/86400000);
+      ev.earnDays = days;
+      if(days>=0 && days<=cfg.earnDays){
+        return {tk, ...ev, earn, stage:'gate', gate:`earnings ~${days}d (est)`};
+      }
+    }
+  }
+  ev.earn=earn;
+  return {tk, ...ev, avgVolK, stage:'pass'};
+}
+
+/* ---- main run ---- */
+async function run(){
+  const key=$('apiKey').value.trim();
+  if(!key){ setStatus('<b>Enter your Polygon API key.</b>'); return; }
+  const cfg={
+    minPrice:+$('minPrice').value, minVol:+$('minVol').value, earnDays:+$('earnDays').value,
+    gMA:$('gMA').checked, gPrice:$('gPrice').checked, gEarn:$('gEarn').checked,
+    gLiq:$('gLiq').checked, gOpt:$('gOpt').checked
+  };
+  let list = TICKERS;
+  if($('universe').value==='custom'){
+    list = $('customList').value.split(/[\s,]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+    if(!list.length){ setStatus('<b>Custom list is empty.</b>'); return; }
+  }
+  $('runBtn').disabled=true;
+  $('log').innerHTML=''; log('Scan started · '+list.length+' tickers · '+new Date().toLocaleTimeString(),'hl');
+  LAST={pass:[],watch:[],rej:[]};
+  const t0=Date.now();
+  let done=0, errs=0;
+
+  const CONC=6; let idx=0;
+  async function worker(){
+    while(idx<list.length){
+      const tk=list[idx++];
+      try{
+        const r=await scanTicker(tk,key,cfg);
+        if(r.stage==='pass'){
+          if(r.tech==='POSITIVE'){ LAST.pass.push(r); log(`✓ ${tk}  PASS  ★${r.score.toFixed(1)}  ${r.tech}`,'ok'); }
+          else if(r.tech==='MIXED'){ LAST.watch.push(r); log(`~ ${tk}  WATCH ★${r.score.toFixed(1)} ${r.tech}`,'gate'); }
+          else { r.gate='negative technicals'; LAST.rej.push(r); log(`· ${tk}  REJECT ${r.tech}`,'gate'); }
+        } else if(r.stage==='gate'){
+          LAST.rej.push(r); log(`✗ ${tk}  GATE  ${r.gate}`,'gate');
+        } else {
+          LAST.rej.push(r); log(`✗ ${tk}  ${r.stage} ${r.note||''}`,'gate');
+        }
+      }catch(e){
+        errs++; log(`! ${tk}  ${e.message}`,'err');
+        if(String(e.message).startsWith('AUTH')){ idx=list.length; }
+      }
+      done++;
+      if(done%4===0||done===list.length){
+        $('progBar').style.width=(done/list.length*100)+'%';
+        setStatus(`Scanning… <b>${done}/${list.length}</b> · pass <b>${LAST.pass.length}</b> · watch <b>${LAST.watch.length}</b> · rejected ${LAST.rej.length}${errs?' · errs '+errs:''}`);
+      }
+    }
+  }
+  await Promise.all(Array.from({length:CONC},worker));
+
+  $('progBar').style.width='100%';
+  const secs=((Date.now()-t0)/1000).toFixed(0);
+  setStatus(`Done in ${secs}s · <b>${LAST.pass.length}</b> candidates · <b>${LAST.watch.length}</b> mixed/watch · ${LAST.rej.length} rejected${errs?' · '+errs+' errors':''}. Stock merit ranked BEFORE option premium (Ellman rule #2).`);
+  log(`Complete · ${secs}s · pass ${LAST.pass.length} watch ${LAST.watch.length} rej ${LAST.rej.length}`,'hl');
+  $('runBtn').disabled=false;
+  $('tabs').style.display='flex'; $('legend').style.display='block';
+  sortAndRender();
+}
+
+/* ---- rendering ---- */
+let CUR='pass';
+function chk(b){return b?'<span class="chk yes">●</span>':'<span class="chk no">○</span>';}
+function stars(s){const n=Math.round(s/2);return '<span class="star">'+'★'.repeat(n)+'☆'.repeat(5-n)+'</span>';}
+function techPill(t){const c=t==='POSITIVE'?'p-pos':t==='MIXED'?'p-mix':'p-neg';return `<span class="pill ${c}">${t}</span>`;}
+function scoreCls(s){return s>=7?'s-hi':s>=5?'s-md':'s-lo';}
+
+function sortAndRender(){
+  const tab=CUR;
+  let rows = tab==='pass'?LAST.pass.slice() : tab==='watch'?LAST.watch.slice() : LAST.rej.slice();
+  const k=SORT.key, dir=SORT.dir;
+  rows.sort((a,b)=>{
+    let va=a[k], vb=b[k];
+    if(va==null)va=-Infinity; if(vb==null)vb=-Infinity;
+    if(typeof va==='string') return dir*va.localeCompare(vb);
+    return dir*(va-vb);
+  });
+  render(rows, tab);
+}
+
+function render(rows, tab){
+  const wrap=$('wrap');
+  if(!rows.length){ wrap.innerHTML='<div class="empty">No names in this tab.</div>'; return; }
+  const showGate = tab==='rej';
+  let h='<table><thead><tr>';
+  const cols=[
+    ['tk','TICKER','l'],['score','★ QUAL',''],['tech','TECH','l'],
+    ['price','PRICE',''],['ema20','20-EMA',''],['ema100','100-EMA',''],
+    ['_trend','TREND','l'],['macdHist','MACD-H',''],['stochK','STOCH',''],
+    ['volRatio','VOL×',''],['avgVolK','AVOL(k)','']
+  ];
+  if(showGate) cols.push(['gate','REASON','l']);
+  else cols.push(['_earn','NEXT ER','']);
+  cols.push(['_opt','OPTIONS','']);
+  for(const [k,lbl,cls] of cols) h+=`<th class="${cls||''}" data-k="${k}">${lbl}</th>`;
+  h+='</tr></thead><tbody>';
+  for(const r of rows){
+    const trend = chk(r.maUptrend)+chk(r.priceAbove||r.priceAtSupport)+chk(r.ema20Rising)+' <span class="muted">MA·sup·↑</span>';
+    const stoch = r.stochK==null?'<span class="muted">n/a</span>':
+      `<span class="${r.stochK>80?'muted':r.stochK<20?'s-md':''}">${r.stochK.toFixed(0)}</span>${r.stochRising?'↑':''}`;
+    const macdC = r.macdPos?'s-hi':'s-lo';
+    const erTxt = r.earn&&r.earn.date? `~${r.earnDays}d` : '<span class="muted">—</span>';
+    h+=`<tr>
+      <td class="tk l">${r.tk}</td>
+      <td class="score ${scoreCls(r.score||0)}">${(r.score||0).toFixed(1)} ${stars(r.score||0)}</td>
+      <td class="l">${r.tech?techPill(r.tech):''}</td>
+      <td>${r.price?'$'+r.price.toFixed(2):'—'}</td>
+      <td>${r.ema20?r.ema20.toFixed(2):'—'}</td>
+      <td>${r.ema100?r.ema100.toFixed(2):'—'}</td>
+      <td class="l">${r.price!=null?trend:''}</td>
+      <td class="${macdC}">${r.macdHist!=null?r.macdHist.toFixed(3):'—'}</td>
+      <td>${stoch}</td>
+      <td>${r.volRatio!=null?r.volRatio.toFixed(2):'—'}</td>
+      <td>${r.avgVolK!=null?r.avgVolK.toFixed(0):(r.avgVol?(r.avgVol/1000).toFixed(0):'—')}</td>
+      ${showGate?`<td class="l muted">${r.gate||r.note||''}</td>`:`<td>${erTxt}</td>`}
+      <td>${r.stage==='pass'||r.tech?`<button class="opt-btn" data-tk="${r.tk}" data-price="${r.price}">chain ▸</button>`:''}</td>
+    </tr>`;
+  }
+  h+='</tbody></table>';
+  wrap.innerHTML=h;
+  wrap.querySelectorAll('th').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k; if(k.startsWith('_'))return;
+    if(SORT.key===k) SORT.dir*=-1; else {SORT.key=k;SORT.dir=-1;}
+    sortAndRender();
+  });
+  wrap.querySelectorAll('.opt-btn').forEach(b=>b.onclick=()=>loadChain(b));
+}
+
+/* ---- options chain: ATM/OTM calls, nearest monthly ~20-45 DTE ---- */
+async function loadChain(btn){
+  const tk=btn.dataset.tk, price=+btn.dataset.price, key=$('apiKey').value.trim();
+  btn.textContent='…'; btn.disabled=true;
+  const tr=btn.closest('tr');
+  // remove existing
+  if(tr.nextElementSibling&&tr.nextElementSibling.classList.contains('optrow')) tr.nextElementSibling.remove();
+  try{
+    // contracts: calls, expiring within ~50d, strikes near price (respect 250 cap via server filters)
+    const today=new Date();
+    const lo=new Date(today); lo.setDate(lo.getDate()+14);
+    const hi=new Date(today); hi.setDate(hi.getDate()+50);
+    const url=`${POLY}/v3/reference/options/contracts?underlying_ticker=${tk}`+
+      `&contract_type=call&expired=false`+
+      `&expiration_date.gte=${lo.toISOString().slice(0,10)}`+
+      `&expiration_date.lte=${hi.toISOString().slice(0,10)}`+
+      `&strike_price.gte=${(price*0.98).toFixed(2)}`+
+      `&strike_price.lte=${(price*1.10).toFixed(2)}`+
+      `&limit=80&sort=expiration_date&apiKey=${key}`;
+    const j=await robustFetch(url);
+    let cs=(j.results||[]);
+    if(!cs.length){ insertOpt(tr,`<span class="muted">No contracts in 14–50 DTE / ATM-OTM window.</span>`); btn.textContent='chain ▸';btn.disabled=false; return; }
+    // pick nearest expiration
+    const exp=cs[0].expiration_date;
+    cs=cs.filter(c=>c.expiration_date===exp).sort((a,b)=>a.strike_price-b.strike_price).slice(0,8);
+    // snapshot for quotes/greeks (may require entitlement; degrade gracefully)
+    let snap={};
+    try{
+      const sj=await robustFetch(`${POLY}/v3/snapshot/options/${tk}?expiration_date=${exp}&contract_type=call&limit=80&apiKey=${key}`);
+      (sj.results||[]).forEach(o=>{snap[o.details?.ticker]=o;});
+    }catch(e){/* quotes entitlement absent — show structure only */}
+    const dte=Math.round((new Date(exp)-today)/86400000);
+    let html=`<div style="padding:4px 0;color:var(--cyan)">${tk} · exp ${exp} (${dte} DTE) · spot $${price.toFixed(2)} · ATM/OTM calls</div>`;
+    html+='<table><thead><tr><th class="l">STRIKE</th><th>MONEYNESS</th><th>BID</th><th>ASK</th><th>MID</th><th>STATIC %</th><th>IF-CALLED %</th><th>DELTA</th></tr></thead><tbody>';
+    for(const c of cs){
+      const s=snap[c.ticker];
+      const bid=s?.last_quote?.bid, ask=s?.last_quote?.ask;
+      const mid=(bid!=null&&ask!=null)?(bid+ask)/2:(s?.day?.close??null);
+      const delta=s?.greeks?.delta;
+      const otm=c.strike_price>=price;
+      const moneyness=otm?`OTM +${((c.strike_price/price-1)*100).toFixed(1)}%`:`ITM ${((c.strike_price/price-1)*100).toFixed(1)}%`;
+      // BCI returns: static (flat) = premium/cost basis ; if-called adds strike-spot upside for OTM
+      const prem=mid;
+      const staticRet = prem!=null? (prem/price*100):null;
+      const ifCalled = prem!=null? ((prem + Math.max(0,c.strike_price-price))/price*100):null;
+      html+=`<tr>
+        <td class="l">$${c.strike_price.toFixed(2)}</td>
+        <td class="${otm?'':'muted'}">${moneyness}</td>
+        <td>${bid!=null?bid.toFixed(2):'—'}</td>
+        <td>${ask!=null?ask.toFixed(2):'—'}</td>
+        <td>${mid!=null?mid.toFixed(2):'—'}</td>
+        <td class="${staticRet>=2?'s-hi':''}">${staticRet!=null?staticRet.toFixed(2):'—'}</td>
+        <td class="${ifCalled>=3?'s-hi':''}">${ifCalled!=null?ifCalled.toFixed(2):'—'}</td>
+        <td>${delta!=null?delta.toFixed(2):'—'}</td>
+      </tr>`;
+    }
+    html+='</tbody></table>';
+    if(Object.keys(snap).length===0) html+='<div class="muted" style="padding:4px 0">No quote/greek entitlement on this plan — showing strikes only. Returns need bid/ask.</div>';
+    insertOpt(tr,html);
+  }catch(e){
+    insertOpt(tr,`<span class="err" style="color:var(--red)">chain error: ${e.message}</span>`);
+  }
+  btn.textContent='chain ▸'; btn.disabled=false;
+}
+function insertOpt(tr,html){
+  const cols=tr.children.length;
+  const row=document.createElement('tr'); row.className='optrow';
+  row.innerHTML=`<td colspan="${cols}">${html}</td>`;
+  tr.after(row);
+}
+
+/* ---- wiring ---- */
+$('runBtn').onclick=run;
+$('logBtn').onclick=()=>$('log').classList.toggle('show');
+$('universe').onchange=e=>{$('customWrap').style.display=e.target.value==='custom'?'flex':'none';};
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active'); CUR=t.dataset.tab; sortAndRender();
+});
+</script>
+</body>
+</html>
