@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Double Bottom Bounce Scanner</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#0f1620; --panel2:#131c28; --border:#1e2c3c;
+    --txt:#c8d4e0; --dim:#5d7081; --mut:#3f5266;
+    --green:#26d07c; --greenq:#0d3322; --red:#ff5874; --redq:#3a1018;
+    --amber:#f5b14c; --cyan:#4cc8f5; --violet:#9d7cf5;
+    --mono:'SF Mono','JetBrains Mono','Fira Code',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:13px;line-height:1.45}
+  .wrap{max-width:1560px;margin:0 auto;padding:18px 20px 80px}
+  header{display:flex;align-items:baseline;gap:16px;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px;flex-wrap:wrap}
+  h1{font-size:18px;font-weight:700;letter-spacing:1px;margin:0;color:#fff}
+  h1 .w{color:var(--cyan)}
+  .sub{color:var(--dim);font-size:11px;letter-spacing:.5px}
+  .badge{font-size:10px;padding:2px 7px;border:1px solid var(--border);border-radius:3px;color:var(--dim);letter-spacing:.5px}
+  .controls{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:14px}
+  .ctl{display:flex;flex-direction:column;gap:4px}
+  .ctl label{font-size:10px;color:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+  input,select{background:var(--panel2);border:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:12px;padding:6px 8px;border-radius:4px;outline:none}
+  input:focus,select:focus{border-color:var(--cyan)}
+  input[type=number]{width:74px}
+  input.key{width:300px}
+  .btn{background:var(--cyan);color:#04121a;border:none;font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.6px;padding:8px 18px;border-radius:4px;cursor:pointer}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--dim);font-weight:400}
+  .stat{display:flex;gap:18px;flex-wrap:wrap;font-size:11px;color:var(--dim);margin-bottom:10px}
+  .stat b{color:var(--txt);font-weight:600}
+  .tabs{display:flex;gap:2px;margin-bottom:0}
+  .tabs button{background:var(--panel);border:1px solid var(--border);border-bottom:none;color:var(--dim);font-family:var(--mono);font-size:11px;padding:8px 16px;cursor:pointer;border-radius:5px 5px 0 0;letter-spacing:.5px}
+  .tabs button.on{background:var(--panel2);color:#fff}
+  .tabs button .n{color:var(--mut);margin-left:6px}
+  .tabs button.on .n{color:var(--cyan)}
+  table{width:100%;border-collapse:collapse;background:var(--panel2);border:1px solid var(--border)}
+  th{text-align:right;font-size:10px;color:var(--dim);font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:8px 9px;border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none}
+  th:first-child,td:first-child{text-align:left}
+  th.sorted{color:var(--cyan)}
+  td{padding:7px 9px;text-align:right;border-bottom:1px solid #131c28;white-space:nowrap}
+  tr:hover td{background:#16212f}
+  .tk{font-weight:700;color:#fff}
+  .pos{color:var(--green)}.neg{color:var(--red)}
+  .pill{font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600}
+  .pill.conf{background:var(--greenq);color:var(--green)}
+  .pill.antic{background:#2a2410;color:var(--amber)}
+  .pill.fresh{box-shadow:0 0 0 1px currentColor inset}
+  .bars{display:inline-block;width:44px;height:9px;background:#0c141d;border-radius:2px;overflow:hidden;vertical-align:middle}
+  .bars i{display:block;height:100%}
+  .opt-btn{background:var(--violet);color:#0c0518;border:none;font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:3px;cursor:pointer}
+  .log{background:#070a0f;border:1px solid var(--border);border-radius:6px;margin-top:16px;font-size:11px;max-height:260px;overflow:auto}
+  .log .hd{position:sticky;top:0;background:#070a0f;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--dim);letter-spacing:.6px;display:flex;justify-content:space-between}
+  .log .row{padding:2px 12px;border-bottom:1px solid #0c1118;display:flex;gap:10px}
+  .log .row .t{color:var(--mut);min-width:54px}
+  .log .pass{color:var(--green)}.log .fail{color:var(--mut)}.log .err{color:var(--red)}.log .info{color:var(--cyan)}.log .warn{color:var(--amber)}
+  .empty{padding:40px;text-align:center;color:var(--mut)}
+  .modal{position:fixed;inset:0;background:rgba(2,5,9,.82);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal.on{display:flex}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;max-width:820px;width:100%;max-height:88vh;overflow:auto}
+  .card .ch{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}
+  .card .ch h3{margin:0;font-size:14px;color:#fff}
+  .x{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer}
+  .spark{display:inline-block;vertical-align:middle}
+  .mono-sm{font-size:10px;color:var(--dim)}
+  .wsvg{background:#0a121c;border:1px solid var(--border);border-radius:4px}
+  a{color:var(--cyan)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>DOUBLE <span class="w">BOTTOM</span> BOUNCE SCANNER</h1>
+    <span class="sub">fractal-pivot W detection · ATR-scaled symmetry · weekly-options bias</span>
+    <span class="badge">POLYGON</span>
+  </header>
+
+  <div class="controls">
+    <div class="ctl">
+      <label>API Key (Polygon / Massive)</label>
+      <input class="key" id="apiKey" type="password" placeholder="paste key — stored locally only">
+    </div>
+    <div class="ctl">
+      <label>Pivot Strength (bars each side)</label>
+      <input id="pivStr" type="number" value="3" min="2" max="6">
+    </div>
+    <div class="ctl">
+      <label>Low Match Tol (× ATR)</label>
+      <input id="tolAtr" type="number" value="1.5" step="0.25" min="0.5">
+    </div>
+    <div class="ctl">
+      <label>Min Peak Height %</label>
+      <input id="minPeak" type="number" value="5" step="1" min="2">
+    </div>
+    <div class="ctl">
+      <label>Low Separation (bars)</label>
+      <input id="sepMin" type="number" value="10" min="4" style="width:54px"> – <input id="sepMax" type="number" value="60" min="10" style="width:54px">
+    </div>
+    <div class="ctl">
+      <label>Trigger Freshness (bars)</label>
+      <select id="fresh">
+        <option value="5">≤ 5 bars</option>
+        <option value="3">≤ 3 bars</option>
+        <option value="8">≤ 8 bars</option>
+        <option value="99">any active</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label>Weekly Expiry (days)</label>
+      <input id="dte" type="number" value="7" min="1" max="21">
+    </div>
+    <div class="ctl">
+      <label>Min Price</label>
+      <input id="minPx" type="number" value="20" step="5">
+    </div>
+    <div class="ctl">
+      <label>Min Avg Vol (K)</label>
+      <input id="minVol" type="number" value="750" step="100">
+    </div>
+    <div class="ctl">
+      <label>Earnings Gate</label>
+      <select id="earnGate">
+        <option value="1">block before expiry</option>
+        <option value="0">off (no Benzinga)</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label>&nbsp;</label>
+      <button class="btn" id="runBtn">▶ RUN SCAN</button>
+    </div>
+    <div class="ctl">
+      <label>&nbsp;</label>
+      <button class="btn ghost" id="stopBtn" disabled>■ STOP</button>
+    </div>
+  </div>
+
+  <div class="stat" id="statBar">
+    <span>Status: <b id="stStatus">idle</b></span>
+    <span>Scanned: <b id="stScanned">0</b>/<b id="stTotal">0</b></span>
+    <span>Patterns: <b id="stSignals">0</b></span>
+    <span>Errors: <b id="stErr">0</b></span>
+    <span>Universe: <b id="stUniv">—</b></span>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button data-tab="all" class="on">ALL <span class="n" id="cAll">0</span></button>
+    <button data-tab="antic">ANTICIPATORY <span class="n" id="cAntic">0</span></button>
+    <button data-tab="conf">CONFIRMED <span class="n" id="cConf">0</span></button>
+  </div>
+
+  <div id="tableHost"></div>
+
+  <div class="log">
+    <div class="hd"><span>SCAN LOG — every ticker, exact stage</span><span id="logCount">0 lines</span></div>
+    <div id="logBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="optModal">
+  <div class="card">
+    <div class="ch"><h3 id="optTitle">Detail</h3><button class="x" id="optClose">×</button></div>
+    <div id="optBody" style="padding:14px 18px"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Double Bottom Bounce Scanner
+   - Fractal pivot lows (lowest within ±pivStr bars) form the W
+   - Symmetry checked on ATR-scaled tolerance (volatility-adaptive)
+   - Neckline = intervening peak; measured move = W height projected up
+   - Two candidate types:
+       ANTICIPATORY : price left 2nd low, early reversal, below neckline
+       CONFIRMED    : price closed above neckline (breakout)
+   - Composite score: symmetry25 / trigger25 / momentum20 / room15 / volume15
+   - Earnings gate via /vX/reference/financials (quarterly approximation)
+   ============================================================ */
+
+const $ = id => document.getElementById(id);
+const BASE = 'https://api.polygon.io';
+
+const ETFS = ['SPY','GLD','TLT','IWM','QQQ','XLF','XLE','XLK'];
+const SP500 = "MMM AOS ABT ABBV ACN ADBE AMD AES AFL A APD ABNB AKAM ALB ARE ALGN ALLE LNT ALL GOOGL GOOG MO AMZN AMCR AEE AEP AXP AIG AMT AWK AMP AME AMGN APH ADI ANSS AON APA AAPL AMAT APTV ACGL ADM ANET AJG AIZ T ATO ADSK ADP AZO AVB AVY AXON BKR BALL BAC BAX BDX TECH BIIB BLK BX BK BA BKNG BSX BMY AVGO BR BRO BG BXP CHRW CDNS CZR CPT CPB COF CAH KMX CCL CARR CAT CBOE CBRE CDW CE COR CNC CNP CF CRL SCHW CHTR CVX CMG CB CHD CI CINF CTAS CSCO C CFG CLX CME CMS KO CTSH CL CMCSA CAG COP ED STZ CEG COO CPRT GLW CPAY CTVA CSGP COST CTRA CRWD CCI CSX CMI CVS DHR DRI DVA DAY DECK DE DELL DAL DVN DXCM FANG DLR DFS DG DLTR D DPZ DOV DOW DHI DTE DUK DD EMN ETN EBAY ECL EIX EW EA ELV EMR ENPH ETR EOG EPAM EQT EFX EQIX EQR ERIE ESS EL EG EVRG ES EXC EXPE EXPD EXR XOM FFIV FDS FICO FAST FRT FDX FIS FITB FSLR FE FI FMC F FTNT FTV FOXA FOX BEN FCX GRMN IT GE GEHC GEV GEN GNRC GD GIS GM GPC GILD GPN GL GDDY GS HAL HIG HAS HCA DOC HSIC HSY HES HPE HLT HOLX HD HON HRL HST HWM HPQ HUBB HUM HBAN HII IBM IEX IDXX ITW INCY IR PODD INTC ICE IFF IP IPG INTU ISRG IVZ INVH IQV IRM JBHT JBL JKHY J JNJ JCI JPM JNPR K KVUE KDP KEY KEYS KMB KIM KMI KKR KLAC KHC KR LHX LH LRCX LW LVS LDOS LEN LII LLY LIN LYV LKQ LMT L LOW LULU LYB MTB MPC MKTX MAR MMC MLM MAS MA MTCH MKC MCD MCK MDT MRK META MET MTD MGM MCHP MU MSFT MAA MRNA MHK MOH TAP MDLZ MPWR MNST MCO MS MOS MSI MSCI NDAQ NTAP NFLX NEM NWSA NWS NEE NKE NI NDSN NSC NTRS NOC NCLH NRG NUE NVDA NVR NXPI ORLY OXY ODFL OMC ON OKE ORCL OTIS PCAR PKG PANW PARA PH PAYX PAYC PYPL PNR PEP PFE PCG PM PSX PNW PNC POOL PPG PPL PFG PG PGR PLD PRU PEG PTC PSA PHM QRVO PWR QCOM DGX RL RJF RTX O REG REGN RF RSG RMD RVTY RHI ROK ROL ROP ROST RCL SPGI CRM SBAC SLB STX SRE NOW SHW SPG SWKS SJM SW SNA SOLV SO LUV SWK SBUX STT STLD STE SYK SMCI SNPS SYF SYY TMUS TROW TTWO TPR TRGP TGT TEL TDY TFX TER TSLA TXN TPL TXT TMO TJX TSCO TT TDG TRV TRMB TFC TYL TSN USB UBER UDR ULTA UNP UAL UPS URI UNH UHS VLO VTR VLTO VRSN VRSK VZ VRTX VTRS VICI V VST VMC WRB GWW WAB WBA WMT DIS WBD WM WAT WEC WFC WELL WST WDC WY WMB WTW WDAY XEL XYL YUM ZBRA ZBH ZTS".split(/\s+/);
+
+const STATE = { running:false, abort:false, rows:[], tab:'all', sort:{key:'score',dir:-1} };
+
+/* ---------- helpers ---------- */
+function log(msg, cls='info', tk=''){
+  const b=$('logBody'); const r=document.createElement('div'); r.className='row';
+  r.innerHTML=`<span class="t">${tk||''}</span><span class="${cls}">${msg}</span>`;
+  b.appendChild(r); b.parentElement.scrollTop=b.parentElement.scrollHeight;
+  $('logCount').textContent=b.children.length+' lines';
+}
+function setStat(){
+  $('stScanned').textContent=STATE.scanned||0; $('stTotal').textContent=STATE.total||0;
+  $('stErr').textContent=STATE.errors||0; $('stSignals').textContent=STATE.rows.length;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function robustFetch(url, tries=3){
+  for(let i=0;i<tries;i++){
+    try{
+      const r=await fetch(url);
+      if(r.status===429){ await sleep(1200*(i+1)); continue; }
+      if(!r.ok){ if(i===tries-1) throw new Error('HTTP '+r.status); await sleep(500*(i+1)); continue; }
+      return await r.json();
+    }catch(e){ if(i===tries-1) throw e; await sleep(500*(i+1)); }
+  }
+}
+function sma(a,p){ if(a.length<p) return null; let s=0; for(let i=a.length-p;i<a.length;i++) s+=a[i]; return s/p; }
+
+/* ---------- indicators ---------- */
+function atrLast(highs,lows,closes,p){
+  const tr=[];
+  for(let i=0;i<closes.length;i++){
+    if(i===0){ tr.push(highs[i]-lows[i]); continue; }
+    tr.push(Math.max(highs[i]-lows[i],Math.abs(highs[i]-closes[i-1]),Math.abs(lows[i]-closes[i-1])));
+  }
+  let prev=null;
+  for(let i=0;i<tr.length;i++){
+    if(i<p-1) continue;
+    if(i===p-1){ let s=0; for(let j=0;j<p;j++) s+=tr[j]; prev=s/p; }
+    else prev=(prev*(p-1)+tr[i])/p;
+  }
+  return prev;
+}
+function rsiSeries(closes,p){
+  const out=new Array(closes.length).fill(null); let ag=0,al=0;
+  for(let i=1;i<closes.length;i++){
+    const ch=closes[i]-closes[i-1], g=Math.max(ch,0), l=Math.max(-ch,0);
+    if(i<=p){ ag+=g; al+=l; if(i===p){ ag/=p; al/=p; out[i]=100-100/(1+(al===0?100:ag/al)); } }
+    else { ag=(ag*(p-1)+g)/p; al=(al*(p-1)+l)/p; out[i]=100-100/(1+(al===0?100:ag/al)); }
+  }
+  return out;
+}
+function emaSeries(a,p){
+  const k=2/(p+1); const out=new Array(a.length).fill(null); let prev=null;
+  for(let i=0;i<a.length;i++){
+    if(i<p-1) continue;
+    if(i===p-1){ let s=0; for(let j=0;j<p;j++) s+=a[j]; prev=s/p; out[i]=prev; }
+    else { prev=a[i]*k+prev*(1-k); out[i]=prev; }
+  }
+  return out;
+}
+function macdHist(closes){
+  const e12=emaSeries(closes,12), e26=emaSeries(closes,26);
+  const macd=closes.map((_,i)=> (e12[i]!=null&&e26[i]!=null)? e12[i]-e26[i] : null);
+  const valid=macd.map(v=>v==null?0:v);
+  const sig=emaSeries(valid,9);
+  return macd.map((m,i)=> (m!=null&&sig[i]!=null)? m-sig[i] : null);
+}
+
+/* ---------- fractal pivot lows ----------
+   index i is a pivot low if lows[i] is the strict-ish min within ±str bars */
+function fractalLows(lows, str){
+  const piv=[];
+  for(let i=str;i<lows.length-str;i++){
+    let isLow=true;
+    for(let j=i-str;j<=i+str;j++){ if(j!==i && lows[j]<lows[i]){ isLow=false; break; } }
+    if(isLow) piv.push(i);
+  }
+  return piv;
+}
+function fractalHighs(highs, str){
+  const piv=[];
+  for(let i=str;i<highs.length-str;i++){
+    let isHigh=true;
+    for(let j=i-str;j<=i+str;j++){ if(j!==i && highs[j]>highs[i]){ isHigh=false; break; } }
+    if(isHigh) piv.push(i);
+  }
+  return piv;
+}
+
+/* ---------- detect the most recent valid double bottom ---------- */
+function detectDoubleBottom(highs, lows, closes, atr, cfg){
+  const pivLows = fractalLows(lows, cfg.pivStr);
+  const pivHighs = fractalHighs(highs, cfg.pivStr);
+  if(pivLows.length<2) return null;
+  const n=closes.length, lastIdx=n-1;
+  const tol = atr*cfg.tolAtr;
+
+  // scan pairs from most recent backward; prefer the freshest valid W
+  let best=null;
+  for(let b=pivLows.length-1;b>=1;b--){
+    const i2=pivLows[b];               // second (more recent) low
+    // second low must be recent enough that a bounce is still actionable
+    if(lastIdx - i2 > 70) break;       // pattern too old overall
+    for(let a=b-1;a>=0;a--){
+      const i1=pivLows[a];             // first (earlier) low
+      const sep=i2-i1;
+      if(sep<cfg.sepMin) continue;
+      if(sep>cfg.sepMax) break;        // pivots only get older going back
+      const lo1=lows[i1], lo2=lows[i2];
+      // similar price within ATR tolerance
+      if(Math.abs(lo2-lo1) > tol) continue;
+      // 2nd low must not be meaningfully lower than 1st (allow tiny undercut)
+      if(lo2 < lo1 - tol*0.4) continue;
+      // intervening peak (neckline) between the two lows
+      let peakIdx=-1, peakVal=-Infinity;
+      for(const ph of pivHighs){ if(ph>i1 && ph<i2 && highs[ph]>peakVal){ peakVal=highs[ph]; peakIdx=ph; } }
+      if(peakIdx<0){ // fallback: raw max between lows
+        for(let k=i1+1;k<i2;k++){ if(highs[k]>peakVal){ peakVal=highs[k]; peakIdx=k; } }
+      }
+      if(peakIdx<0) continue;
+      const neckline=peakVal;
+      const troughAvg=(lo1+lo2)/2;
+      const peakHeightPct=(neckline-troughAvg)/troughAvg*100;
+      if(peakHeightPct < cfg.minPeak) continue;   // W too shallow → flat base
+      // valid pattern found — this is the freshest one
+      best={ i1,i2,lo1,lo2,peakIdx,neckline,troughAvg,peakHeightPct,sep };
+      break;
+    }
+    if(best) break;
+  }
+  return best;
+}
+
+/* ---------- scan one ticker ---------- */
+async function scanTicker(tk, cfg){
+  const key=cfg.key;
+  const end=new Date(); const start=new Date(); start.setDate(start.getDate()-260);
+  const fmt=d=>d.toISOString().slice(0,10);
+  const url=`${BASE}/v2/aggs/ticker/${encodeURIComponent(tk)}/range/1/day/${fmt(start)}/${fmt(end)}?adjusted=true&sort=asc&limit=300&apiKey=${key}`;
+  const j=await robustFetch(url);
+  if(!j||!j.results||j.results.length<80){ log('no/short data','fail',tk); return null; }
+  const r=j.results;
+  const highs=r.map(x=>x.h), lows=r.map(x=>x.l), closes=r.map(x=>x.c), opens=r.map(x=>x.o), vols=r.map(x=>x.v);
+  const n=closes.length, lastIdx=n-1, px=closes[lastIdx];
+  const avgVol=sma(vols,20)/1000;
+
+  if(px<cfg.minPx){ log(`price $${px.toFixed(2)} < min`,'fail',tk); return null; }
+  if(avgVol<cfg.minVol){ log(`avgvol ${Math.round(avgVol)}K < min`,'fail',tk); return null; }
+
+  const atr=atrLast(highs,lows,closes,14);
+  const db=detectDoubleBottom(highs,lows,closes,atr,cfg);
+  if(!db){ log('no valid double bottom','fail',tk); return null; }
+
+  // classify candidate type
+  const aboveNeck = px > db.neckline;
+  const barsSince2 = lastIdx - db.i2;
+  // anticipatory needs price to have lifted off the 2nd low but not yet broken neck
+  const offLowPct = (px - db.lo2)/db.lo2*100;
+  let type, trigAge, trigOk;
+  if(aboveNeck){
+    // confirmed: find bar of neckline break
+    let bi=lastIdx;
+    for(let k=lastIdx;k>db.peakIdx;k--){ if(closes[k]>db.neckline && closes[k-1]<=db.neckline){ bi=k; break; } }
+    trigAge=lastIdx-bi; type='conf';
+    trigOk = trigAge<=cfg.fresh;
+  } else {
+    // anticipatory: must be lifting off the low (not making new lows), recent
+    trigAge=barsSince2; type='antic';
+    trigOk = offLowPct>0.5 && offLowPct < db.peakHeightPct*0.9 && barsSince2<=Math.max(cfg.fresh, db.sep) && barsSince2>=1;
+    // also require we're not below the 2nd low now (pattern would be failing)
+    if(px < db.lo2 - atr*0.3) trigOk=false;
+  }
+  if(!trigOk){ log(`${type} trigger stale/invalid (off-low ${offLowPct.toFixed(1)}%)`,'fail',tk); return null; }
+
+  // ---- momentum sub-signals (all three, combined) ----
+  const rsi=rsiSeries(closes,14);
+  const rsi2=rsiSeries(closes,2);
+  const hist=macdHist(closes);
+  const rsiNow=rsi[lastIdx]??50, rsiPrev=rsi[lastIdx-1]??50;
+  const rsiTurnUp = rsiNow>rsiPrev;                          // RSI inflecting up
+  const rsiWasOversold = (rsi[db.i2]??50) < 40 || (rsi2[db.i2]??50) < 15; // oversold at 2nd low
+  const macdInflect = hist[lastIdx]!=null && hist[lastIdx-1]!=null && hist[lastIdx]>hist[lastIdx-1]; // hist rising
+  const bullCandle = closes[lastIdx]>opens[lastIdx] && closes[lastIdx]>closes[lastIdx-1]; // green + up close
+  const momCount = (rsiTurnUp?1:0)+(rsiWasOversold?1:0)+(macdInflect?1:0)+(bullCandle?1:0);
+
+  // ---- room to target ----
+  const target = db.neckline + (db.neckline - db.troughAvg);   // measured move
+  // nearest overhead resistance = nearest fractal high above px (cap at target)
+  const pivHighs=fractalHighs(highs,cfg.pivStr).filter(h=>highs[h]>px*1.005);
+  let nearestRes=target;
+  for(const h of pivHighs){ if(highs[h]>px && highs[h]<nearestRes) nearestRes=highs[h]; }
+  const roomToTargetPct=(target-px)/px*100;
+  const roomToResPct=(nearestRes-px)/px*100;
+
+  // ---- volume confirmation: dry-up into 2nd low, expansion on bounce ----
+  const volAt2 = sma(vols.slice(db.i2-5,db.i2+1), Math.min(6,db.i2)) || vols[db.i2];
+  const volBaseline = sma(vols.slice(0,db.i2), 50) || avgVol*1000;
+  const volRecent = sma(vols.slice(-3),3) || vols[lastIdx];
+  const dryUp = volAt2 < volBaseline*0.95;
+  const expand = volRecent > volBaseline*1.0;
+
+  // ---- composite score ----
+  // symmetry 25: low equality (ATR-scaled) + 2nd-low-higher bonus
+  const eqRatio = 1 - Math.min(Math.abs(db.lo2-db.lo1)/(atr*cfg.tolAtr),1);
+  const higherBonus = db.lo2>=db.lo1 ? 1 : 0.6;
+  const sSym = eqRatio*higherBonus*25;
+  // trigger 25: freshness of the actionable trigger
+  const sTrig = Math.max(0, 1 - trigAge/(cfg.fresh+2))*25;
+  // momentum 20
+  const sMom = (momCount/4)*20;
+  // room 15: reward room to target, penalize if resistance is right overhead
+  const roomScore = Math.max(0, Math.min(roomToResPct/8,1));   // 8%+ clear room = full
+  const sRoom = roomScore*15;
+  // volume 15
+  const sVol = ((dryUp?1:0)*0.5 + (expand?1:0)*0.5)*15;
+
+  const score=+(sSym+sTrig+sMom+sRoom+sVol).toFixed(1);
+
+  // earnings gate
+  let earnFlag='—';
+  if(cfg.earnGate){
+    try{
+      const ej=await robustFetch(`${BASE}/vX/reference/financials?ticker=${tk}&timeframe=quarterly&limit=1&apiKey=${key}`);
+      const filed=ej?.results?.[0]?.filing_date;
+      if(filed){
+        // approximate next report ~ last filing + 91 days (quarterly cadence)
+        const nextApprox=new Date(filed); nextApprox.setDate(nextApprox.getDate()+91);
+        const expiry=new Date(); expiry.setDate(expiry.getDate()+cfg.dte);
+        const daysToNext=(nextApprox-new Date())/864e5;
+        if(nextApprox<=expiry && daysToNext>-10){
+          log(`earnings ~${nextApprox.toISOString().slice(0,10)} before expiry — BLOCKED`,'warn',tk);
+          return null;
+        }
+        earnFlag=nextApprox.toISOString().slice(0,10);
+      }
+    }catch(e){ earnFlag='?'; }
+  }
+
+  log(`${type.toUpperCase()} Q${score} · sep ${db.sep} · peak ${db.peakHeightPct.toFixed(1)}% · mom ${momCount}/4 · room ${roomToResPct.toFixed(1)}%`,'pass',tk);
+
+  return {
+    tk, px, type, score, trigAge,
+    lo1:db.lo1, lo2:db.lo2, neckline:db.neckline, target,
+    peakHeightPct:db.peakHeightPct, sep:db.sep, offLowPct,
+    roomToTargetPct, roomToResPct, nearestRes,
+    momCount, rsiNow, dryUp, expand, earnFlag,
+    sSym:+sSym.toFixed(0), sTrig:+sTrig.toFixed(0), sMom:+sMom.toFixed(0), sRoom:+sRoom.toFixed(0), sVol:+sVol.toFixed(0),
+    bars:{highs:highs.slice(-80),lows:lows.slice(-80),closes:closes.slice(-80)},
+    db:{i1:db.i1-(n-80),i2:db.i2-(n-80),peakIdx:db.peakIdx-(n-80),neckline:db.neckline}
+  };
+}
+
+/* ---------- run ---------- */
+async function run(){
+  const key=$('apiKey').value.trim();
+  if(!key){ alert('Enter your Polygon/Massive API key'); return; }
+  localStorage.setItem('db_key',key);
+  STATE.running=true; STATE.abort=false; STATE.rows=[]; STATE.scanned=0; STATE.errors=0;
+  $('runBtn').disabled=true; $('stopBtn').disabled=false; $('logBody').innerHTML=''; $('stStatus').textContent='running';
+
+  const cfg={
+    key,
+    pivStr:parseInt($('pivStr').value)||3,
+    tolAtr:parseFloat($('tolAtr').value)||1.5,
+    minPeak:parseFloat($('minPeak').value)||5,
+    sepMin:parseInt($('sepMin').value)||10,
+    sepMax:parseInt($('sepMax').value)||60,
+    fresh:parseInt($('fresh').value)||5,
+    dte:parseInt($('dte').value)||7,
+    minPx:parseFloat($('minPx').value)||0,
+    minVol:parseFloat($('minVol').value)||0,
+    earnGate:$('earnGate').value==='1'
+  };
+
+  let universe=[...new Set([...ETFS,...SP500])];
+  STATE.total=universe.length; $('stTotal').textContent=universe.length;
+  $('stUniv').textContent=`${universe.length} (${ETFS.length} ETF + ${universe.length-ETFS.length} eq)`;
+  log(`scan start · ${universe.length} tickers · pivot±${cfg.pivStr} · tol ${cfg.tolAtr}×ATR · peak ≥${cfg.minPeak}% · sep ${cfg.sepMin}-${cfg.sepMax}`,'info','INIT');
+
+  const CONC=5; let idx=0;
+  async function worker(){
+    while(idx<universe.length && !STATE.abort){
+      const tk=universe[idx++];
+      try{ const row=await scanTicker(tk,cfg); if(row){ STATE.rows.push(row); render(); } }
+      catch(e){ STATE.errors++; log('ERR '+e.message,'err',tk); }
+      STATE.scanned++; setStat();
+    }
+  }
+  await Promise.all(Array.from({length:CONC},worker));
+
+  STATE.running=false; $('runBtn').disabled=false; $('stopBtn').disabled=true;
+  $('stStatus').textContent=STATE.abort?'stopped':'done';
+  log(`scan complete · ${STATE.rows.length} patterns · ${STATE.errors} errors`,'info','DONE');
+  render();
+}
+
+/* ---------- render ---------- */
+function render(){
+  const antic=STATE.rows.filter(r=>r.type==='antic');
+  const conf=STATE.rows.filter(r=>r.type==='conf');
+  $('cAll').textContent=STATE.rows.length; $('cAntic').textContent=antic.length; $('cConf').textContent=conf.length;
+  let rows = STATE.tab==='antic'?antic : STATE.tab==='conf'?conf : STATE.rows;
+
+  const {key,dir}=STATE.sort;
+  rows=[...rows].sort((a,b)=>{ let av=a[key],bv=b[key]; if(typeof av==='string') return av.localeCompare(bv)*dir; return (av-bv)*dir; });
+
+  const host=$('tableHost');
+  if(!rows.length){
+    host.innerHTML=`<div style="background:var(--panel2);border:1px solid var(--border)"><div class="empty">${STATE.running?'scanning…':'No patterns. Run a scan or loosen filters.'}</div></div>`;
+    return;
+  }
+  const cols=[['tk','Ticker'],['score','Quality'],['type','Type'],['px','Price'],['trigAge','Trig Age'],
+    ['offLowPct','Off Low %'],['neckline','Neckline'],['roomToResPct','Room→Res %'],['roomToTargetPct','Room→Tgt %'],
+    ['peakHeightPct','W Height %'],['sep','Sep'],['momCount','Mom'],['earnFlag','~Earn'],['','Chart']];
+  let h='<table><thead><tr>';
+  for(const [k,lbl] of cols){ if(!k){ h+=`<th>${lbl}</th>`; continue; } h+=`<th data-k="${k}" class="${STATE.sort.key===k?'sorted':''}">${lbl}</th>`; }
+  h+='</tr></thead><tbody>';
+  for(const r of rows){
+    const sc=r.score, scColor=sc>=70?'#26d07c':sc>=50?'#f5b14c':'#5d7081';
+    const tip=`sym ${r.sSym}/25 · trig ${r.sTrig}/25 · mom ${r.sMom}/20 · room ${r.sRoom}/15 · vol ${r.sVol}/15`;
+    const typePill = r.type==='conf'?'<span class="pill conf">CONFIRMED</span>':'<span class="pill antic">ANTICIP</span>';
+    const fresh=r.trigAge<=1?'fresh':'';
+    h+=`<tr>
+      <td class="tk">${r.tk}</td>
+      <td title="${tip}"><b style="color:${scColor}">${sc.toFixed(0)}</b> <span class="bars"><i style="width:${sc}%;background:${scColor}"></i></span></td>
+      <td><span class="${fresh}" style="display:inline">${typePill}</span></td>
+      <td>$${r.px.toFixed(2)}</td>
+      <td>${r.trigAge===0?'today':r.trigAge+'d'}</td>
+      <td class="pos">+${r.offLowPct.toFixed(1)}</td>
+      <td class="mono-sm">$${r.neckline.toFixed(2)}</td>
+      <td class="${r.roomToResPct>=4?'pos':'neg'}">+${r.roomToResPct.toFixed(1)}</td>
+      <td class="pos">+${r.roomToTargetPct.toFixed(1)}</td>
+      <td>${r.peakHeightPct.toFixed(1)}</td>
+      <td>${r.sep}</td>
+      <td>${r.momCount}/4</td>
+      <td class="mono-sm">${r.earnFlag}</td>
+      <td><button class="opt-btn" data-tk="${r.tk}">VIEW</button></td>
+    </tr>`;
+  }
+  h+='</tbody></table>';
+  host.innerHTML=h;
+  host.querySelectorAll('th[data-k]').forEach(th=>{ th.onclick=()=>{ const k=th.dataset.k; if(STATE.sort.key===k) STATE.sort.dir*=-1; else{ STATE.sort.key=k; STATE.sort.dir=(k==='tk'||k==='type')?1:-1; } render(); }; });
+  host.querySelectorAll('.opt-btn').forEach(b=>{ b.onclick=()=>openDetail(b.dataset.tk); });
+}
+
+/* ---------- detail + W chart + chain ---------- */
+function drawW(r){
+  const {highs,lows,closes}=r.bars; const w=560,h=180,pad=8;
+  const allv=[...highs,...lows]; const min=Math.min(...allv),max=Math.max(...allv),rng=max-min||1;
+  const X=i=>pad+(i/(closes.length-1))*(w-2*pad);
+  const Y=v=>pad+(1-(v-min)/rng)*(h-2*pad);
+  let pl=closes.map((c,i)=>`${X(i)},${Y(c)}`).join(' ');
+  const neckY=Y(r.db.neckline);
+  let marks='';
+  const m=(i,color,lbl)=> i>=0&&i<closes.length? `<circle cx="${X(i)}" cy="${Y(lows[i])}" r="3.5" fill="${color}"/><text x="${X(i)}" y="${Y(lows[i])+15}" fill="${color}" font-size="9" text-anchor="middle">${lbl}</text>`:'';
+  marks+=m(r.db.i1,'#4cc8f5','L1'); marks+=m(r.db.i2,'#26d07c','L2');
+  marks+=`<line x1="${pad}" y1="${neckY}" x2="${w-pad}" y2="${neckY}" stroke="#f5b14c" stroke-dasharray="4 3" stroke-width="1"/><text x="${w-pad}" y="${neckY-4}" fill="#f5b14c" font-size="9" text-anchor="end">neckline $${r.db.neckline.toFixed(2)}</text>`;
+  return `<svg class="wsvg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pl}" fill="none" stroke="#c8d4e0" stroke-width="1.2"/>${marks}</svg>`;
+}
+async function openDetail(tk){
+  const r=STATE.rows.find(x=>x.tk===tk); if(!r) return;
+  $('optModal').classList.add('on'); $('optTitle').textContent=`${tk} — ${r.type==='conf'?'Confirmed breakout':'Anticipatory bounce'}`;
+  const key=$('apiKey').value.trim();
+  $('optBody').innerHTML=`
+    <div style="margin-bottom:12px">${drawW(r)}</div>
+    <div class="mono-sm" style="margin-bottom:6px">L1 $${r.lo1.toFixed(2)} · L2 $${r.lo2.toFixed(2)} · neckline $${r.neckline.toFixed(2)} · measured target $${r.target.toFixed(2)} · nearest res $${r.nearestRes.toFixed(2)}</div>
+    <div class="mono-sm" style="margin-bottom:6px">Score: sym ${r.sSym} · trig ${r.sTrig} · mom ${r.sMom} · room ${r.sRoom} · vol ${r.sVol} → <b>${r.score}</b></div>
+    <div class="mono-sm" style="margin-bottom:12px">Volume: ${r.dryUp?'dry-up into L2 ✓':'no dry-up'} · ${r.expand?'expansion on bounce ✓':'no expansion'} · ~earnings ${r.earnFlag}</div>
+    <div id="chainHost" class="empty">loading weekly chain…</div>`;
+  // load weekly CALLS near the money
+  try{
+    const sj=await robustFetch(`${BASE}/v2/aggs/ticker/${tk}/prev?adjusted=true&apiKey=${key}`);
+    const spot=sj?.results?.[0]?.c||r.px;
+    const dte=parseInt($('dte').value)||7;
+    const today=new Date(); const exp=new Date(); exp.setDate(today.getDate()+dte+5);
+    const lo=(spot*0.92).toFixed(0), hi=(spot*1.12).toFixed(0);
+    const url=`${BASE}/v3/reference/options/contracts?underlying_ticker=${tk}&contract_type=call`
+      +`&strike_price.gte=${lo}&strike_price.lte=${hi}&expiration_date.gte=${today.toISOString().slice(0,10)}`
+      +`&expiration_date.lte=${exp.toISOString().slice(0,10)}&expired=false&limit=250&sort=expiration_date&apiKey=${key}`;
+    const j=await robustFetch(url); const c=(j&&j.results)||[];
+    if(!c.length){ $('chainHost').innerHTML='<div class="empty">No weekly calls in window. (Check Options entitlement / widen DTE.)</div>'; return; }
+    c.sort((a,b)=> a.expiration_date.localeCompare(b.expiration_date) || Math.abs(a.strike_price-spot)-Math.abs(b.strike_price-spot));
+    let hh=`<div class="mono-sm" style="margin-bottom:8px">Spot ~$${spot.toFixed(2)} · CALLS · target DTE ~${dte} · ${c.length} contracts (≤250 cap)</div>`;
+    hh+='<table><thead><tr><th>Expiry</th><th>Strike</th><th>DTE</th><th>Moneyness</th><th>Ticker</th></tr></thead><tbody>';
+    for(const o of c.slice(0,30)){
+      const d=Math.round((new Date(o.expiration_date)-today)/864e5);
+      const mny=((o.strike_price-spot)/spot*100);
+      const atm=Math.abs(mny)<2?'style="color:var(--cyan);font-weight:700"':'';
+      hh+=`<tr><td style="text-align:left">${o.expiration_date}</td><td ${atm}>$${o.strike_price}</td><td>${d}</td><td class="${mny>=0?'pos':'neg'}">${mny>=0?'+':''}${mny.toFixed(1)}%</td><td style="text-align:left" class="mono-sm">${o.ticker}</td></tr>`;
+    }
+    hh+='</tbody></table>';
+    $('chainHost').innerHTML=hh;
+  }catch(e){ $('chainHost').innerHTML=`<div class="empty" style="color:var(--red)">Chain error: ${e.message}</div>`; }
+}
+
+/* ---------- wiring ---------- */
+$('runBtn').onclick=run;
+$('stopBtn').onclick=()=>{ STATE.abort=true; log('abort requested','info','STOP'); };
+$('optClose').onclick=()=>$('optModal').classList.remove('on');
+$('optModal').onclick=e=>{ if(e.target.id==='optModal') $('optModal').classList.remove('on'); };
+$('tabs').querySelectorAll('button').forEach(b=>{ b.onclick=()=>{ $('tabs').querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); STATE.tab=b.dataset.tab; render(); }; });
+const sk=localStorage.getItem('db_key'); if(sk) $('apiKey').value=sk;
+render();
+</script>
+</body>
+</html>
