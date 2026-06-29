@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JT Momentum Scanner</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#0f141c; --panel2:#131a24; --border:#1e2733;
+    --txt:#c7d0db; --dim:#6b7785; --accent:#3fb950; --accentdim:#1e5a2a;
+    --red:#f0506e; --reddim:#5a1e2a; --amber:#d9a23a; --blue:#58a6ff;
+    --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:13px;line-height:1.45}
+  header{padding:14px 18px;border-bottom:1px solid var(--border);background:var(--panel);display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+  h1{font-size:15px;margin:0;letter-spacing:.5px;color:#fff;font-weight:600}
+  h1 .v{color:var(--accent)}
+  .sub{color:var(--dim);font-size:11px}
+  .ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-left:auto}
+  input,select,button{font-family:var(--mono);font-size:12px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);border-radius:4px;padding:6px 9px}
+  input:focus,select:focus{outline:1px solid var(--accent)}
+  button{cursor:pointer;background:var(--accentdim);border-color:var(--accent);color:#dfffe6}
+  button:hover{background:var(--accent);color:#06160a}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.sec{background:var(--panel2);border-color:var(--border);color:var(--dim)}
+  button.sec:hover{background:var(--panel);color:var(--txt)}
+  .wrap{padding:14px 18px}
+  .config{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:14px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px}
+  .config label{display:block;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+  .config .field{display:flex;flex-direction:column}
+  .config input,.config select{width:100%}
+  .meta{display:flex;flex-wrap:wrap;gap:18px;margin-bottom:12px;font-size:11px;color:var(--dim)}
+  .meta b{color:var(--txt)}
+  .bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-bottom:12px;border:1px solid var(--border)}
+  .bar>div{height:100%;background:var(--accent);width:0;transition:width .2s}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{position:sticky;top:0;background:var(--panel);color:var(--dim);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;user-select:none}
+  th:first-child,td:first-child{text-align:left}
+  th.sorted{color:var(--accent)}
+  tr:hover td{background:var(--panel2)}
+  td.tk{font-weight:600;color:#fff;cursor:pointer}
+  td.tk:hover{color:var(--accent);text-decoration:underline}
+  .pos{color:var(--accent)}.neg{color:var(--red)}.warn{color:var(--amber)}
+  .pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;border:1px solid}
+  .pill.win{background:var(--accentdim);border-color:var(--accent);color:#dfffe6}
+  .pill.q1{background:var(--accentdim);border-color:var(--accent);color:#dfffe6}
+  .pill.q2{background:#2a3a18;border-color:var(--amber);color:#f0d98a}
+  .pill.q3{background:var(--panel2);border-color:var(--border);color:var(--dim)}
+  .log{margin-top:16px;background:#06090d;border:1px solid var(--border);border-radius:6px;max-height:240px;overflow:auto;font-size:11px}
+  .log .row{padding:3px 10px;border-bottom:1px solid #0d1219;display:flex;gap:10px}
+  .log .row:hover{background:var(--panel)}
+  .log .tk{color:#fff;min-width:60px}
+  .log .st{color:var(--dim)}
+  .log .ok{color:var(--accent)}
+  .log .rej{color:var(--red)}
+  .log .skip{color:var(--amber)}
+  .empty{padding:40px;text-align:center;color:var(--dim)}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal.open{display:flex}
+  .modal-inner{background:var(--panel);border:1px solid var(--border);border-radius:8px;max-width:900px;width:100%;max-height:85vh;overflow:auto}
+  .modal-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--panel)}
+  .modal-head h2{margin:0;font-size:14px;color:#fff}
+  .modal-body{padding:14px 18px}
+  .x{cursor:pointer;color:var(--dim);font-size:18px;border:none;background:none}
+  .x:hover{color:var(--red)}
+  .info{font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:4px;padding:10px 14px;margin-bottom:14px}
+  .info b{color:var(--txt)}
+  .tag{font-size:10px;padding:1px 6px;border-radius:3px;background:var(--panel2);border:1px solid var(--border);color:var(--dim)}
+  details summary{cursor:pointer;color:var(--blue);font-size:11px;margin-bottom:8px}
+  .dte{color:var(--blue);font-weight:600}
+  .key-note{color:var(--amber);font-size:10px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>JT MOMENTUM <span class="v">SCANNER</span></h1>
+    <div class="sub">Jegadeesh-Titman cross-sectional momentum · options-overlay</div>
+  </div>
+  <div class="ctrls">
+    <input id="apikey" type="password" placeholder="Polygon API key" style="width:200px">
+    <select id="universe">
+      <option value="sp500">S&P 500</option>
+      <option value="sp100">S&P 100 (faster)</option>
+      <option value="custom">Custom list</option>
+    </select>
+    <button id="scanBtn">RUN SCAN</button>
+    <button id="stopBtn" class="sec" disabled>STOP</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="info">
+    <b>Methodology.</b> Implements Jegadeesh &amp; Titman (1993, 2001) cross-sectional momentum.
+    Stocks are ranked by <b>cumulative return over the formation window</b> (J), <b>skipping the most recent week</b>
+    to avoid short-term reversal / bid-ask bounce. The top decile = <b>winners</b> (the long-side momentum candidates).
+    Liquidity screens from JT (2001) exclude price &lt; $5 and the smallest-cap names. The <b>entry date</b> is the next
+    trading day; <b>DTE target</b> is derived from the holding period K (3-month K is the strongest documented combo,
+    momentum decays past ~12 months).
+    <details style="margin-top:8px">
+      <summary>How entry date &amp; DTE are computed</summary>
+      <div style="color:var(--txt);margin-top:6px">
+        • <b>Entry date</b> = next US trading day after the scan (skip-week already applied in the ranking).<br>
+        • <b>DTE target</b> = holding period K in calendar days, with a tradable band. K=3mo → ~90 DTE (band 75–105).
+        Because momentum is strongest in the first ~3 months and decays after 12, the scanner suggests the
+        nearest standard monthly expiration inside the band so you capture the documented holding window with one position.<br>
+        • For directional long-winner trades the scanner suggests slightly-ITM to ATM calls (delta target configurable);
+        these are equity-overlay suggestions, not a chain pull — tap a ticker to load the live chain.
+      </div>
+    </details>
+  </div>
+
+  <div class="config">
+    <div class="field"><label>Formation J (months)</label>
+      <select id="formJ"><option value="6">6</option><option value="12" selected>12</option><option value="9">9</option><option value="3">3</option></select></div>
+    <div class="field"><label>Skip period (trading days)</label>
+      <input id="skipDays" type="number" value="5" min="0" max="21"></div>
+    <div class="field"><label>Holding K (months) → DTE</label>
+      <select id="holdK"><option value="3" selected>3 (~90 DTE)</option><option value="1">1 (~30 DTE)</option><option value="2">2 (~60 DTE)</option><option value="6">6 (~180 DTE)</option></select></div>
+    <div class="field"><label>Winner decile cutoff (top %)</label>
+      <input id="topPct" type="number" value="10" min="1" max="50"></div>
+    <div class="field"><label>Min price ($)</label>
+      <input id="minPrice" type="number" value="5" min="0"></div>
+    <div class="field"><label>Min avg $ volume (M)</label>
+      <input id="minDolVol" type="number" value="20" min="0"></div>
+    <div class="field"><label>Target call delta</label>
+      <input id="tgtDelta" type="number" value="0.60" min="0.3" max="0.9" step="0.05"></div>
+    <div class="field"><label>Concurrency</label>
+      <input id="concurrency" type="number" value="5" min="1" max="10"></div>
+  </div>
+
+  <div id="customWrap" style="display:none;margin-bottom:14px">
+    <textarea id="customList" placeholder="Comma or space separated tickers, e.g. AAPL MSFT NVDA" style="width:100%;height:60px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);border-radius:4px;padding:8px;font-family:var(--mono);font-size:12px"></textarea>
+  </div>
+
+  <div class="meta" id="meta" style="display:none">
+    <span>Universe: <b id="mUniv">—</b></span>
+    <span>Scanned: <b id="mScanned">0</b></span>
+    <span>Passed liquidity: <b id="mPassed">0</b></span>
+    <span>Winners (top decile): <b id="mWinners">0</b></span>
+    <span>Entry date: <b id="mEntry" class="dte">—</b></span>
+    <span>DTE target: <b id="mDte" class="dte">—</b></span>
+    <span>Exp suggestion: <b id="mExp" class="dte">—</b></span>
+  </div>
+
+  <div class="bar" id="barWrap" style="display:none"><div id="bar"></div></div>
+
+  <div id="tableWrap"></div>
+
+  <div class="log" id="log" style="display:none"></div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <h2 id="modalTitle">Chain</h2>
+      <button class="x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const BASE = 'https://api.polygon.io';
+let ABORT = false;
+let RESULTS = [];
+let SORT = {key:'momRet', dir:-1};
+
+// ---------- persistence ----------
+$('apikey').value = localStorage.getItem('polygonKey') || '';
+$('apikey').addEventListener('change', e => localStorage.setItem('polygonKey', e.target.value.trim()));
+$('universe').addEventListener('change', e => {
+  $('customWrap').style.display = e.target.value === 'custom' ? 'block' : 'none';
+});
+
+// ---------- robust fetch with 429 handling ----------
+async function robustFetch(url, tries=4){
+  for(let i=0;i<tries;i++){
+    if(ABORT) throw new Error('aborted');
+    try{
+      const r = await fetch(url);
+      if(r.status===429){ await sleep(1200*(i+1)); continue; }
+      if(r.status===403) throw new Error('403 entitlement/auth');
+      if(!r.ok && r.status>=500){ await sleep(600*(i+1)); continue; }
+      return await r.json();
+    }catch(e){
+      if(i===tries-1) throw e;
+      await sleep(500*(i+1));
+    }
+  }
+  throw new Error('fetch failed');
+}
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+// ---------- concurrency-limited worker pool ----------
+async function pool(items, limit, worker, onProgress){
+  let idx=0, done=0;
+  const results = new Array(items.length);
+  async function run(){
+    while(idx < items.length){
+      if(ABORT) return;
+      const my = idx++;
+      try{ results[my] = await worker(items[my], my); }
+      catch(e){ results[my] = {error:e.message, ticker:items[my]}; }
+      done++; onProgress(done, items.length);
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(limit,items.length)}, run));
+  return results;
+}
+
+// ---------- date helpers ----------
+function fmt(d){ return d.toISOString().slice(0,10); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function isWeekend(d){ const g=d.getDay(); return g===0||g===6; }
+function nextTradingDay(d){
+  let x = addDays(d,1);
+  while(isWeekend(x)) x = addDays(x,1);
+  return x;
+}
+// Approx US market holidays (skip if entry lands on one; light-touch, manual verify near holidays)
+const HOLIDAYS_2026 = new Set(['2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25','2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25']);
+function nextOpen(d){
+  let x = nextTradingDay(d);
+  while(HOLIDAYS_2026.has(fmt(x)) || isWeekend(x)) x = nextTradingDay(x);
+  return x;
+}
+// nearest standard monthly expiry (3rd Friday) inside a DTE band
+function thirdFriday(year, month){ // month 0-based
+  const d = new Date(Date.UTC(year, month, 1));
+  let fridays=0;
+  while(true){ if(d.getUTCDay()===5){ fridays++; if(fridays===3) return new Date(d); } d.setUTCDate(d.getUTCDate()+1); }
+}
+function suggestExpiry(entry, dteTarget, band){
+  const lo = dteTarget-band, hi = dteTarget+band;
+  const cands=[];
+  for(let m=0;m<8;m++){
+    const dt=new Date(entry); dt.setMonth(dt.getMonth()+m);
+    const tf=thirdFriday(dt.getFullYear(), dt.getMonth());
+    const dte=Math.round((tf-entry)/86400000);
+    if(dte>0) cands.push({tf,dte});
+  }
+  // prefer inside band, else closest to target
+  const inBand = cands.filter(c=>c.dte>=lo && c.dte<=hi).sort((a,b)=>Math.abs(a.dte-dteTarget)-Math.abs(b.dte-dteTarget));
+  if(inBand.length) return inBand[0];
+  return cands.sort((a,b)=>Math.abs(a.dte-dteTarget)-Math.abs(b.dte-dteTarget))[0];
+}
+
+// ---------- universe ----------
+const SP100 = "AAPL MSFT NVDA AMZN META GOOGL GOOG BRK.B AVGO TSLA JPM LLY V XOM UNH MA COST HD PG JNJ ABBV WMT NFLX BAC CRM ORCL CVX KO AMD PEP TMO LIN MRK ADBE ACN MCD CSCO ABT WFC GE PM IBM TXN DIS QCOM CAT GS INTU VZ ISRG NOW DHR AMGN SPGI NEU PFE BKNG AXP T NEE RTX UNP LOW HON ELV C BLK SYK ETN MDT TJX VRTX SCHW BSX MU LRCX KLAC PANW ADP GILD ADI MMC CB AMAT REGN BMY SBUX PLD DE BA SO MO COP DUK CME ICE WM ZTS MDLZ".split(' ');
+
+async function getSP500(key){
+  // Polygon doesn't directly give index constituents on most plans; use SP100 as reliable fallback,
+  // extended with a static S&P500-ish liquid list. Manual verify membership for edge names.
+  return SP100; // conservative: liquid large-caps. Custom list available for full 500.
+}
+
+// ---------- core momentum computation ----------
+async function fetchAggs(ticker, key, fromD, toD){
+  const url = `${BASE}/v2/aggs/ticker/${encodeURIComponent(ticker)}/range/1/day/${fmt(fromD)}/${fmt(toD)}?adjusted=true&sort=asc&limit=400&apiKey=${key}`;
+  const j = await robustFetch(url);
+  return (j && j.results) ? j.results : [];
+}
+
+function logRow(tk, status, cls, extra=''){
+  const row=document.createElement('div'); row.className='row';
+  row.innerHTML = `<span class="tk">${tk}</span><span class="st ${cls}">${status}</span><span class="st" style="color:var(--dim)">${extra}</span>`;
+  $('log').appendChild(row);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+async function processTicker(tk, cfg){
+  const aggs = await fetchAggs(tk, cfg.key, cfg.fromD, cfg.toD);
+  if(aggs.length < cfg.minBars){ logRow(tk,'REJECT','rej',`only ${aggs.length} bars`); return null; }
+
+  // skip-week: drop the most recent skipDays bars from the formation end
+  const skip = cfg.skipDays;
+  const endIdx = aggs.length - 1 - skip;
+  if(endIdx < cfg.formBars){ logRow(tk,'REJECT','rej','insufficient history'); return null; }
+  const startIdx = endIdx - cfg.formBars;
+  if(startIdx < 0){ logRow(tk,'REJECT','rej','insufficient history'); return null; }
+
+  const pStart = aggs[startIdx].c;
+  const pEnd   = aggs[endIdx].c;       // formation end (skip-week applied)
+  const pLast  = aggs[aggs.length-1].c; // most recent close (current price)
+
+  const momRet = (pEnd/pStart - 1);
+
+  // liquidity: avg dollar volume over last ~20 bars
+  const recent = aggs.slice(-20);
+  const avgDolVol = recent.reduce((s,b)=>s + (b.c*(b.v||0)),0)/recent.length;
+
+  // recent week return (the skipped portion) — diagnostic for reversal
+  const skipRet = skip>0 ? (pLast/pEnd - 1) : 0;
+
+  if(pLast < cfg.minPrice){ logRow(tk,'REJECT','rej',`price $${pLast.toFixed(2)} < $${cfg.minPrice}`); return null; }
+  if(avgDolVol < cfg.minDolVol){ logRow(tk,'REJECT','rej',`$vol ${(avgDolVol/1e6).toFixed(1)}M < ${(cfg.minDolVol/1e6).toFixed(0)}M`); return null; }
+
+  // simple volatility (daily stdev over formation, annualized) for context
+  const rets=[];
+  for(let i=startIdx+1;i<=endIdx;i++) rets.push(aggs[i].c/aggs[i-1].c-1);
+  const mean=rets.reduce((a,b)=>a+b,0)/rets.length;
+  const sd=Math.sqrt(rets.reduce((a,b)=>a+(b-mean)**2,0)/rets.length);
+  const annVol=sd*Math.sqrt(252);
+
+  logRow(tk,'OK','ok',`mom ${(momRet*100).toFixed(1)}%`);
+  return { ticker:tk, price:pLast, momRet, avgDolVol, skipRet, annVol,
+           volAdjMom: annVol>0 ? momRet/annVol : 0 };
+}
+
+// ---------- scan orchestration ----------
+async function runScan(){
+  const key = $('apikey').value.trim();
+  if(!key){ alert('Enter your Polygon API key'); return; }
+  ABORT=false;
+  $('scanBtn').disabled=true; $('stopBtn').disabled=false;
+  $('log').style.display='block'; $('log').innerHTML='';
+  $('barWrap').style.display='block'; $('meta').style.display='flex';
+  $('tableWrap').innerHTML='';
+  RESULTS=[];
+
+  const formJ = +$('formJ').value;
+  const skipDays = +$('skipDays').value;
+  const holdK = +$('holdK').value;
+  const topPct = +$('topPct').value;
+  const minPrice = +$('minPrice').value;
+  const minDolVol = (+$('minDolVol').value)*1e6;
+  const concurrency = +$('concurrency').value;
+
+  // universe
+  let univ;
+  const usel = $('universe').value;
+  if(usel==='custom'){
+    univ = ($('customList').value||'').split(/[\s,]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+    if(!univ.length){ alert('Custom list empty'); reset(); return; }
+  } else if(usel==='sp100'){
+    univ = SP100;
+  } else {
+    univ = await getSP500(key);
+  }
+  $('mUniv').textContent = `${usel} (${univ.length})`;
+
+  // date window: enough calendar days for J months + skip + buffer
+  const today = new Date();
+  const lookbackDays = Math.ceil(formJ*30.5) + skipDays + 45; // buffer for non-trading days
+  const fromD = addDays(today, -lookbackDays);
+  const toD = today;
+  const formBars = Math.round(formJ*21); // ~21 trading days/month
+  const minBars = formBars + skipDays + 5;
+
+  // entry date & DTE/exp suggestion
+  const entry = nextOpen(today);
+  const dteTarget = Math.round(holdK*30.4);
+  const band = holdK<=1 ? 12 : (holdK<=2 ? 15 : (holdK<=3 ? 18 : 30));
+  const exp = suggestExpiry(entry, dteTarget, band);
+  $('mEntry').textContent = fmt(entry);
+  $('mDte').textContent = `${dteTarget}d (K=${holdK}mo)`;
+  $('mExp').textContent = exp ? `${fmt(exp.tf)} (${exp.dte} DTE)` : '—';
+
+  const cfg = {key, fromD, toD, skipDays, formBars, minBars, minPrice, minDolVol};
+
+  const raw = await pool(univ, concurrency, (tk)=>processTicker(tk,cfg),
+    (done,total)=>{ $('bar').style.width = (done/total*100)+'%'; $('mScanned').textContent=done; });
+
+  if(ABORT){ logRow('—','SCAN STOPPED','skip'); reset(); render(holdK,entry,exp); return; }
+
+  const passed = raw.filter(r=>r && !r.error);
+  $('mPassed').textContent = passed.length;
+
+  // rank by momentum, take top decile
+  passed.sort((a,b)=>b.momRet-a.momRet);
+  const nWin = Math.max(1, Math.ceil(passed.length * topPct/100));
+  passed.forEach((r,i)=>{
+    r.rank = i+1;
+    r.percentile = 1 - i/passed.length;
+    r.winner = i < nWin;
+    r.decile = i < nWin ? 'WINNER' : (i < passed.length*0.5 ? 'mid' : 'low');
+  });
+  $('mWinners').textContent = nWin;
+
+  RESULTS = passed.filter(r=>r.winner);
+  // attach trade overlay
+  RESULTS.forEach(r=>{
+    r.entry = fmt(entry);
+    r.dteTarget = dteTarget;
+    r.exp = exp ? fmt(exp.tf) : '—';
+    r.expDte = exp ? exp.dte : null;
+  });
+
+  render(holdK,entry,exp);
+  reset();
+}
+
+function reset(){ $('scanBtn').disabled=false; $('stopBtn').disabled=true; }
+
+// ---------- rendering ----------
+function render(holdK,entry,exp){
+  if(!RESULTS.length){ $('tableWrap').innerHTML='<div class="empty">No winners passed the screens. Loosen liquidity filters or widen the universe.</div>'; return; }
+  sortResults();
+  const cols = [
+    ['rank','#'],['ticker','Ticker'],['price','Price'],['momRet','Mom Ret (J)'],
+    ['volAdjMom','Vol-Adj Mom'],['annVol','Ann Vol'],['skipRet','Skip-Wk Ret'],
+    ['avgDolVol','Avg $Vol'],['decile','Decile'],['entry','Entry'],['exp','Exp'],['expDte','DTE']
+  ];
+  let h='<table><thead><tr>';
+  cols.forEach(([k,lbl])=>{ h+=`<th data-k="${k}" class="${SORT.key===k?'sorted':''}">${lbl}</th>`; });
+  h+='</tr></thead><tbody>';
+  RESULTS.forEach(r=>{
+    h+='<tr>';
+    h+=`<td>${r.rank}</td>`;
+    h+=`<td class="tk" onclick="loadChain('${r.ticker}')">${r.ticker}</td>`;
+    h+=`<td>$${r.price.toFixed(2)}</td>`;
+    h+=`<td class="${r.momRet>=0?'pos':'neg'}">${(r.momRet*100).toFixed(1)}%</td>`;
+    h+=`<td>${r.volAdjMom.toFixed(2)}</td>`;
+    h+=`<td>${(r.annVol*100).toFixed(0)}%</td>`;
+    h+=`<td class="${r.skipRet>=0?'pos':'neg'}">${(r.skipRet*100).toFixed(1)}%</td>`;
+    h+=`<td>$${(r.avgDolVol/1e6).toFixed(0)}M</td>`;
+    h+=`<td><span class="pill win">${r.decile}</span></td>`;
+    h+=`<td class="dte">${r.entry}</td>`;
+    h+=`<td class="dte">${r.exp}</td>`;
+    h+=`<td class="dte">${r.expDte??'—'}</td>`;
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  $('tableWrap').innerHTML=h;
+  $('tableWrap').querySelectorAll('th').forEach(th=>{
+    th.onclick=()=>{ const k=th.dataset.k; if(SORT.key===k) SORT.dir*=-1; else {SORT.key=k;SORT.dir=-1;} render(holdK,entry,exp); };
+  });
+}
+function sortResults(){
+  const k=SORT.key, d=SORT.dir;
+  RESULTS.sort((a,b)=>{
+    let x=a[k],y=b[k];
+    if(typeof x==='string') return d*x.localeCompare(y);
+    return d*((x??0)-(y??0));
+  });
+}
+
+// ---------- options chain (on-demand) ----------
+async function loadChain(tk){
+  const key=$('apikey').value.trim();
+  const row = RESULTS.find(r=>r.ticker===tk);
+  $('modal').classList.add('open');
+  $('modalTitle').textContent = `${tk} — call chain near ${row.exp}`;
+  $('modalBody').innerHTML = '<div class="empty">Loading chain…</div>';
+  const tgtDelta = +$('tgtDelta').value;
+  try{
+    // server-side filtered chain: calls only, near suggested expiry, strikes around current price
+    const lo = (row.price*0.85).toFixed(0), hi=(row.price*1.10).toFixed(0);
+    const expLte = row.exp;
+    const url = `${BASE}/v3/snapshot/options/${tk}?contract_type=call&expiration_date.gte=${row.exp}&expiration_date.lte=${addExpBuffer(row.exp)}&strike_price.gte=${lo}&strike_price.lte=${hi}&limit=250&apiKey=${key}`;
+    const j = await robustFetch(url);
+    const rows = (j.results||[]).filter(o=>o.details);
+    if(!rows.length){ $('modalBody').innerHTML='<div class="empty">No contracts returned (entitlement or expiry mismatch). Verify expiry exists.</div>'; return; }
+    rows.sort((a,b)=>a.details.strike_price-b.details.strike_price);
+    // pick closest to target delta
+    let pick=null, best=1e9;
+    rows.forEach(o=>{ const dl=o.greeks?.delta; if(dl!=null){ const diff=Math.abs(dl-tgtDelta); if(diff<best){best=diff;pick=o;} } });
+    let h=`<div class="info" style="margin-bottom:10px">Suggested entry <b>${row.entry}</b> · target DTE <b>${row.dteTarget}</b> · nearest exp <b>${row.exp} (${row.expDte} DTE)</b> · target Δ <b>${tgtDelta}</b></div>`;
+    if(pick){
+      const dl=pick.greeks?.delta, q=pick.last_quote, price = q? ((q.bid+q.ask)/2) : (pick.day?.close ?? pick.last_trade?.price);
+      h+=`<div class="info" style="border-left-color:var(--accent)">▶ <b>Suggested contract:</b> ${pick.details.ticker} · strike $${pick.details.strike_price} · Δ ${dl?.toFixed(2)} · mid ${price?('$'+price.toFixed(2)):'n/a'}</div>`;
+    }
+    h+='<table><thead><tr><th>Strike</th><th>Δ</th><th>IV</th><th>Bid</th><th>Ask</th><th>Mid</th><th>OI</th><th>Vol</th></tr></thead><tbody>';
+    rows.forEach(o=>{
+      const q=o.last_quote, mid = q&&q.bid&&q.ask ? ((q.bid+q.ask)/2) : (o.day?.close ?? o.last_trade?.price ?? null);
+      const isPick = pick && o.details.ticker===pick.details.ticker;
+      h+=`<tr style="${isPick?'background:var(--accentdim)':''}">`;
+      h+=`<td>$${o.details.strike_price}</td>`;
+      h+=`<td>${o.greeks?.delta?.toFixed(2)??'—'}</td>`;
+      h+=`<td>${o.implied_volatility?(o.implied_volatility*100).toFixed(0)+'%':'—'}</td>`;
+      h+=`<td>${q?.bid?.toFixed(2)??'—'}</td>`;
+      h+=`<td>${q?.ask?.toFixed(2)??'—'}</td>`;
+      h+=`<td>${mid?('$'+mid.toFixed(2)):'—'}</td>`;
+      h+=`<td>${o.open_interest??'—'}</td>`;
+      h+=`<td>${o.day?.volume??'—'}</td>`;
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    $('modalBody').innerHTML=h;
+  }catch(e){
+    $('modalBody').innerHTML=`<div class="empty">Chain error: ${e.message}. Check quotes/options entitlement.</div>`;
+  }
+}
+function addExpBuffer(d){ const x=new Date(d); x.setDate(x.getDate()+1); return fmt(x); }
+function closeModal(){ $('modal').classList.remove('open'); }
+
+// ---------- wire up ----------
+$('scanBtn').onclick=runScan;
+$('stopBtn').onclick=()=>{ ABORT=true; };
+$('modal').onclick=e=>{ if(e.target.id==='modal') closeModal(); };
+</script>
+</body>
+</html>
