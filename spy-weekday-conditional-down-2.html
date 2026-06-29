@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPY · Weekday Down-Close → Next-Day Conditional Study</title>
+<style>
+  :root{
+    --bg:#0a0e12; --panel:#10161d; --panel2:#0d1318; --line:#1c2630;
+    --txt:#c7d2dc; --dim:#6b7c8c; --grn:#3fe08a; --red:#ff5d6c;
+    --amber:#ffc14d; --cyan:#4dd0e1; --accent:#ff5d6c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 18px 80px}
+  h1{font-size:18px;letter-spacing:.5px;margin:0 0 2px;color:#fff;font-weight:600}
+  .sub{color:var(--dim);font-size:11px;margin-bottom:20px;letter-spacing:.4px}
+  .ctrl{display:flex;gap:10px;flex-wrap:wrap;align-items:end;
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+  label{display:block;color:var(--dim);font-size:10px;text-transform:uppercase;
+    letter-spacing:.8px;margin-bottom:4px}
+  input{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:5px;padding:7px 9px;font:inherit;width:160px}
+  input:focus{outline:none;border-color:var(--accent)}
+  button{background:var(--accent);color:#1a0406;border:none;border-radius:5px;
+    padding:8px 18px;font:inherit;font-weight:600;cursor:pointer;letter-spacing:.4px}
+  button:disabled{opacity:.5;cursor:wait}
+  .status{margin:14px 2px;color:var(--cyan);font-size:11px;min-height:16px}
+  table{width:100%;border-collapse:collapse;margin-top:22px;font-size:11.5px}
+  th,td{text-align:right;padding:7px 9px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);text-transform:uppercase;letter-spacing:.6px;font-weight:500;font-size:9.5px}
+  td:first-child,th:first-child{text-align:left}
+  tbody tr:hover{background:var(--panel2)}
+  .grp{color:#fff;font-weight:600}
+  .big{font-size:13px;color:var(--accent);font-weight:600}
+  .edge{color:var(--grn)} .edge.neg{color:var(--red)} .edge.flat{color:var(--dim)}
+  .tag{font-size:9px;letter-spacing:.6px;text-transform:uppercase;margin-left:7px;
+    padding:1px 5px;border-radius:3px}
+  .tag.bear{color:var(--red);border:1px solid var(--red)}
+  .tag.bull{color:var(--grn);border:1px solid var(--grn)}
+  .tag.flat{color:var(--dim);border:1px solid var(--line)}
+  .sect{margin-top:30px;color:var(--dim);font-size:10px;text-transform:uppercase;
+    letter-spacing:.8px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .log{margin-top:24px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;max-height:200px;overflow:auto;padding:12px;
+    font-size:10.5px;color:var(--dim);white-space:pre-wrap}
+  .note{margin-top:16px;color:var(--dim);font-size:10.5px;line-height:1.6}
+  .note b{color:var(--txt)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SPY · Weekday Down-Close → Next-Day Conditional Study</h1>
+  <div class="sub">DAILY OHLC VIA POLYGON · CONDITIONED ON DAY-N CLOSE ≤ DAY-N OPEN · DOWNSIDE FOLLOW-THROUGH · ALL FIVE PAIRS</div>
+
+  <div class="ctrl">
+    <div>
+      <label>Polygon API Key</label>
+      <input id="key" type="password" placeholder="paste key" autocomplete="off">
+    </div>
+    <div>
+      <label>Start date</label>
+      <input id="start" type="date" value="2005-06-25" style="width:150px">
+    </div>
+    <div>
+      <label>Ticker</label>
+      <input id="tkr" value="SPY" style="width:90px">
+    </div>
+    <button id="run">Run scan</button>
+  </div>
+
+  <div class="status" id="status">Idle. Set a start date (use the earliest your plan allows) and run.</div>
+
+  <div class="sect" id="s1" style="display:none">Q1 · P( next close ≤ this close | this close ≤ this open )</div>
+  <table id="t1" style="display:none">
+    <thead><tr>
+      <th>Pair</th><th>Conditional</th><th>n (down days)</th>
+      <th>Unconditional baseline</th><th>Edge</th>
+    </tr></thead><tbody id="b1"></tbody>
+  </table>
+
+  <div class="sect" id="s2" style="display:none">Q2 · P( next close ≤ next open | this close ≤ this open )</div>
+  <table id="t2" style="display:none">
+    <thead><tr>
+      <th>Pair</th><th>Conditional</th><th>n (down days)</th>
+      <th>Unconditional baseline</th><th>Edge</th>
+    </tr></thead><tbody id="b2"></tbody>
+  </table>
+
+  <div class="note" id="note" style="display:none"></div>
+  <div class="log" id="log" style="display:none"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const log = m => { const l=$('log'); l.style.display='block'; l.textContent += m+'\n'; l.scrollTop=l.scrollHeight; };
+const setStatus = m => $('status').textContent = m;
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+const PAIRS = [
+  [1,2,'Mon → Tue'],
+  [2,3,'Tue → Wed'],
+  [3,4,'Wed → Thu'],
+  [4,5,'Thu → Fri'],
+  [5,1,'Fri → Mon'],
+];
+
+$('run').onclick = run;
+$('key').addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+
+async function run(){
+  const key=$('key').value.trim();
+  const start=$('start').value;
+  const tkr=($('tkr').value.trim()||'SPY').toUpperCase();
+  if(!key){ setStatus('Enter your Polygon API key first.'); return; }
+  if(!start){ setStatus('Pick a start date.'); return; }
+
+  $('run').disabled=true; $('log').textContent='';
+  ['s1','t1','s2','t2','note'].forEach(id=>$(id).style.display='none');
+
+  const to=new Date().toISOString().slice(0,10);
+  setStatus('Fetching daily bars…');
+
+  let bars=[];
+  try{
+    let url=`https://api.polygon.io/v2/aggs/ticker/${tkr}/range/1/day/${start}/${to}?adjusted=true&sort=asc&limit=50000&apiKey=${encodeURIComponent(key)}`;
+    let page=0;
+    while(url){
+      page++;
+      const r=await robustFetch(url);
+      if(r.status===403){ setStatus('403 — key rejected or plan lacks this history depth.'); $('run').disabled=false; return; }
+      const j=await r.json();
+      if(j.results) bars=bars.concat(j.results);
+      log(`page ${page}: +${j.results?j.results.length:0} (total ${bars.length})`);
+      url=j.next_url ? j.next_url+`&apiKey=${encodeURIComponent(key)}` : null;
+      setStatus(`Fetching… ${bars.length} bars`);
+    }
+  }catch(e){ setStatus('Fetch error: '+e.message); $('run').disabled=false; return; }
+
+  if(bars.length<10){ setStatus('No data returned.'); $('run').disabled=false; return; }
+
+  const rows=bars.map(b=>{
+    const d=new Date(b.t);
+    return {dow:d.getUTCDay(), o:b.o, c:b.c, key:d.toISOString().slice(0,10)};
+  });
+
+  const stat={};
+  PAIRS.forEach(p=> stat[p[2]]={pairs:0, down:0, q1:0, q2:0, baseQ1:0, baseQ2:0});
+
+  for(let i=0;i<rows.length-1;i++){
+    const a=rows[i], b=rows[i+1];
+    const pair=PAIRS.find(p=>p[0]===a.dow && p[1]===b.dow);
+    if(!pair) continue;
+    const s=stat[pair[2]];
+    s.pairs++;
+    if(b.c<=a.c) s.baseQ1++;          // unconditional: next close ≤ this close
+    if(b.c<=b.o) s.baseQ2++;          // unconditional: next close ≤ next open
+    if(a.c<=a.o){                     // CONDITION: this day down/flat close
+      s.down++;
+      if(b.c<=a.c) s.q1++;
+      if(b.c<=b.o) s.q2++;
+    }
+  }
+
+  const pct=(n,d)=>d?100*n/d:0;
+  const edgeCell=v=>{
+    const cls=Math.abs(v)<1 ? 'flat' : (v<0?'neg':'');
+    // Downside tool: positive edge = MORE downside follow-through than baseline = BEARISH.
+    // Negative edge = LESS downside than baseline = BULLISH. |edge|<1pp = no signal.
+    let tag;
+    if(Math.abs(v)<1) tag='<span class="tag flat">No signal</span>';
+    else if(v>0) tag='<span class="tag bear">Bearish</span>';
+    else tag='<span class="tag bull">Bullish</span>';
+    return `<td class="edge ${cls}">${(v>=0?'+':'')+v.toFixed(1)} pp${tag}</td>`;
+  };
+
+  let h1='',h2='';
+  PAIRS.forEach(p=>{
+    const s=stat[p[2]];
+    const c1=pct(s.q1,s.down), bl1=pct(s.baseQ1,s.pairs);
+    const c2=pct(s.q2,s.down), bl2=pct(s.baseQ2,s.pairs);
+    h1+=`<tr><td class="grp">${p[2]}</td><td class="big">${c1.toFixed(1)}%</td>`+
+        `<td>${s.q1}/${s.down}</td><td>${bl1.toFixed(1)}% (${s.baseQ1}/${s.pairs})</td>`+
+        edgeCell(c1-bl1)+`</tr>`;
+    h2+=`<tr><td class="grp">${p[2]}</td><td class="big">${c2.toFixed(1)}%</td>`+
+        `<td>${s.q2}/${s.down}</td><td>${bl2.toFixed(1)}% (${s.baseQ2}/${s.pairs})</td>`+
+        edgeCell(c2-bl2)+`</tr>`;
+  });
+  $('b1').innerHTML=h1; $('b2').innerHTML=h2;
+  ['s1','t1','s2','t2'].forEach(id=>$(id).style.display = id[0]==='s'?'block':'table');
+
+  $('note').style.display='block';
+  $('note').innerHTML=
+    `Window: <b>${rows[0].key} → ${rows[rows.length-1].key}</b> · ${bars.length} adjusted daily bars. `+
+    `Each pair requires the next bar to fall on the expected weekday, so holiday-shortened weeks are excluded `+
+    `(that's why "Fri → Mon" n differs). `+
+    `"Does not exceed" = close ≤ open, so flat days (close==open) count as down here — the exact complement of the up-side tool. `+
+    `Edge = conditional − unconditional in percentage points; |edge| &lt; 1pp shown grey as effectively no signal.`;
+
+  setStatus(`Done. ${rows.length} bars, ${rows[0].key} → ${rows[rows.length-1].key}.`);
+  $('run').disabled=false;
+}
+
+async function robustFetch(url, tries=5){
+  for(let a=0;a<tries;a++){
+    try{
+      const r=await fetch(url);
+      if(r.status===429){ await sleep(800*(a+1)); continue; }
+      return r;
+    }catch(e){ if(a===tries-1) throw e; await sleep(600*(a+1)); }
+  }
+  throw new Error('exhausted retries');
+}
+</script>
+</body>
+</html>
