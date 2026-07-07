@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Murphy Outlook — 2wk / 2mo Technical Read</title>
+<style>
+:root{
+  --bg:#0a0e12;--panel:#111820;--panel2:#0d141b;--ink:#d6e0e8;--dim:#7d8b98;
+  --faint:#4a5763;--line:#1e2a35;--amber:#e8b13a;--up:#3fb98a;--down:#e06666;
+  --neu:#6b8cae;--mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;
+  line-height:1.5;min-height:100vh;
+  background-image:linear-gradient(rgba(30,42,53,.3) 1px,transparent 1px),linear-gradient(90deg,rgba(30,42,53,.3) 1px,transparent 1px);
+  background-size:28px 28px;}
+.wrap{max-width:960px;margin:0 auto;padding:22px 16px 80px}
+header{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+.brand{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
+.logo{font-family:var(--sans);font-weight:800;letter-spacing:-.02em;font-size:24px}
+.logo b{color:var(--amber)}
+.sub{color:var(--dim);font-size:11px}
+.srcline{margin-top:7px;color:var(--faint);font-size:11px;line-height:1.6}
+.srcline span{color:var(--dim)}
+
+.deck{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:4px;padding:16px;margin-bottom:16px}
+.dlabel{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:9px;display:block}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+  font-family:var(--mono);font-size:12px;padding:9px;border-radius:3px;cursor:pointer;letter-spacing:.03em}
+.tab.on{border-color:var(--amber);color:var(--amber);background:#0f1621}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.field{flex:1;min-width:140px}
+.field label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.field input,.field textarea{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  font-family:var(--mono);font-size:13px;padding:9px 11px;border-radius:3px;outline:none;resize:vertical}
+.field input:focus,.field textarea:focus{border-color:var(--amber)}
+.field input::placeholder,.field textarea::placeholder{color:var(--faint)}
+.hide{display:none!important}
+.run{margin-top:14px;width:100%;background:var(--amber);color:#1a1205;border:none;
+  font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.04em;padding:12px;border-radius:3px;cursor:pointer}
+.run:hover:not(:disabled){filter:brightness(1.08)}
+.run:disabled{opacity:.4;cursor:not-allowed}
+.keyrow{margin-top:12px}
+.keyrow input{font-size:12px}
+.keynote{font-size:10px;color:var(--faint);margin-top:5px;line-height:1.5}
+.status{margin-top:12px;font-size:12px;color:var(--dim);display:flex;align-items:center;gap:8px;min-height:16px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+.err{color:var(--down)}
+
+.out{margin-top:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;margin-bottom:12px;overflow:hidden}
+.card-head{border-left:3px solid var(--neu);padding:14px 16px;background:linear-gradient(180deg,var(--panel),var(--panel2))}
+.card-head.bull{border-left-color:var(--up)}
+.card-head.bear{border-left-color:var(--down)}
+.card-head.neu{border-left-color:var(--neu)}
+.ch-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sym{font-family:var(--sans);font-weight:800;font-size:20px}
+.px{color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums}
+.stage{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.headline{margin-top:7px;font-size:13px;line-height:1.55;color:var(--ink)}
+
+.hz2{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}
+@media(max-width:560px){.hz2{grid-template-columns:1fr}}
+.hz{background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:12px}
+.hz-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.hz-t{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.bias{font-family:var(--sans);font-weight:700;font-size:14px;padding:1px 7px;border-radius:3px}
+.bias.bullish{color:var(--up);background:rgba(63,185,138,.1)}
+.bias.bearish{color:var(--down);background:rgba(224,102,102,.1)}
+.bias.neutral{color:var(--neu);background:rgba(107,140,174,.1)}
+.score-bar{height:5px;background:var(--panel);border-radius:3px;margin:8px 0;overflow:hidden;position:relative}
+.score-fill{height:100%;border-radius:3px}
+.hz-row{display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line);font-size:12px}
+.hz-row:first-of-type{border-top:none}
+.hz-row .k{color:var(--dim)}
+.hz-row .v{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+
+details.sec{border-top:1px solid var(--line)}
+details.sec>summary{list-style:none;cursor:pointer;padding:11px 16px;display:flex;justify-content:space-between;
+  align-items:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary:hover{color:var(--ink)}
+.chev{color:var(--faint);transition:transform .2s}
+details.sec[open] .chev{transform:rotate(90deg)}
+.sec-body{padding:0 16px 14px}
+.factor{display:grid;grid-template-columns:16px 1fr auto;gap:9px;align-items:start;padding:6px 0;border-top:1px solid var(--line);font-size:12px}
+.factor:first-child{border-top:none}
+.fi{font-family:var(--sans);font-weight:700;font-size:13px;line-height:1.3}
+.fi.pos{color:var(--up)}.fi.neg{color:var(--down)}.fi.flat{color:var(--neu)}
+.fname{color:var(--ink)}
+.fval{color:var(--dim);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fnote{grid-column:2/4;color:var(--faint);font-size:11px;line-height:1.5;margin-top:1px}
+
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;color:var(--faint);font-weight:400;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line)}
+.tbl th.r,.tbl td.r{text-align:right;font-variant-numeric:tabular-nums}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--ink)}
+.tbl tr.clk{cursor:pointer}
+.tbl tr.clk:hover{background:var(--panel2)}
+.tbl .tsym{font-family:var(--sans);font-weight:700}
+.pill{font-family:var(--sans);font-weight:700;font-size:11px;padding:1px 7px;border-radius:3px}
+.pill.bullish{color:var(--up);background:rgba(63,185,138,.1)}
+.pill.bearish{color:var(--down);background:rgba(224,102,102,.1)}
+.pill.neutral{color:var(--neu);background:rgba(107,140,174,.1)}
+.scorecell{font-variant-numeric:tabular-nums;font-weight:700}
+.log{font-size:11px;color:var(--faint);padding:2px 0;line-height:1.5}
+.log b{color:var(--dim)}
+.disc{margin-top:16px;padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:var(--panel2);
+  font-size:11px;line-height:1.7;color:var(--faint)}
+.disc b{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">MURPHY<b>OUTLOOK</b></div>
+      <div class="sub">2-week &amp; 2-month technical read · Polygon OHLCV</div>
+    </div>
+    <div class="srcline">
+      <span>Murphy</span> trend / volume-confirmation / RSI / MACD / stochastics ·
+      <span>Shannon</span> timeframe split (daily → 2wk, weekly → 2mo) &amp; stage ·
+      <span>Edwards &amp; Magee</span> support-resistance &amp; range projection
+    </div>
+  </header>
+
+  <div class="deck">
+    <div class="tabs">
+      <button class="tab on" id="tabSingle">Single ticker</button>
+      <button class="tab" id="tabList">Watchlist</button>
+    </div>
+
+    <div id="singlePane">
+      <div class="row">
+        <div class="field"><label>Ticker</label>
+          <input id="sym" placeholder="e.g. NVDA" autocomplete="off" spellcheck="false"></div>
+      </div>
+    </div>
+
+    <div id="listPane" class="hide">
+      <div class="field"><label>Tickers (comma or space separated)</label>
+        <textarea id="syms" rows="2" placeholder="AAPL MSFT NVDA GLD TLT SPY"></textarea></div>
+    </div>
+
+    <div class="keyrow field">
+      <label>Polygon API key</label>
+      <input id="key" type="password" placeholder="stored locally in this browser only" autocomplete="off">
+      <div class="keynote">Saved to localStorage on this device. Uses <b>v2/aggs</b> daily + weekly bars (Stocks Starter is enough — no options entitlement needed).</div>
+    </div>
+
+    <button class="run" id="run">Run outlook</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="out" id="out"></div>
+
+  <div class="disc" id="disc" style="display:none">
+    <b>How to read this.</b> These are Murphy's indicator conditions computed from price and volume, not a price forecast. "Outlook" = the weight of technical evidence and what is favored <i>if the prevailing trend persists</i>. Technical analysis is probabilistic; divergences and range projections are advisory and weighted low. Not financial advice — every read is a hypothesis to confirm, not a prediction.
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const KEY='murphy_polygon_key';
+$('key').value=localStorage.getItem(KEY)||'';
+$('key').addEventListener('input',e=>localStorage.setItem(KEY,e.target.value.trim()));
+
+let mode='single';
+$('tabSingle').addEventListener('click',()=>setMode('single'));
+$('tabList').addEventListener('click',()=>setMode('list'));
+function setMode(m){mode=m;
+  $('tabSingle').classList.toggle('on',m==='single');
+  $('tabList').classList.toggle('on',m==='list');
+  $('singlePane').classList.toggle('hide',m!=='single');
+  $('listPane').classList.toggle('hide',m!=='list');
+}
+
+/* ---------- indicator math ---------- */
+const SMA=(a,n)=>a.length<n?null:a.slice(-n).reduce((s,x)=>s+x,0)/n;
+function EMAseries(a,n){if(a.length<n)return[];const k=2/(n+1);let e=a.slice(0,n).reduce((s,x)=>s+x,0)/n;const out=[e];
+  for(let i=n;i<a.length;i++){e=a[i]*k+e*(1-k);out.push(e);}return out;}
+function RSI(closes,n=14){if(closes.length<n+1)return null;let g=0,l=0;
+  for(let i=closes.length-n;i<closes.length;i++){const d=closes[i]-closes[i-1];if(d>=0)g+=d;else l-=d;}
+  const ag=g/n,al=l/n;if(al===0)return 100;const rs=ag/al;return 100-100/(1+rs);}
+function RSIseries(closes,n=14){const out=[];for(let i=n;i<closes.length;i++){out.push(RSI(closes.slice(0,i+1),n));}return out;}
+function MACD(closes){if(closes.length<35)return null;
+  const e12=EMAseries(closes,12),e26=EMAseries(closes,26);
+  const off=e12.length-e26.length;const macdLine=e26.map((v,i)=>e12[i+off]-v);
+  const sig=EMAseries(macdLine,9);const so=macdLine.length-sig.length;
+  const hist=sig.map((s,i)=>macdLine[i+so]-s);
+  return {macd:macdLine[macdLine.length-1],signal:sig[sig.length-1],hist:hist[hist.length-1],
+    histPrev:hist.length>1?hist[hist.length-2]:0,macdPrev:macdLine[macdLine.length-2]};}
+function Stoch(bars,n=14){if(bars.length<n)return null;const s=bars.slice(-n);
+  const hh=Math.max(...s.map(b=>b.h)),ll=Math.min(...s.map(b=>b.l));const c=s[s.length-1].c;
+  if(hh===ll)return 50;return (c-ll)/(hh-ll)*100;}
+function swingLevels(bars,look=60){const s=bars.slice(-look);const res=[],sup=[];
+  for(let i=2;i<s.length-2;i++){const h=s[i].h,l=s[i].l;
+    if(h>s[i-1].h&&h>s[i-2].h&&h>s[i+1].h&&h>s[i+2].h)res.push(h);
+    if(l<s[i-1].l&&l<s[i-2].l&&l<s[i+1].l&&l<s[i+2].l)sup.push(l);}
+  return {res:res.slice(-3),sup:sup.slice(-3)};}
+function rsiDivergence(closes,rsiS){ // simple: price higher-high but rsi lower-high (bearish) etc.
+  if(closes.length<20||rsiS.length<20)return null;
+  const pc=closes.slice(-10),pr=rsiS.slice(-10);
+  const pHi=Math.max(...pc), pHiPrev=Math.max(...closes.slice(-20,-10));
+  const rHi=Math.max(...pr), rHiPrev=Math.max(...rsiS.slice(-20,-10));
+  const pLo=Math.min(...pc), pLoPrev=Math.min(...closes.slice(-20,-10));
+  const rLo=Math.min(...pr), rLoPrev=Math.min(...rsiS.slice(-20,-10));
+  if(pHi>pHiPrev&&rHi<rHiPrev)return 'bearish';
+  if(pLo<pLoPrev&&rLo>rLoPrev)return 'bullish';
+  return null;}
+
+/* ---------- Murphy-faithful scoring for one timeframe ---------- */
+function scoreTF(bars, horizon){
+  const closes=bars.map(b=>b.c), vols=bars.map(b=>b.v);
+  const price=closes[closes.length-1];
+  const factors=[];
+  let score=0; // signed, later normalized
+
+  // MA config differs by horizon (Murphy/Shannon): short uses 20/50, long uses 50/200
+  const maFast = horizon==='short'?20:50;
+  const maSlow = horizon==='short'?50:200;
+  const fast=SMA(closes,maFast), slow=SMA(closes,maSlow);
+  const fastPrev=SMA(closes.slice(0,-3),maFast);
+
+  // 1. Trend: price vs MAs + MA stack (weight 3)
+  if(fast!=null&&slow!=null){
+    let t=0,notes=[];
+    if(price>fast){t++;notes.push('price>'+maFast+'MA');}else{t--;notes.push('price<'+maFast+'MA');}
+    if(price>slow){t++;notes.push('price>'+maSlow+'MA');}else{t--;notes.push('price<'+maSlow+'MA');}
+    if(fast>slow){t++;notes.push(maFast+'>'+maSlow+' (stacked up)');}else{t--;notes.push(maFast+'<'+maSlow+' (stacked down)');}
+    const dir=t>0?1:t<0?-1:0;
+    score+=dir*3;
+    factors.push({name:'Trend (moving-average structure)',sign:dir,
+      val:`${maFast}MA ${fast.toFixed(2)} / ${maSlow}MA ${slow.toFixed(2)}`,
+      note:'Murphy: trend presumed intact until reversed; MAs act as dynamic support/resistance. '+notes.join(', ')+'.'});
+  } else {
+    factors.push({name:'Trend',sign:0,val:'insufficient history',note:'Not enough bars for '+maSlow+'-period MA.'});
+  }
+
+  // 2. MA slope (weight 1)
+  if(fast!=null&&fastPrev!=null){
+    const sl=fast-fastPrev; const dir=sl>0?1:sl<0?-1:0;
+    score+=dir*1;
+    factors.push({name:maFast+'-period slope',sign:dir,val:(sl>=0?'+':'')+sl.toFixed(2)+' / 3 bars',
+      note:'Rising fast MA supports continuation; falling warns of loss of momentum.'});
+  }
+
+  // 3. Volume confirmation (weight 2) — Murphy's core rule
+  if(vols.length>=25){
+    const recentAvg=SMA(vols,5), baseAvg=SMA(vols,20);
+    const lastMove=closes[closes.length-1]-closes[closes.length-5];
+    let dir=0,txt='';
+    if(recentAvg&&baseAvg){
+      const expanding=recentAvg>baseAvg*1.05;
+      if(lastMove>0){ dir=expanding?1:-0.4; txt=expanding?'volume expanding into the advance (confirms)':'advance on lighter volume (unconfirmed)';}
+      else if(lastMove<0){ dir=expanding?-1:0.4; txt=expanding?'volume expanding into the decline (confirms weakness)':'decline on lighter volume (selling may be drying up)';}
+      else {dir=0;txt='flat.';}
+      score+=dir*2;
+      factors.push({name:'Volume confirmation',sign:dir>0?1:dir<0?-1:0,
+        val:`5-bar ${(recentAvg/1e6).toFixed(1)}M vs 20-bar ${(baseAvg/1e6).toFixed(1)}M`,
+        note:'Murphy: volume must confirm price. '+txt+'.'});
+    }
+  }
+
+  // 4. RSI (weight 1.5 for regime, plus divergence advisory)
+  const rsi=RSI(closes,14), rsiS=RSIseries(closes,14);
+  if(rsi!=null){
+    let dir=0,txt;
+    if(rsi>=70){dir=-0.5;txt='overbought (>70) — extended, pullback risk';}
+    else if(rsi<=30){dir=0.5;txt='oversold (<30) — washed out, bounce potential';}
+    else if(rsi>=55){dir=1;txt='bullish momentum zone';}
+    else if(rsi<=45){dir=-1;txt='bearish momentum zone';}
+    else{dir=0;txt='neutral';}
+    score+=dir*1.5;
+    factors.push({name:'RSI(14)',sign:dir>0?1:dir<0?-1:0,val:rsi.toFixed(1),
+      note:'Murphy: '+txt+'.'});
+    const div=rsiDivergence(closes,rsiS);
+    if(div){const d=div==='bullish'?0.7:-0.7;score+=d;
+      factors.push({name:'RSI divergence',sign:d>0?1:-1,val:div,
+        note:'Advisory (low weight): price/RSI '+div+' divergence hints at momentum fading against price.'});}
+  }
+
+  // 5. MACD (weight 2)
+  const m=MACD(closes);
+  if(m){
+    let dir=0,notes=[];
+    if(m.macd>m.signal){dir++;notes.push('above signal');}else{dir--;notes.push('below signal');}
+    if(m.macd>0){dir+=0.5;notes.push('above zero');}else{dir-=0.5;notes.push('below zero');}
+    if(m.hist>m.histPrev)notes.push('histogram rising');else notes.push('histogram falling');
+    const d=dir>0?1:dir<0?-1:0;
+    score+=d*2;
+    factors.push({name:'MACD (12/26/9)',sign:d,val:m.macd.toFixed(2)+' / sig '+m.signal.toFixed(2),
+      note:'Murphy: '+notes.join(', ')+'.'});
+  }
+
+  // 6. Stochastic (weight 0.5)
+  const st=Stoch(bars,14);
+  if(st!=null){
+    let dir=0,txt;
+    if(st>=80){dir=-0.4;txt='overbought';}else if(st<=20){dir=0.4;txt='oversold';}
+    else if(st>=55){dir=0.6;txt='upper range';}else if(st<=45){dir=-0.6;txt='lower range';}else{dir=0;txt='mid';}
+    score+=dir;
+    factors.push({name:'Stochastic %K',sign:dir>0?1:dir<0?-1:0,val:st.toFixed(0),note:txt+'.'});
+  }
+
+  // normalize: max achievable magnitude ~ 3+1+2+1.5+0.7+2+0.6 ≈ 10.8
+  const MAXABS=10.8;
+  const norm=Math.max(-100,Math.min(100,Math.round(score/MAXABS*100)));
+  const bias= norm>=18?'bullish':norm<=-18?'bearish':'neutral';
+  return {score:norm,bias,factors,rsi,macd:m,price};
+}
+
+/* ---------- stage (Shannon four-stage, from weekly) ---------- */
+function stageFrom(weekly){
+  const closes=weekly.map(b=>b.c);const price=closes[closes.length-1];
+  const s30=SMA(closes,30), s30prev=SMA(closes.slice(0,-4),30), s10=SMA(closes,10);
+  if(s30==null)return 'Undetermined';
+  const rising=s30prev!=null&&s30>s30prev;
+  const above=price>s30;
+  if(above&&rising)return 'Stage 2 Markup';
+  if(!above&&!rising)return 'Stage 4 Decline';
+  if(above&&!rising)return 'Stage 3 Distribution';
+  return 'Stage 1 Accumulation';
+}
+
+/* ---------- projections (Edwards & Magee range projection) ---------- */
+function projection(bars, bias, look=40){
+  const s=bars.slice(-look);const hh=Math.max(...s.map(b=>b.h)),ll=Math.min(...s.map(b=>b.l));
+  const rng=hh-ll;const price=bars[bars.length-1].c;
+  if(rng<=0)return {target:'n/a',invalid:'n/a'};
+  if(bias==='bullish')return {target:(price+rng*0.5).toFixed(2)+'–'+(hh).toFixed(2),invalid:'< '+ll.toFixed(2)};
+  if(bias==='bearish')return {target:(ll).toFixed(2)+'–'+(price-rng*0.5).toFixed(2),invalid:'> '+hh.toFixed(2)};
+  return {target:ll.toFixed(2)+'–'+hh.toFixed(2)+' (range)',invalid:'break of either edge'};
+}
+
+/* ---------- data fetch ---------- */
+async function robustFetch(url,tries=4){
+  for(let a=0;a<tries;a++){
+    const r=await fetch(url);
+    if(r.status===429){await new Promise(res=>setTimeout(res,1200*(a+1)));continue;}
+    if(!r.ok){throw new Error('HTTP '+r.status);}
+    return r.json();
+  }
+  throw new Error('rate-limited (429) after retries');
+}
+function ymd(d){return d.toISOString().slice(0,10);}
+async function getBars(sym,timespan,fromDaysAgo,key){
+  const to=new Date();const from=new Date(Date.now()-fromDaysAgo*864e5);
+  const url=`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(sym)}/range/1/${timespan}/${ymd(from)}/${ymd(to)}?adjusted=true&sort=asc&limit=1000&apiKey=${encodeURIComponent(key)}`;
+  const j=await robustFetch(url);
+  if(!j.results||!j.results.length)throw new Error('no data');
+  return j.results.map(r=>({o:r.o,h:r.h,l:r.l,c:r.c,v:r.v,t:r.t}));
+}
+
+async function analyze(sym,key){
+  sym=sym.toUpperCase();
+  const daily=await getBars(sym,'day',400,key);      // ~13mo daily → 2wk read
+  const weekly=await getBars(sym,'week',1500,key);    // ~4yr weekly → 2mo read
+  if(daily.length<60||weekly.length<35)throw new Error('insufficient history');
+  const shortTF=scoreTF(daily,'short');
+  const longTF=scoreTF(weekly,'long');
+  const stage=stageFrom(weekly);
+  const proj2w=projection(daily,shortTF.bias,40);
+  const proj2m=projection(weekly,longTF.bias,26);
+  const price=daily[daily.length-1].c;
+  const lv=swingLevels(daily,60);
+
+  // overall = aligned? (Shannon: alignment matters)
+  let overall,headline;
+  const sb=shortTF.bias,lb=longTF.bias;
+  if(sb===lb&&sb!=='neutral'){overall=sb;headline=`Both timeframes align ${sb.toUpperCase()} — Shannon's highest-conviction condition. ${stage}.`;}
+  else if(lb!=='neutral'&&sb==='neutral'){overall=lb;headline=`Intermediate trend is ${lb} while the near-term consolidates. ${stage}.`;}
+  else if(lb!=='neutral'&&sb!=='neutral'&&sb!==lb){overall='neutral';headline=`Conflict: near-term ${sb} against a ${lb} intermediate trend — Shannon would wait for alignment. ${stage}.`;}
+  else{overall=sb!=='neutral'?sb:lb;headline=`${stage}. Mixed/weak signal — evidence is light.`;}
+
+  return {sym,price,stage,overall,headline,
+    short:{...shortTF,...proj2w},long:{...longTF,...proj2m},levels:lv};
+}
+
+/* ---------- render ---------- */
+function biasClass(b){return b==='bullish'?'bull':b==='bearish'?'bear':'neu';}
+function esc(x){return(x==null?'':String(x)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function scoreColor(s){return s>=18?'var(--up)':s<=-18?'var(--down)':'var(--neu)';}
+function fillBar(s){const pct=Math.abs(s);const col=scoreColor(s);
+  const side=s>=0?'left:50%':'right:50%';
+  return `<div class="score-bar"><div class="score-fill" style="width:${pct/2}%;${side};position:absolute;background:${col}"></div></div>`;}
+
+function factorRows(fs){return fs.map(f=>{
+  const cls=f.sign>0?'pos':f.sign<0?'neg':'flat';
+  const ic=f.sign>0?'▲':f.sign<0?'▼':'—';
+  return `<div class="factor"><div class="fi ${cls}">${ic}</div>
+    <div class="fname">${esc(f.name)}</div><div class="fval">${esc(f.val)}</div>
+    <div class="fnote">${esc(f.note)}</div></div>`;}).join('');}
+
+function hzBlock(o,label,horizonName){
+  return `<div class="hz">
+    <div class="hz-h"><span class="hz-t">${label}</span><span class="bias ${o.bias}">${o.bias.toUpperCase()}</span></div>
+    ${fillBar(o.score)}
+    <div class="hz-row"><span class="k">score</span><span class="v" style="color:${scoreColor(o.score)}">${o.score>0?'+':''}${o.score}</span></div>
+    <div class="hz-row"><span class="k">${horizonName} target</span><span class="v">${esc(o.target)}</span></div>
+    <div class="hz-row"><span class="k">invalidates</span><span class="v">${esc(o.invalid)}</span></div>
+  </div>`;
+}
+
+function singleCard(r){
+  return `<div class="card">
+    <div class="card-head ${biasClass(r.overall)}">
+      <div class="ch-top"><div><span class="sym">${esc(r.sym)}</span></div>
+        <span class="px">$${r.price.toFixed(2)}</span></div>
+      <div class="stage">${esc(r.stage)} · overall ${esc(r.overall)}</div>
+      <div class="headline">${esc(r.headline)}</div>
+    </div>
+    <div class="hz2">
+      ${hzBlock(r.short,'≈ 2 weeks · daily bars','2wk')}
+      ${hzBlock(r.long,'≈ 2 months · weekly bars','2mo')}
+    </div>
+    <details class="sec" open><summary>2-week factors (daily) <span class="chev">›</span></summary>
+      <div class="sec-body">${factorRows(r.short.factors)}</div></details>
+    <details class="sec"><summary>2-month factors (weekly) <span class="chev">›</span></summary>
+      <div class="sec-body">${factorRows(r.long.factors)}</div></details>
+    <details class="sec"><summary>Support &amp; resistance (daily swings) <span class="chev">›</span></summary>
+      <div class="sec-body">
+        <div class="log"><b>Resistance:</b> ${r.levels.res.length?r.levels.res.map(x=>x.toFixed(2)).join('  ·  '):'none clear'}</div>
+        <div class="log"><b>Support:</b> ${r.levels.sup.length?r.levels.sup.map(x=>x.toFixed(2)).join('  ·  '):'none clear'}</div>
+        <div class="log" style="margin-top:6px">Edwards &amp; Magee: recent swing pivots; targets above use range projection off the last ~40 bars.</div>
+      </div></details>
+  </div>`;
+}
+
+function tableRows(results){
+  const sorted=[...results].sort((a,b)=>(b.short.score+b.long.score)-(a.short.score+a.long.score));
+  return sorted.map(r=>`<tr class="clk" data-sym="${esc(r.sym)}">
+    <td class="tsym">${esc(r.sym)}</td>
+    <td class="r">$${r.price.toFixed(2)}</td>
+    <td><span class="pill ${r.overall}">${r.overall}</span></td>
+    <td class="r scorecell" style="color:${scoreColor(r.short.score)}">${r.short.score>0?'+':''}${r.short.score}</td>
+    <td class="r scorecell" style="color:${scoreColor(r.long.score)}">${r.long.score>0?'+':''}${r.long.score}</td>
+    <td style="color:var(--dim);font-size:11px">${esc(r.stage.replace('Stage ',''))}</td>
+  </tr>`).join('');
+}
+
+$('run').addEventListener('click',run);
+async function run(){
+  const key=$('key').value.trim();
+  if(!key){$('status').innerHTML='<span class="err">Enter your Polygon API key.</span>';return;}
+  let syms=[];
+  if(mode==='single'){const s=$('sym').value.trim();if(!s){$('status').innerHTML='<span class="err">Enter a ticker.</span>';return;}syms=[s];}
+  else{syms=$('syms').value.split(/[\s,]+/).map(x=>x.trim()).filter(Boolean);
+    if(!syms.length){$('status').innerHTML='<span class="err">Enter at least one ticker.</span>';return;}
+    if(syms.length>25)syms=syms.slice(0,25);}
+
+  $('run').disabled=true;$('out').innerHTML='';$('disc').style.display='none';
+  const results=[],failed=[];
+  for(let i=0;i<syms.length;i++){
+    $('status').innerHTML=`<span class="dot"></span> Analyzing ${esc(syms[i].toUpperCase())} (${i+1}/${syms.length})…`;
+    try{results.push(await analyze(syms[i],key));}
+    catch(e){failed.push({s:syms[i].toUpperCase(),e:e.message});}
+  }
+  $('run').disabled=false;$('status').textContent='';
+
+  if(!results.length){
+    $('out').innerHTML=`<div class="card"><div class="sec-body" style="padding:16px">
+      <span class="err">No results.</span> ${failed.map(f=>esc(f.s)+': '+esc(f.e)).join(' · ')}</div></div>`;
+    return;
+  }
+
+  if(mode==='single'||results.length===1){
+    $('out').innerHTML=results.map(singleCard).join('');
+  } else {
+    $('out').innerHTML=`<div class="card">
+      <table class="tbl"><thead><tr>
+        <th>Ticker</th><th class="r">Price</th><th>Overall</th>
+        <th class="r">2wk</th><th class="r">2mo</th><th>Stage</th>
+      </tr></thead><tbody>${tableRows(results)}</tbody></table>
+      <div class="sec-body" style="padding:12px 16px 4px;color:var(--faint);font-size:11px">Tap any row for the full factor breakdown. Sorted by combined 2wk+2mo score.</div>
+    </div>
+    <div id="detail"></div>`;
+    document.querySelectorAll('tr.clk').forEach(tr=>tr.addEventListener('click',()=>{
+      const r=results.find(x=>x.sym===tr.dataset.sym);
+      $('detail').innerHTML=singleCard(r);
+      $('detail').scrollIntoView({behavior:'smooth',block:'start'});
+    }));
+  }
+  if(failed.length){
+    $('out').innerHTML+=`<div class="disc"><b>Skipped:</b> ${failed.map(f=>esc(f.s)+' ('+esc(f.e)+')').join(' · ')}</div>`;
+  }
+  $('disc').style.display='block';
+}
+</script>
+</body>
+</html>
