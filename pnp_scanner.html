@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PNP Scanner — Points Not Pennies (Oliver)</title>
+<style>
+:root{
+  --bg:#0b0d10; --panel:#12161b; --panel2:#171c23; --border:#242b34;
+  --txt:#d7dee7; --dim:#8794a3; --accent:#3fb950; --accent2:#58a6ff;
+  --warn:#d29922; --bad:#f85149; --good:#3fb950;
+  --mono:'SF Mono',Menlo,Consolas,'Roboto Mono',monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:13px;line-height:1.5}
+.wrap{max-width:1600px;margin:0 auto;padding:16px}
+h1{font-size:18px;margin:0 0 2px;letter-spacing:.5px}
+.sub{color:var(--dim);font-size:11px;margin-bottom:14px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:3px}
+.fld label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+input,select,textarea{background:var(--panel2);color:var(--txt);border:1px solid var(--border);
+  border-radius:4px;padding:6px 8px;font-family:var(--mono);font-size:12px}
+input[type=number]{width:110px}
+button{background:var(--accent);color:#08130a;border:0;border-radius:4px;padding:8px 16px;
+  font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px}
+button:hover{filter:brightness(1.1)}
+button.ghost{background:transparent;color:var(--dim);border:1px solid var(--border);font-weight:400}
+button:disabled{opacity:.45;cursor:not-allowed}
+
+/* regime banner */
+#regime{display:none;border-radius:6px;padding:12px;margin-bottom:12px;border:1px solid}
+#regime.ok{background:#0d1f13;border-color:#2ea04326;color:var(--good)}
+#regime.caution{background:#241c07;border-color:#d2992240;color:var(--warn)}
+#regime.cash{background:#2a1214;border-color:#f8514940;color:var(--bad)}
+#regime h3{margin:0 0 4px;font-size:14px;letter-spacing:.5px}
+#regime .rdet{color:var(--dim);font-size:11px}
+#regime .rdet b{color:var(--txt)}
+
+.meta{display:none;gap:16px;flex-wrap:wrap;color:var(--dim);font-size:11px;margin-bottom:10px}
+.meta b{color:var(--txt)}
+.bar{display:none;height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;margin-bottom:10px}
+.bar>div{height:100%;background:var(--accent);width:0;transition:width .2s}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--panel2);color:var(--dim);text-align:left;padding:7px 8px;font-weight:400;
+  font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);
+  cursor:pointer;white-space:nowrap;position:sticky;top:0;z-index:2}
+th:hover{color:var(--txt)}
+td{padding:7px 8px;border-bottom:1px solid #1c2229;white-space:nowrap}
+tr:hover td{background:#151a20}
+.tkr{font-weight:700;color:var(--accent2);cursor:pointer}
+.tkr:hover{text-decoration:underline}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.score{font-weight:700}
+.s-hi{color:var(--good)} .s-mid{color:var(--warn)} .s-lo{color:var(--dim)}
+.pill{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700}
+.p-ok{background:#0d1f13;color:var(--good);border:1px solid #2ea04340}
+.p-warn{background:#241c07;color:var(--warn);border:1px solid #d2992240}
+.subf{display:flex;gap:2px}
+.sq{width:7px;height:14px;border-radius:1px;background:#232a33}
+.sq.on{background:var(--accent)}
+.sq.half{background:#1f5c2b}
+
+.log{display:none;max-height:260px;overflow:auto;background:#0a0c0f;border:1px solid var(--border);
+  border-radius:4px;padding:8px;font-size:10px;color:var(--dim);margin-top:10px;line-height:1.6}
+.log .pass{color:var(--good)} .log .fail{color:#5c6570} .log .err{color:var(--bad)}
+
+/* modal */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:50;padding:20px;overflow:auto}
+.modal.on{display:block}
+.mi{max-width:940px;margin:0 auto;background:var(--panel);border:1px solid var(--border);border-radius:8px}
+.mh{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+.mh h2{margin:0;font-size:16px}
+.mh .x{background:transparent;border:0;color:var(--dim);font-size:20px;cursor:pointer;padding:0 6px}
+.mb{padding:16px}
+.plan-sec{margin-bottom:18px}
+.plan-sec h4{margin:0 0 8px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;
+  border-bottom:1px solid var(--border);padding-bottom:5px}
+.kv{display:grid;grid-template-columns:170px 1fr;gap:4px 12px;font-size:12px}
+.kv .k{color:var(--dim)}
+.kv .v{color:var(--txt);font-weight:700}
+.kv .v.big{font-size:15px}
+.v-stop{color:var(--bad)} .v-tgt{color:var(--good)} .v-ent{color:var(--accent2)}
+.ck{list-style:none;padding:0;margin:0}
+.ck li{padding:4px 0 4px 22px;position:relative;font-size:11px;border-bottom:1px solid #1a1f26}
+.ck li:before{content:'☐';position:absolute;left:4px;color:var(--dim)}
+.note{background:#0f1418;border-left:2px solid var(--accent2);padding:8px 10px;font-size:11px;
+  color:var(--dim);margin-top:8px;border-radius:0 4px 4px 0}
+.note b{color:var(--txt)}
+.warnbox{background:#241c07;border-left:2px solid var(--warn);padding:8px 10px;font-size:11px;
+  color:#e3c168;margin-top:8px;border-radius:0 4px 4px 0}
+.err-box{background:#2a1214;border:1px solid #f8514940;color:#ff9d96;padding:10px;border-radius:4px;
+  font-size:12px;margin-bottom:10px;display:none}
+.chainbtn{margin-top:6px}
+@media(max-width:820px){
+  .kv{grid-template-columns:1fr}
+  td,th{padding:6px 5px;font-size:11px}
+  .hide-m{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PNP SCANNER</h1>
+  <div class="sub">Trend-resumption pullbacks · Oliver, <i>Points Not Pennies</i> · ATR stops · 1R partials · 5-day time stop / 3-strike system</div>
+
+  <div class="err-box" id="errBox"></div>
+
+  <div class="panel">
+    <div class="row">
+      <div class="fld" style="flex:1;min-width:220px">
+        <label>Polygon API Key</label>
+        <input type="password" id="apikey" placeholder="paste key">
+      </div>
+      <div class="fld">
+        <label>Universe</label>
+        <select id="universe">
+          <option value="sp500">S&amp;P 500 (large-cap)</option>
+          <option value="liquid">Liquid ~300 + ETFs</option>
+          <option value="custom">Custom list</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Account ($)</label>
+        <input type="number" id="acct" value="50000" step="1000">
+      </div>
+      <div class="fld">
+        <label>Risk / trade (%)</label>
+        <input type="number" id="riskPct" value="1" step="0.25" min="0.1" max="5">
+      </div>
+      <div class="fld">
+        <label>Earnings buffer (days)</label>
+        <input type="number" id="earnBuf" value="45" step="5">
+      </div>
+      <div class="fld">
+        <label>Max results</label>
+        <input type="number" id="maxRes" value="20" step="5">
+      </div>
+      <button id="scanBtn" onclick="runScan()">SCAN</button>
+      <button class="ghost" id="stopBtn" onclick="ABORT=true" disabled>STOP</button>
+      <button class="ghost" onclick="toggleLog()">LOG</button>
+    </div>
+    <div id="customWrap" style="display:none;margin-top:10px">
+      <textarea id="customList" rows="2" style="width:100%" placeholder="AAPL MSFT NVDA ..."></textarea>
+    </div>
+  </div>
+
+  <div id="regime"></div>
+
+  <div class="meta" id="meta">
+    <span>Universe: <b id="mUniv">—</b></span>
+    <span>Scanned: <b id="mScan">0</b></span>
+    <span>Liquid: <b id="mLiq">0</b></span>
+    <span>Uptrend: <b id="mTrend">0</b></span>
+    <span>In pullback: <b id="mPb">0</b></span>
+    <span>Vol contracting: <b id="mVc">0</b></span>
+    <span>Setups: <b id="mSet">0</b></span>
+  </div>
+
+  <div class="bar" id="barWrap"><div id="bar"></div></div>
+  <div id="tableWrap"></div>
+  <div class="log" id="log"></div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="mi">
+    <div class="mh"><h2 id="modalTitle">Plan</h2><button class="x" onclick="closeModal()">✕</button></div>
+    <div class="mb" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const BASE='https://api.polygon.io';
+let ABORT=false, RESULTS=[], REGIME=null, LOGLINES=[];
+let SORT={key:'score',dir:-1};
+
+/* ============ universes ============ */
+const ETFS=['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','XLV','XLI','XLY','XLP','XLU','XLB','XLRE','XLC','SMH','GLD','TLT','ARKK','XBI','KRE','IBB','ITB','XRT','XOP'];
+const LIQUID=['AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','AVGO','LLY','JPM','V','UNH','XOM','MA','COST','HD','PG','JNJ','ABBV','MRK','WMT','NFLX','AMD','CRM','BAC','KO','PEP','ADBE','TMO','CVX','ORCL','ACN','MCD','CSCO','ABT','LIN','DIS','INTC','WFC','QCOM','VZ','TXN','DHR','CAT','AMGN','PM','NEE','IBM','GE','NOW','UBER','SPGI','RTX','HON','UNP','LOW','COP','INTU','BKNG','GS','ISRG','AXP','MS','PFE','T','ELV','BLK','SYK','MDT','VRTX','LMT','TJX','ADP','REGN','C','MU','BSX','PLD','CB','SCHW','MMC','ETN','ZTS','CI','SO','MDLZ','FI','BA','DE','KLAC','AMT','ADI','PANW','SBUX','DUK','ANET','GILD','CME','LRCX','SNPS','APH','CDNS','SHW','ICE','MO','CL','EOG','TDG','WM','MCK','PYPL','TGT','PH','MSI','CMG','ITW','APD','NOC','PNC','USB','MMM','FDX','ORLY','MCO','EMR','CSX','GD','MAR','ROP','NSC','AON','SLB','HCA','PSX','AJG','ECL','AZO','TT','SPG','WELL','ABNB','MPC','TFC','AFL','CARR','SRE','NXPI','TRV','CPRT','PSA','AIG','O','NEM','DHI','LEN','F','GM','DAL','UAL','LUV','RCL','CCL','MGM','WYNN','LVS','DKNG','COIN','SQ','SHOP','SNOW','CRWD','DDOG','ZS','NET','MDB','TEAM','WDAY','HUBS','TTD','ROKU','PINS','SNAP','SPOT','ZM','DOCU','OKTA','TWLO','U','RBLX','PLTR','SOFI','HOOD','AFRM','UPST','LCID','RIVN','NIO','XPEV','LI','PDD','BABA','JD','SE','MELI','GRAB','FSLR','ENPH','SEDG','PLUG','RUN','CHPT','BLNK','ON','MRVL','SWKS','MCHP','TER','ENTG','ASML','TSM','ARM','SMCI','DELL','HPQ','HPE','WDC','STX','NTAP','JBL','GLW','KEYS','FTNT','CYBR','S','TENB','VRSN','AKAM','GDDY','WIX','SQSP','ETSY','EBAY','W','CHWY','CVNA','CARG','KMX','AN','LAD','GPC','AAP','DG','DLTR','ROST','BURL','GPS','ANF','AEO','URBN','LULU','NKE','DECK','CROX','SKX','ONON','VFC','PVH','RL','TPR','CPRI','EL','ULTA','BBY','WSM','RH','TSCO','FND','POOL','SITE','WSO','FAST','GWW','MSM','AIT','MRO','DVN','FANG','OXY','HAL','BKR','APA','HES','PXD','CTRA','EQT','AR','RRC','SWN','CHK','LNG','OKE','WMB','KMI','TRGP','ET','EPD','MPLX','PAA','DINO','VLO','PBF','DK','CVI'];
+
+/* ============ persistence ============ */
+$('apikey').value=localStorage.getItem('pnpKey')||'';
+$('apikey').addEventListener('change',e=>localStorage.setItem('pnpKey',e.target.value.trim()));
+['acct','riskPct','earnBuf','maxRes'].forEach(id=>{
+  const v=localStorage.getItem('pnp_'+id); if(v) $(id).value=v;
+  $(id).addEventListener('change',e=>localStorage.setItem('pnp_'+id,e.target.value));
+});
+$('universe').addEventListener('change',e=>{
+  $('customWrap').style.display=e.target.value==='custom'?'block':'none';
+});
+
+/* ============ fetch plumbing ============ */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function robustFetch(url,tries=4){
+  for(let i=0;i<tries;i++){
+    if(ABORT) throw new Error('aborted');
+    try{
+      const r=await fetch(url);
+      if(r.status===429){ await sleep(1200*(i+1)); continue; }
+      if(r.status===403){ const e=new Error('403 entitlement/auth'); e.status=403; throw e; }
+      if(!r.ok && r.status>=500){ await sleep(600*(i+1)); continue; }
+      if(!r.ok){ const e=new Error('HTTP '+r.status); e.status=r.status; throw e; }
+      return await r.json();
+    }catch(e){
+      if(e.status===403||e.message==='aborted') throw e;
+      if(i===tries-1) throw e;
+      await sleep(500*(i+1));
+    }
+  }
+  throw new Error('fetch failed');
+}
+async function pool(items,limit,worker,onProg){
+  const q=items.map((it,i)=>[i,it]); let done=0; const out=new Array(items.length);
+  const runners=Array.from({length:Math.min(limit,items.length)},async()=>{
+    while(q.length){
+      if(ABORT) return;
+      const [i,it]=q.shift();
+      try{ out[i]=await worker(it,i); }
+      catch(e){ out[i]={ticker:it,__err:e.message}; }
+      done++; onProg&&onProg(done,items.length);
+    }
+  });
+  await Promise.all(runners);
+  return out;
+}
+
+/* ============ indicators ============ */
+function ema(vals,p){
+  if(vals.length<p) return null;
+  const k=2/(p+1);
+  let e=vals.slice(0,p).reduce((a,b)=>a+b,0)/p;
+  for(let i=p;i<vals.length;i++) e=vals[i]*k+e*(1-k);
+  return e;
+}
+function emaSeries(vals,p){
+  if(vals.length<p) return [];
+  const k=2/(p+1), out=[];
+  let e=vals.slice(0,p).reduce((a,b)=>a+b,0)/p;
+  out.push(e);
+  for(let i=p;i<vals.length;i++){ e=vals[i]*k+e*(1-k); out.push(e); }
+  return out;
+}
+function sma(vals,p){
+  if(vals.length<p) return null;
+  const s=vals.slice(-p);
+  return s.reduce((a,b)=>a+b,0)/p;
+}
+// Wilder-style ATR over `p` bars
+function atr(bars,p){
+  if(bars.length<p+1) return null;
+  const trs=[];
+  for(let i=1;i<bars.length;i++){
+    const h=bars[i].h,l=bars[i].l,pc=bars[i-1].c;
+    trs.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)));
+  }
+  if(trs.length<p) return null;
+  const s=trs.slice(-p);
+  return s.reduce((a,b)=>a+b,0)/p;
+}
+// Trend efficiency ratio (Kaufman): |net move| / sum |daily moves| over window.
+// 1.0 = perfectly straight line; ~0.2 = very choppy. Drives DTE.
+function efficiency(closes,win){
+  if(closes.length<win+1) return null;
+  const s=closes.slice(-(win+1));
+  const net=Math.abs(s[s.length-1]-s[0]);
+  let sum=0;
+  for(let i=1;i<s.length;i++) sum+=Math.abs(s[i]-s[i-1]);
+  if(sum===0) return null;
+  return net/sum;
+}
+function stdev(a){
+  if(a.length<2) return 0;
+  const m=a.reduce((x,y)=>x+y,0)/a.length;
+  return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/(a.length-1));
+}
+
+/* ============ regime gate (Oliver Ch.3) ============ */
+async function checkRegime(key){
+  const to=new Date(), from=new Date(Date.now()-420*864e5);
+  const f=d=>d.toISOString().slice(0,10);
+  const j=await robustFetch(`${BASE}/v2/aggs/ticker/SPY/range/1/day/${f(from)}/${f(to)}?adjusted=true&sort=asc&limit=400&apiKey=${key}`);
+  if(!j.results||j.results.length<210) throw new Error('SPY history insufficient');
+  const bars=j.results.map(b=>({c:b.c,h:b.h,l:b.l,o:b.o}));
+  const closes=bars.map(b=>b.c);
+  const px=closes[closes.length-1];
+  const e20=ema(closes,20), e50=ema(closes,50), e200=ema(closes,200);
+
+  // realized vol: 20d annualized, vs its own 1yr median
+  const rets=[];
+  for(let i=1;i<closes.length;i++) rets.push(Math.log(closes[i]/closes[i-1]));
+  const rv=w=>{ const s=rets.slice(-w); return stdev(s)*Math.sqrt(252)*100; };
+  const rv20=rv(20);
+  const hist=[];
+  for(let end=rets.length-252;end<rets.length;end++){
+    if(end<20) continue;
+    hist.push(stdev(rets.slice(end-20,end))*Math.sqrt(252)*100);
+  }
+  hist.sort((a,b)=>a-b);
+  const medRV=hist.length?hist[Math.floor(hist.length/2)]:rv20;
+  const p80=hist.length?hist[Math.floor(hist.length*0.8)]:rv20*1.5;
+
+  const aboveE20=px>e20, aboveE50=px>e50, aboveE200=px>e200;
+  const volCalm=rv20<=medRV*1.15;
+  const volHot=rv20>=p80;
+
+  let state,msg;
+  if(volHot || !aboveE50){
+    state='cash';
+    msg='Volatility elevated and/or SPY below its 50 EMA. Oliver: <b>be in cash when volatility ticks up.</b> Trend-resumption setups fail in choppy, headline-driven tape. No setups will be shown.';
+  } else if(!aboveE20 || !volCalm || !aboveE200){
+    state='caution';
+    msg='Mixed regime — trend intact but not clean. Setups shown, but Oliver would <b>cut size</b> here. Consider half your normal fixed fraction, or stand aside.';
+  } else {
+    state='ok';
+    msg='SPY above 20/50/200 EMA with realized vol near or below its 1-year median. This is the environment trend-resumption pullbacks are built for.';
+  }
+  return {state,msg,px,e20,e50,e200,rv20,medRV,p80};
+}
+function renderRegime(r){
+  const el=$('regime');
+  el.className=r.state;
+  el.style.display='block';
+  const hdr={ok:'REGIME: TREND-OK — scan enabled',caution:'REGIME: CAUTION — reduce size',cash:'REGIME: CASH — stand aside'}[r.state];
+  el.innerHTML=`<h3>${hdr}</h3><div class="rdet">${r.msg}<br>
+    SPY <b>${r.px.toFixed(2)}</b> · EMA20 <b>${r.e20.toFixed(2)}</b> · EMA50 <b>${r.e50.toFixed(2)}</b> · EMA200 <b>${r.e200.toFixed(2)}</b>
+    · 20d realized vol <b>${r.rv20.toFixed(1)}%</b> (1yr median <b>${r.medRV.toFixed(1)}%</b>, 80th pct <b>${r.p80.toFixed(1)}%</b>)</div>`;
+}
+
+/* ============ earnings (approx via financials filing_date) ============ */
+const earnCache={};
+async function nextEarningsDays(t,key){
+  if(earnCache[t]!==undefined) return earnCache[t];
+  try{
+    const j=await robustFetch(`${BASE}/vX/reference/financials?ticker=${t}&timeframe=quarterly&sort=filing_date&order=desc&limit=1&apiKey=${key}`);
+    const r=j.results&&j.results[0];
+    if(!r||!r.filing_date){ earnCache[t]=null; return null; }
+    const last=new Date(r.filing_date);
+    const nextApprox=new Date(last.getTime()+91*864e5);
+    const days=Math.round((nextApprox-new Date())/864e5);
+    earnCache[t]=days;
+    return days;
+  }catch(e){ earnCache[t]=null; return null; }
+}
+
+/* ============ core analysis ============ */
+function analyze(t,bars){
+  if(!bars||bars.length<210) return {ticker:t,fail:'insufficient history'};
+  const closes=bars.map(b=>b.c);
+  const vols=bars.map(b=>b.v);
+  const px=closes[closes.length-1];
+
+  // --- liquidity ---
+  const advDollar=sma(closes.slice(-20).map((c,i)=>c*vols[vols.length-20+i]),20);
+  if(px<10) return {ticker:t,fail:'price < $10'};
+  if(!advDollar||advDollar<20e6) return {ticker:t,fail:'ADV$ < $20M ('+(advDollar?(advDollar/1e6).toFixed(1):'0')+'M)'};
+
+  // --- trend ---
+  const e20=ema(closes,20), e50=ema(closes,50), e200=ema(closes,200);
+  const e50s=emaSeries(closes,50);
+  const e50Rising=e50s.length>10 && e50s[e50s.length-1]>e50s[e50s.length-11];
+  if(!(e50>e200)) return {ticker:t,fail:'EMA50 < EMA200 (no uptrend)'};
+  if(!e50Rising)  return {ticker:t,fail:'EMA50 not rising'};
+  if(!(px>e50))   return {ticker:t,fail:'price below EMA50'};
+
+  // --- pullback state ---
+  // must be off a recent 20d high, and EMA50 must hold (EMA20 may be touched/undercut)
+  const hi20=Math.max(...closes.slice(-20));
+  const pbPct=(hi20-px)/hi20*100;
+  if(pbPct<1.5) return {ticker:t,fail:'not in pullback (only '+pbPct.toFixed(1)+'% off 20d high)'};
+  if(pbPct>18)  return {ticker:t,fail:'pullback too deep ('+pbPct.toFixed(1)+'%)'};
+
+  // --- volatility contraction: 5d ATR < 20d ATR ("edge of volatility expansion") ---
+  const atr5=atr(bars.slice(-30),5), atr20=atr(bars.slice(-60),20);
+  if(!atr5||!atr20) return {ticker:t,fail:'ATR unavailable'};
+  const vcRatio=atr5/atr20;
+  if(vcRatio>=1.0) return {ticker:t,fail:'vol expanding, not contracting (ATR5/ATR20 '+vcRatio.toFixed(2)+')'};
+
+  // --- volume dry-up on the pullback ---
+  // find bars since the 20d high; compare their avg vol to prior 20d avg
+  let hiIdx=closes.length-1;
+  for(let i=closes.length-20;i<closes.length;i++) if(closes[i]===hi20) hiIdx=i;
+  const pbBars=bars.slice(hiIdx);
+  const pbVol=pbBars.length?pbBars.reduce((a,b)=>a+b.v,0)/pbBars.length:0;
+  const baseVol=sma(vols.slice(-40,-20),20)||sma(vols.slice(-20),20);
+  const volDry=baseVol?pbVol/baseVol:1;
+
+  // --- trend efficiency → drives DTE ---
+  const eff=efficiency(closes,20)||0.25;
+
+  // ===== ATR-based trade plan (Oliver verbatim) =====
+  const entry=px;
+  const R=2.6*atr20;                 // initial stop distance
+  const stop=entry-R;
+  const t1=entry+R;                  // 1R — sell half here
+  const trailAfter=2.0*atr20;        // tighten to 2.0 ATR after 1R
+
+  // ===== DTE from trend efficiency =====
+  // Straight-line days to 1R = 2.6 (ATR units). Real path efficiency scales it.
+  const rawDays=2.6/Math.max(eff,0.08);
+  const expHoldDays=Math.min(Math.max(rawDays,5),30);      // Oliver: ~1 month avg hold
+  const strikeBuffer=15;                                    // 5d probation + strike accrual
+  const thetaFloor=21;                                      // universal <3wk time stop
+  const calDays=Math.round(expHoldDays*1.45);               // trading→calendar
+  const dte=Math.max(45,Math.min(120,Math.round(calDays+strikeBuffer*1.45+thetaFloor)));
+
+  // ===== scoring (visible sub-factors) =====
+  // 1. trend quality: distance of EMA20 over EMA50 over EMA200, normalized
+  const sep1=(e20-e50)/e50*100, sep2=(e50-e200)/e200*100;
+  const fTrend=clamp01((sep1/3)*0.5+(sep2/8)*0.5);
+  // 2. pullback depth sweet spot: best around 4-8%
+  const fDepth=clamp01(1-Math.abs(pbPct-6)/7);
+  // 3. volatility contraction: lower ATR5/ATR20 is better
+  const fVC=clamp01((1.0-vcRatio)/0.45);
+  // 4. volume dry-up: lower pullback volume vs base is better
+  const fVol=clamp01((1.15-volDry)/0.55);
+  // 5. trend efficiency: straighter trend = faster to 1R = better
+  const fEff=clamp01((eff-0.15)/0.45);
+
+  const score=Math.round((fTrend*22+fDepth*24+fVC*22+fVol*16+fEff*16));
+
+  return {
+    ticker:t, px, e20, e50, e200, atr20, atr5, vcRatio, pbPct, volDry, eff,
+    advDollar, entry, stop, t1, R, trailAfter, dte, expHoldDays:Math.round(expHoldDays),
+    score, subs:{fTrend,fDepth,fVC,fVol,fEff},
+    aboveE20:px>e20
+  };
+}
+const clamp01=x=>Math.max(0,Math.min(1,x||0));
+
+/* ============ scan ============ */
+async function runScan(){
+  const key=$('apikey').value.trim();
+  if(!key){ showErr('Enter your Polygon API key.'); return; }
+  hideErr(); ABORT=false; LOGLINES=[]; RESULTS=[];
+  $('scanBtn').disabled=true; $('stopBtn').disabled=false;
+  $('tableWrap').innerHTML=''; $('regime').style.display='none';
+  $('barWrap').style.display='block'; $('meta').style.display='flex';
+  setBar(0,1);
+
+  try{
+    // ---- 1. regime gate ----
+    log('Checking market regime (SPY)…');
+    REGIME=await checkRegime(key);
+    renderRegime(REGIME);
+    if(REGIME.state==='cash'){
+      $('tableWrap').innerHTML=`<div class="panel" style="text-align:center;padding:34px">
+        <div style="font-size:15px;color:var(--bad);font-weight:700;margin-bottom:6px">NO SETUPS SHOWN</div>
+        <div style="color:var(--dim);font-size:12px;max-width:520px;margin:0 auto;line-height:1.7">
+          The regime gate is in <b>CASH</b>. Oliver is explicit: if you haven't survived a full market cycle,
+          <b>be in cash when volatility ticks up</b> — watch and learn.<br><br>
+          <i>"Sometimes the best trade is 'no trade' at all."</i><br><br>
+          This is not a bug. The scanner is doing its job.
+        </div></div>`;
+      $('barWrap').style.display='none';
+      finish(); return;
+    }
+
+    // ---- 2. universe ----
+    let univ;
+    const u=$('universe').value;
+    if(u==='custom'){
+      univ=[...new Set($('customList').value.toUpperCase().split(/[\s,]+/).filter(Boolean))];
+      if(!univ.length){ showErr('Custom list is empty.'); finish(); return; }
+    } else if(u==='liquid'){ univ=[...new Set([...LIQUID.slice(0,300),...ETFS])]; }
+    else { univ=[...new Set([...LIQUID,...ETFS])]; }
+    $('mUniv').textContent=univ.length;
+
+    // ---- 3. fetch + analyze ----
+    const to=new Date(), from=new Date(Date.now()-420*864e5);
+    const f=d=>d.toISOString().slice(0,10);
+    let nLiq=0,nTrend=0,nPb=0,nVc=0;
+
+    const analyzed=await pool(univ,5,async t=>{
+      const j=await robustFetch(`${BASE}/v2/aggs/ticker/${t}/range/1/day/${f(from)}/${f(to)}?adjusted=true&sort=asc&limit=400&apiKey=${key}`);
+      if(!j.results||!j.results.length) return {ticker:t,fail:'no bars'};
+      const bars=j.results.map(b=>({o:b.o,h:b.h,l:b.l,c:b.c,v:b.v,t:b.t}));
+      return analyze(t,bars);
+    },(d,tot)=>{ setBar(d,tot); $('mScan').textContent=d; });
+
+    if(ABORT){ log('Aborted.'); finish(); return; }
+
+    // stage counters from failure reasons
+    for(const r of analyzed){
+      if(!r) continue;
+      if(r.__err){ log(`<span class="err">${r.ticker} — ERROR ${r.__err}</span>`); continue; }
+      if(r.fail){
+        const fl=r.fail;
+        if(!/price < \$10|ADV\$/.test(fl)) nLiq++;
+        if(!/price < \$10|ADV\$|EMA50 <|EMA50 not|below EMA50/.test(fl)) nTrend++;
+        if(/vol expanding|ATR unavail/.test(fl)) nPb++;
+        log(`<span class="fail">${r.ticker} — ${fl}</span>`);
+      } else {
+        nLiq++; nTrend++; nPb++; nVc++;
+      }
+    }
+    $('mLiq').textContent=nLiq; $('mTrend').textContent=nTrend;
+    $('mPb').textContent=nPb; $('mVc').textContent=nVc;
+
+    let setups=analyzed.filter(r=>r&&!r.fail&&!r.__err);
+
+    // ---- 4. earnings filter ----
+    const buf=+$('earnBuf').value||45;
+    log(`Checking earnings for ${setups.length} candidates (buffer ${buf}d)…`);
+    await pool(setups,5,async r=>{
+      const d=await nextEarningsDays(r.ticker,key);
+      r.earnDays=d;
+      return r;
+    },()=>{});
+    const before=setups.length;
+    setups=setups.filter(r=>{
+      if(r.earnDays===null||r.earnDays===undefined) return true; // unknown → keep, flag in UI
+      if(r.earnDays<0) return true;
+      if(r.earnDays<buf){ log(`<span class="fail">${r.ticker} — earnings in ~${r.earnDays}d (< ${buf}d buffer)</span>`); return false; }
+      return true;
+    });
+    log(`Earnings filter: ${before} → ${setups.length}`);
+
+    setups.sort((a,b)=>b.score-a.score);
+    const maxR=+$('maxRes').value||20;
+    RESULTS=setups.slice(0,maxR);
+    $('mSet').textContent=RESULTS.length;
+    for(const r of RESULTS) log(`<span class="pass">${r.ticker} — SETUP · score ${r.score} · pb ${r.pbPct.toFixed(1)}% · ATR5/20 ${r.vcRatio.toFixed(2)} · eff ${r.eff.toFixed(2)} · DTE ${r.dte}</span>`);
+
+    renderTable();
+  }catch(e){
+    if(e.message!=='aborted') showErr('Scan failed: '+e.message+(e.status===403?' — check Polygon entitlements for aggregates.':''));
+    log(`<span class="err">${e.message}</span>`);
+  }
+  finish();
+}
+function finish(){
+  $('scanBtn').disabled=false; $('stopBtn').disabled=true;
+  $('barWrap').style.display='none';
+  $('log').innerHTML=LOGLINES.join('<br>');
+}
+function setBar(d,t){ $('bar').style.width=(d/t*100)+'%'; }
+function log(s){ LOGLINES.push(s); }
+function toggleLog(){ const l=$('log'); l.style.display=l.style.display==='block'?'none':'block'; l.innerHTML=LOGLINES.join('<br>'); }
+function showErr(m){ $('errBox').textContent=m; $('errBox').style.display='block'; }
+function hideErr(){ $('errBox').style.display='none'; }
+
+/* ============ table ============ */
+const COLS=[
+  {k:'ticker',t:'Ticker'},
+  {k:'score',t:'Score',n:1},
+  {k:'subs',t:'Factors'},
+  {k:'px',t:'Price',n:1,f:v=>'$'+v.toFixed(2)},
+  {k:'pbPct',t:'Pullback',n:1,f:v=>v.toFixed(1)+'%'},
+  {k:'vcRatio',t:'ATR5/20',n:1,f:v=>v.toFixed(2)},
+  {k:'eff',t:'Efficiency',n:1,f:v=>v.toFixed(2)},
+  {k:'atr20',t:'ATR20',n:1,f:v=>'$'+v.toFixed(2),m:1},
+  {k:'entry',t:'Entry',n:1,f:v=>'$'+v.toFixed(2)},
+  {k:'stop',t:'Stop (2.6A)',n:1,f:v=>'$'+v.toFixed(2)},
+  {k:'t1',t:'1R Target',n:1,f:v=>'$'+v.toFixed(2)},
+  {k:'shares',t:'Shares',n:1,m:1},
+  {k:'dte',t:'DTE',n:1},
+  {k:'earnDays',t:'Earn',n:1,m:1,f:v=>v==null?'?':(v<0?'—':v+'d')}
+];
+function renderTable(){
+  if(!RESULTS.length){
+    $('tableWrap').innerHTML='<div class="panel" style="text-align:center;color:var(--dim);padding:28px">No setups passed all filters. In a trend-resumption system, that is a normal and frequent outcome — <i>"learn to love doing nothing."</i></div>';
+    return;
+  }
+  const acct=+$('acct').value||50000, riskPct=+$('riskPct').value||1;
+  const riskDollars=acct*riskPct/100;
+  RESULTS.forEach(r=>{ r.shares=Math.max(1,Math.floor(riskDollars/r.R)); r.riskDollars=riskDollars; });
+
+  const s=[...RESULTS].sort((a,b)=>{
+    const av=a[SORT.key],bv=b[SORT.key];
+    if(typeof av==='string') return SORT.dir*av.localeCompare(bv);
+    return SORT.dir*((av??-1e9)-(bv??-1e9));
+  });
+  let h='<div class="panel" style="padding:0;overflow-x:auto"><table><thead><tr>';
+  for(const c of COLS) h+=`<th class="${c.m?'hide-m':''}" onclick="sortBy('${c.k}')">${c.t}</th>`;
+  h+='</tr></thead><tbody>';
+  for(const r of s){
+    h+='<tr>';
+    for(const c of COLS){
+      const cl=(c.n?'num ':'')+(c.m?'hide-m ':'');
+      if(c.k==='ticker'){ h+=`<td class="${cl}"><span class="tkr" onclick="openPlan('${r.ticker}')">${r.ticker}</span></td>`; }
+      else if(c.k==='score'){
+        const sc=r.score>=70?'s-hi':r.score>=50?'s-mid':'s-lo';
+        h+=`<td class="${cl}"><span class="score ${sc}">${r.score}</span></td>`;
+      }
+      else if(c.k==='subs'){
+        h+=`<td class="${cl}"><span class="subf" title="Trend · Depth · VolContraction · VolDry · Efficiency">`;
+        for(const kk of ['fTrend','fDepth','fVC','fVol','fEff']){
+          const v=r.subs[kk];
+          h+=`<span class="sq ${v>=0.66?'on':v>=0.33?'half':''}"></span>`;
+        }
+        h+='</span></td>';
+      }
+      else if(c.k==='earnDays'){
+        const v=r.earnDays;
+        const cls=v==null?'p-warn':'p-ok';
+        h+=`<td class="${cl}"><span class="pill ${cls}">${c.f(v)}</span></td>`;
+      }
+      else{
+        let v=r[c.k];
+        h+=`<td class="${cl}">${v==null?'—':(c.f?c.f(v):v)}</td>`;
+      }
+    }
+    h+='</tr>';
+  }
+  h+='</tbody></table></div>';
+  h+=`<div class="note" style="margin-top:0">
+    <b>Factors</b> (left→right): Trend quality · Pullback depth · Volatility contraction · Volume dry-up · Trend efficiency.
+    <b>Efficiency</b> is |net move| ÷ Σ|daily moves| over 20d — a straighter trend reaches 1R faster, which is what sets DTE.
+    <b>Shares</b> = fixed-fractional: $${riskDollars.toFixed(0)} risk ÷ (2.6 × ATR20). Tap a ticker for the full plan.</div>`;
+  $('tableWrap').innerHTML=h;
+}
+function sortBy(k){
+  if(SORT.key===k) SORT.dir*=-1; else { SORT.key=k; SORT.dir=-1; }
+  renderTable();
+}
+
+/* ============ trade plan modal ============ */
+function openPlan(t){
+  const r=RESULTS.find(x=>x.ticker===t); if(!r) return;
+  $('modalTitle').textContent=r.ticker+' — Trade Management Plan';
+
+  const half=Math.floor(r.shares/2), rest=r.shares-half;
+  const trailStop1=r.t1-r.trailAfter;
+  const cautionSize=REGIME&&REGIME.state==='caution';
+
+  let h='';
+
+  if(cautionSize){
+    h+=`<div class="warnbox"><b>REGIME: CAUTION.</b> Trend intact but not clean. Oliver would cut size here —
+      consider halving the share count below, or standing aside entirely. "Sometimes the best trade is 'no trade' at all."</div>`;
+  }
+
+  h+=`<div class="plan-sec"><h4>The Setup</h4><div class="kv">
+    <span class="k">Price</span><span class="v">$${r.px.toFixed(2)}</span>
+    <span class="k">Pullback from 20d high</span><span class="v">${r.pbPct.toFixed(1)}%</span>
+    <span class="k">Position vs EMA20</span><span class="v">${r.aboveE20?'above':'touching / undercut (EMA50 holds)'}</span>
+    <span class="k">EMA20 / 50 / 200</span><span class="v">$${r.e20.toFixed(2)} / $${r.e50.toFixed(2)} / $${r.e200.toFixed(2)}</span>
+    <span class="k">ATR20 (daily)</span><span class="v">$${r.atr20.toFixed(2)}</span>
+    <span class="k">Vol contraction (ATR5/ATR20)</span><span class="v">${r.vcRatio.toFixed(2)} — coiling</span>
+    <span class="k">Trend efficiency (20d)</span><span class="v">${r.eff.toFixed(2)}</span>
+    <span class="k">Composite score</span><span class="v">${r.score} / 100</span>
+  </div>
+  <div class="note">This is a <b>trend-resumption pullback</b>: an established uptrend (EMA50 &gt; EMA200, rising) that has
+  pulled back on contracting volatility and drying volume — Oliver's "edge of volatility expansion back into trend mode."</div></div>`;
+
+  h+=`<div class="plan-sec"><h4>Entry &amp; Size (fixed-fractional)</h4><div class="kv">
+    <span class="k">Entry</span><span class="v big v-ent">$${r.entry.toFixed(2)}</span>
+    <span class="k">Initial stop — 2.6 × ATR20</span><span class="v big v-stop">$${r.stop.toFixed(2)}</span>
+    <span class="k">1R (risk per share)</span><span class="v">$${r.R.toFixed(2)}</span>
+    <span class="k">Account risk</span><span class="v">$${r.riskDollars.toFixed(0)} (${$('riskPct').value}%)</span>
+    <span class="k">Shares</span><span class="v big">${r.shares}</span>
+    <span class="k">Total position</span><span class="v">$${(r.shares*r.entry).toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+  </div>
+  <div class="note"><b>Same % of net liq on every trade.</b> Oliver: <i>"I'm not a believer in having more conviction in any
+  one trade, and 'sizing up' at random. I think that's a fool's game."</i> The un-optimized rule is the robust one.</div></div>`;
+
+  h+=`<div class="plan-sec"><h4>Exit 1 — Take the 1R Partial (GTC, after-hours active)</h4><div class="kv">
+    <span class="k">1R target</span><span class="v big v-tgt">$${r.t1.toFixed(2)}</span>
+    <span class="k">Sell here</span><span class="v">${half} shares (half)</span>
+    <span class="k">Keep running</span><span class="v">${rest} shares</span>
+    <span class="k">Then tighten trail to</span><span class="v">2.0 × ATR20 = $${r.trailAfter.toFixed(2)}</span>
+    <span class="k">Trail stop becomes</span><span class="v v-stop">$${trailStop1.toFixed(2)} (at 1R)</span>
+  </div>
+  <div class="note"><b>Place this as a GTC limit now, and leave it active in the after-hours session.</b>
+  It fires while you're at your desk. Oliver: <i>"There's nothing better than getting things done at the day job and
+  receiving a text saying that half my position automatically sold for a nice gain."</i></div></div>`;
+
+  h+=`<div class="plan-sec"><h4>Exit 2 — Trail the Stop (after the close, only)</h4><div class="kv">
+    <span class="k">Before 1R</span><span class="v">Trail 2.6 × ATR20 from the daily close</span>
+    <span class="k">After 1R hit</span><span class="v">Tighten to 2.0 × ATR20</span>
+    <span class="k">Direction</span><span class="v">Up only — <b>never lower the stop</b></span>
+    <span class="k">When to adjust</span><span class="v">After the close. Never intraday.</span>
+  </div>
+  <div class="note">If the pure ATR calc would trail the stop inside a nearby pivot low, <b>defer to price structure</b>
+  and give it room. Oliver blends the algorithm with judgment — but only in the direction of <i>more</i> room, never less.</div></div>`;
+
+  h+=`<div class="plan-sec"><h4>Exit 3 — Time Stop: the 5-Day Rule &amp; Strike System</h4>
+  <div class="kv">
+    <span class="k">Working trade =</span><span class="v">hits 1R ($${r.t1.toFixed(2)}) within <b>5 full trading days</b></span>
+    <span class="k">If not →</span><span class="v v-tgt">enters TIME STOP MODE (probation)</span>
+    <span class="k">Exit trigger</span><span class="v v-stop">3 strikes</span>
+  </div>
+  <div class="note">Momentum trading needs momentum. A setup on the edge of volatility expansion
+  <b>should start working relatively soon.</b> Dead money costs you mental <i>and</i> actual capital.</div>
+  <div style="margin-top:10px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px">Tally a strike for each — exit at 3</div>
+  <ul class="ck">
+    <li>Trending on the wrong side of the <b>5 DMA</b></li>
+    <li>Trending on the wrong side of the <b>20 EMA</b> (currently $${r.e20.toFixed(2)})</li>
+    <li>Trending on the wrong side of the <b>50 DMA</b> (currently $${r.e50.toFixed(2)})</li>
+    <li><b>Three out of five closes</b> against the trade</li>
+    <li><b>Two wide-range, weak-close days</b> against the trade (of five), with volume upticks</li>
+    <li>A <b>sharp topping tail</b> followed by two weak days</li>
+    <li><b>Seven days of sideways action</b>, especially with big volume upticks against</li>
+    <li><b>1–2 days of wide-range, high-volume momentum</b> against the trade</li>
+    <li><b>Volume increasing</b> in consolidations/pullbacks against the trade</li>
+    <li>Stock develops <b>poor trading characteristics</b> (huge spread, low volume, erratic ticks)</li>
+  </ul>
+  <div class="note"><b>Default to patience.</b> Oliver: <i>"In most cases doing nothing, or just tightening the stops, are
+  the best options... giving my trades room to work leads to better outcomes."</i> The strikes exist to catch the genuinely
+  <b>dead</b> ones — not to make you twitchy. And if you cut a dud, <b>you can always re-enter</b> (limit re-entries).</div></div>`;
+
+  h+=`<div class="plan-sec"><h4>If You Trade This as an Option</h4><div class="kv">
+    <span class="k">Suggested DTE</span><span class="v big">${r.dte} days</span>
+    <span class="k">Expected hold to 1R</span><span class="v">~${r.expHoldDays} trading days</span>
+    <span class="k">Derivation</span><span class="v">2.6 ATR ÷ efficiency ${r.eff.toFixed(2)} + strike buffer + 21d theta floor</span>
+    <span class="k">Strike guidance</span><span class="v">ATM to 1 strike ITM (delta ≈ .55–.70)</span>
+    <span class="k">Hard time stop</span><span class="v v-stop">Exit at &lt; 21 DTE regardless</span>
+  </div>
+  <div class="warnbox"><b>All triggers stay anchored to the underlying.</b> Your 1R, your stop, and every strike condition
+  are <b>stock prices</b>, not option prices. Set your alerts on <b>$${r.stop.toFixed(2)}</b> (stop) and
+  <b>$${r.t1.toFixed(2)}</b> (1R) — then act on the option.
+  <br><br>Sizing does <b>not</b> transfer: ${r.shares} shares is the stock size. For the option, size so that the
+  <b>premium you'd lose if the stock hits $${r.stop.toFixed(2)}</b> is ≈ $${r.riskDollars.toFixed(0)}. A 2.6-ATR adverse
+  move costs an option far more than 2.6 ATR of stock (delta + theta + vega compound). <b>Size down accordingly.</b>
+  <br><br>Theta makes Oliver's time stop <i>stricter</i>, not looser: on stock, dead money is free; on options, it bleeds.</div>
+  <button class="ghost chainbtn" onclick="loadChain('${r.ticker}',${r.dte},${r.entry})">Load options chain →</button>
+  <div id="chain_${r.ticker}"></div></div>`;
+
+  h+=`<div class="plan-sec"><h4>The Distribution You Are Engineering</h4>
+  <div class="note" style="border-left-color:var(--accent)">
+  <b>"Small loser, breakeven, small winner, or big winner. No big losers, ever."</b><br><br>
+  You need <b>1–3 really big winners a year</b> — they make your year. Most trades will do nothing; small winners and
+  losers cancel out. 20% of trades produce 80% of profits. <b>Every rule above exists to protect that asymmetry:</b>
+  small size, an ATR stop that gets you out when you're <i>wrong</i> (not when the stock merely breathes), a trailing
+  stop that lets a winner run, and a time stop that recycles dead capital into the next setup.</div></div>`;
+
+  $('modalBody').innerHTML=h;
+  $('modal').classList.add('on');
+}
+function closeModal(){ $('modal').classList.remove('on'); }
+$('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+
+/* ============ options chain (on tap) ============ */
+async function loadChain(t,dte,px){
+  const key=$('apikey').value.trim();
+  const el=$('chain_'+t);
+  el.innerHTML='<div style="color:var(--dim);font-size:11px;padding:8px 0">Loading chain…</div>';
+  try{
+    const target=new Date(Date.now()+dte*864e5);
+    const lo=new Date(target.getTime()-18*864e5), hi=new Date(target.getTime()+18*864e5);
+    const f=d=>d.toISOString().slice(0,10);
+    const url=`${BASE}/v3/snapshot/options/${t}?contract_type=call`
+      +`&expiration_date.gte=${f(lo)}&expiration_date.lte=${f(hi)}`
+      +`&strike_price.gte=${(px*0.85).toFixed(0)}&strike_price.lte=${(px*1.12).toFixed(0)}`
+      +`&limit=250&apiKey=${key}`;
+    const j=await robustFetch(url);
+    const res=j.results||[];
+    if(!res.length){
+      el.innerHTML=`<div class="warnbox">No contracts returned. This is usually an <b>options entitlement</b> issue on your
+        Polygon plan rather than a genuine absence of data — the endpoint returns an empty set rather than an error.
+        Verify your Options Starter entitlement covers snapshots/greeks.</div>`;
+      return;
+    }
+    res.sort((a,b)=>{
+      const ea=a.details.expiration_date, eb=b.details.expiration_date;
+      if(ea!==eb) return ea<eb?-1:1;
+      return a.details.strike_price-b.details.strike_price;
+    });
+    let h='<div style="overflow-x:auto;margin-top:8px"><table><thead><tr>'
+      +'<th>Expiry</th><th>DTE</th><th>Strike</th><th>Delta</th><th>Bid</th><th>Ask</th><th>Mid</th><th>IV</th><th>OI</th></tr></thead><tbody>';
+    let shown=0;
+    for(const c of res){
+      const d=c.details, g=c.greeks||{}, q=c.last_quote||{};
+      const delta=g.delta;
+      if(delta!=null && (delta<0.45||delta>0.80)) continue;
+      const exp=d.expiration_date;
+      const ddte=Math.round((new Date(exp)-new Date())/864e5);
+      const bid=q.bid, ask=q.ask;
+      const mid=(bid!=null&&ask!=null)?((bid+ask)/2):null;
+      const iv=c.implied_volatility;
+      const oi=c.open_interest;
+      const hl=(delta!=null&&delta>=0.55&&delta<=0.70)?'style="background:#0d1f13"':'';
+      h+=`<tr ${hl}><td>${exp}</td><td class="num">${ddte}</td><td class="num">$${d.strike_price}</td>`
+        +`<td class="num">${delta!=null?delta.toFixed(2):'—'}</td>`
+        +`<td class="num">${bid!=null?'$'+bid.toFixed(2):'—'}</td>`
+        +`<td class="num">${ask!=null?'$'+ask.toFixed(2):'—'}</td>`
+        +`<td class="num">${mid!=null?'$'+mid.toFixed(2):'—'}</td>`
+        +`<td class="num">${iv!=null?(iv*100).toFixed(0)+'%':'—'}</td>`
+        +`<td class="num">${oi??'—'}</td></tr>`;
+      shown++;
+    }
+    h+='</tbody></table></div>';
+    if(!shown){
+      el.innerHTML=`<div class="warnbox">Contracts returned but <b>no greeks/quotes</b> came through — the delta filter
+        (.45–.80) matched nothing. This is the classic <b>quotes/greeks entitlement boundary</b>: the chain exists but
+        bid/ask/delta are gated. You'll need to pick the strike manually near <b>$${px.toFixed(0)}</b>.</div>`;
+      return;
+    }
+    h+=`<div class="note">Highlighted rows are <b>delta .55–.70</b> — enough directional participation that the option
+      tracks the stock move your ATR stop and 1R target are measured in. Target DTE was <b>${dte}</b>.
+      Remember: <b>size to the premium you'd lose at the stock stop, not to the share count.</b></div>`;
+    el.innerHTML=h;
+  }catch(e){
+    el.innerHTML=`<div class="warnbox">Chain failed: ${e.message}${e.status===403?' — 403 usually means your plan lacks the options entitlement.':''}</div>`;
+  }
+}
+</script>
+</body>
+</html>
