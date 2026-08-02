@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>52-Week Low Formula Scanner — Wiley / Gray</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#0f1620; --panel2:#131c28; --border:#1e2a3a;
+    --ink:#c9d6e4; --dim:#6b7d92; --dimmer:#455468;
+    --green:#3fd07f; --greendim:#1f6b45; --red:#ff5c6c; --reddim:#7a2733;
+    --amber:#ffb454; --cyan:#4fd6e0; --violet:#a98cff; --blue:#5aa9ff;
+    --mono:'SF Mono','JetBrains Mono','Fira Code',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;line-height:1.45}
+  a{color:var(--cyan)}
+  .wrap{max-width:1500px;margin:0 auto;padding:18px}
+  header{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:16px}
+  h1{font-size:18px;margin:0 0 4px;letter-spacing:.5px}
+  h1 .sub{color:var(--dim);font-weight:400;font-size:13px}
+  .tag{color:var(--dim);font-size:11px}
+  .book{color:var(--violet)}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:14px}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+  label{display:block;color:var(--dim);font-size:11px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+  input[type=text],input[type=password],textarea,select{
+    background:var(--panel2);border:1px solid var(--border);color:var(--ink);
+    font-family:var(--mono);font-size:13px;padding:7px 9px;border-radius:4px;width:100%}
+  textarea{resize:vertical;min-height:54px}
+  .field{flex:1;min-width:180px}
+  .field.sm{flex:0 0 120px;min-width:120px}
+  .field.key{flex:2;min-width:280px}
+  button{background:var(--panel2);border:1px solid var(--border);color:var(--ink);
+    font-family:var(--mono);font-size:13px;padding:8px 16px;border-radius:4px;cursor:pointer;letter-spacing:.5px}
+  button:hover{border-color:var(--cyan);color:#fff}
+  button.go{background:var(--greendim);border-color:var(--green);color:#eafff2}
+  button.go:hover{background:var(--green);color:#04120a}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .sliders{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px 22px;margin-top:4px}
+  .slider .val{color:var(--amber);float:right;font-weight:600}
+  input[type=range]{width:100%;accent-color:var(--cyan);margin-top:2px}
+  .hint{color:var(--dimmer);font-size:11px;margin-top:3px}
+  .status{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:12px;color:var(--dim);font-size:12px}
+  .bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;flex:1;min-width:200px}
+  .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--green));transition:width .2s}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:right;padding:6px 9px;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{color:var(--dim);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.5px;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
+  th:first-child,td:first-child{text-align:left}
+  tbody tr:hover{background:#0d141d}
+  .tk{color:#fff;font-weight:600}
+  .pass{color:var(--green)} .fail{color:var(--red)} .warnc{color:var(--amber)}
+  .pill{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;letter-spacing:.5px;border:1px solid}
+  .pill.q{border-color:var(--greendim);color:var(--green);background:rgba(63,208,127,.08)}
+  .pill.man{border-color:var(--reddim);color:var(--amber);background:rgba(255,180,84,.08)}
+  .pill.near{border-color:var(--blue);color:var(--blue);background:rgba(90,169,255,.08)}
+  .flt{display:inline-flex;gap:3px;align-items:center}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .dot.on{background:var(--green)} .dot.off{background:var(--reddim)} .dot.na{background:var(--dimmer)}
+  .log{background:#070a0f;border:1px solid var(--border);border-radius:4px;padding:10px;max-height:260px;overflow:auto;font-size:11px;color:var(--dim);white-space:pre-wrap}
+  .log .ok{color:var(--green)} .log .no{color:var(--red)} .log .wn{color:var(--amber)} .log .info{color:var(--cyan)}
+  .tabs{display:flex;gap:6px;margin-bottom:10px}
+  .tabs button{padding:6px 14px}
+  .tabs button.active{border-color:var(--cyan);color:#fff;background:var(--panel2)}
+  .hide{display:none}
+  details{margin-top:8px} summary{cursor:pointer;color:var(--cyan);font-size:12px}
+  .legend{color:var(--dim);font-size:11px;line-height:1.7;margin-top:8px}
+  .legend b{color:var(--ink)}
+  .count{color:var(--cyan);font-weight:600}
+  .foot{color:var(--dimmer);font-size:11px;margin-top:20px;border-top:1px solid var(--border);padding-top:12px}
+  .exp-th{color:var(--dim);font-size:11px}
+  code{color:var(--amber);background:var(--panel2);padding:1px 4px;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>52-WEEK LOW FORMULA SCANNER <span class="sub">— five-filter value screen</span></h1>
+    <div class="tag">Methodology: <span class="book">Luke L. Wiley &amp; Wesley R. Gray — <i>The 52-Week Low Formula</i> (Wiley, 2014)</span>. Encodes the five sequential filters. Thresholds where the book is "proprietary" use the documented proxy values; tune with sliders.</div>
+  </header>
+
+  <div class="panel">
+    <div class="row">
+      <div class="field key">
+        <label>Polygon.io API Key</label>
+        <input id="apiKey" type="password" placeholder="paste key — stored in localStorage only" autocomplete="off">
+      </div>
+      <div class="field sm">
+        <label>10-yr Treasury %</label>
+        <input id="rf" type="text" value="4.25">
+        <div class="hint">risk-free rate</div>
+      </div>
+      <div class="field sm">
+        <label>Concurrency</label>
+        <input id="conc" type="text" value="5">
+      </div>
+      <div class="field" style="flex:0 0 auto">
+        <button class="go" id="runBtn">▶ RUN SCAN</button>
+        <button id="stopBtn" disabled>■ STOP</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <div class="field">
+        <label>Universe</label>
+        <select id="universe">
+          <option value="sp500etf">SPY / GLD / TLT + S&amp;P 500 (default)</option>
+          <option value="sp500">S&amp;P 500 only</option>
+          <option value="etf">SPY / GLD / TLT only</option>
+          <option value="custom">Custom list (paste below)</option>
+        </select>
+        <div class="hint">S&amp;P list is a static snapshot bundled below; edit the CUSTOM box to override.</div>
+      </div>
+      <div class="field" style="flex:2">
+        <label>Custom / override tickers (comma or space separated)</label>
+        <textarea id="customList" placeholder="AAPL MSFT BRK.B ... (used when Universe = Custom)"></textarea>
+      </div>
+    </div>
+
+    <details>
+      <summary>Filter thresholds — proxy defaults for the book's undisclosed hurdles</summary>
+      <div class="sliders">
+        <div class="slider">
+          <label>F2 · FCF-yield multiple over risk-free <span class="val" id="v_fcfMult">2.0×</span></label>
+          <input type="range" id="s_fcfMult" min="1" max="5" step="0.25" value="2">
+          <div class="hint">Book demands "a lot more" than the 10-yr; sets min FCF-yield = mult × rf.</div>
+        </div>
+        <div class="slider">
+          <label>F3 · Min current ROIC <span class="val" id="v_roicMin">15%</span></label>
+          <input type="range" id="s_roicMin" min="5" max="30" step="1" value="15">
+          <div class="hint">Morningstar "wide-moat" threshold cited in Ch.7.</div>
+        </div>
+        <div class="slider">
+          <label>F3 · Assumed cost of capital (COC) <span class="val" id="v_coc">10%</span></label>
+          <input type="range" id="s_coc" min="6" max="14" step="0.5" value="10">
+          <div class="hint">ROIC must exceed this. WorldCom/Enron used ~10-12% in the text.</div>
+        </div>
+        <div class="slider">
+          <label>F3 · Yrs of ROIC history required &gt; COC <span class="val" id="v_roicYears">3</span></label>
+          <input type="range" id="s_roicYears" min="1" max="5" step="1" value="3">
+          <div class="hint">Book wants 10yr; Polygon caps ~5yr. Proxy for "knack over a cycle."</div>
+        </div>
+        <div class="slider">
+          <label>F4 · Max Long-Term Debt / FCF (years) <span class="val" id="v_ltd">3.0</span></label>
+          <input type="range" id="s_ltd" min="1" max="6" step="0.5" value="3">
+          <div class="hint">Author is stricter than Buffett's 5yr — uses ≤3.</div>
+        </div>
+        <div class="slider">
+          <label>F5 · Max % above 52-week low <span class="val" id="v_low">10%</span></label>
+          <input type="range" id="s_low" min="0" max="25" step="1" value="10">
+          <div class="hint">Book examples entered 3–10% above the 52W low.</div>
+        </div>
+        <div class="slider">
+          <label>F5 gate · also require TTM return ≤ <span class="val" id="v_ttm">0%</span></label>
+          <input type="range" id="s_ttm" min="-40" max="15" step="5" value="0">
+          <div class="hint">Ch.12 "embrace a −25% trailing return." Set high to disable.</div>
+        </div>
+      </div>
+    </details>
+
+    <div class="status">
+      <span id="phase">idle</span>
+      <div class="bar"><i id="prog"></i></div>
+      <span id="counts"></span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="active" data-tab="results">RESULTS</button>
+    <button data-tab="log">SCAN LOG</button>
+    <button data-tab="method">METHOD</button>
+  </div>
+
+  <div id="tab-results" class="panel">
+    <div id="resultMeta" class="legend"></div>
+    <div style="overflow:auto;max-height:70vh">
+      <table id="resTable">
+        <thead><tr>
+          <th data-k="ticker">Ticker</th>
+          <th data-k="price">Price</th>
+          <th data-k="pctLow" title="% above 52-week low">%>52wLo</th>
+          <th data-k="ttm" title="trailing 12-mo price return">TTM%</th>
+          <th data-k="fcfYield" title="FCF / Enterprise Value">FCF Yld</th>
+          <th data-k="fcfMultActual" title="how many × the risk-free rate">×RF</th>
+          <th data-k="roic" title="current ROIC = NOPAT / Invested Capital">ROIC</th>
+          <th data-k="roicHistPass" title="years of ROIC>COC history">ROIC hist</th>
+          <th data-k="ltdFcf" title="Long-term debt / FCF, years">LTD/FCF</th>
+          <th data-k="filters" title="F1..F5">Filters</th>
+          <th data-k="score">Score</th>
+          <th data-k="verdict">Verdict</th>
+        </tr></thead>
+        <tbody id="resBody"></tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <b>Filters</b> read left→right F1 F2 F3 F4 F5.
+      <span class="dot on"></span> pass &nbsp; <span class="dot off"></span> fail &nbsp; <span class="dot na"></span> no data.
+      <span class="pill q">QUALIFIED</span> passes all computable filters.
+      <span class="pill near">NEAR</span> misses one.
+      <span class="pill man">F1 MANUAL</span> — durable-moat / 10-yr history needs your judgment (see Method tab).
+    </div>
+  </div>
+
+  <div id="tab-log" class="panel hide">
+    <div class="log" id="logBox"></div>
+  </div>
+
+  <div id="tab-method" class="panel hide">
+    <div class="legend" style="font-size:12px;line-height:1.75">
+      <p><b>The five filters (sequential, per the book):</b></p>
+      <p><b>F1 · Durable Competitive Advantage.</b> Qualitative in the book (Porter's five forces, moats — Western Union, Visa, Fastenal, Waters). <u>Not computable from price data.</u> This tool proxies it with the book's own operational hook: a company with a real moat sustains <code>ROIC &gt; COC</code> across a full cycle. Names passing the multi-year ROIC history get a green F1; all survivors still carry an <span class="pill man">F1 MANUAL</span> reminder to eyeball the moat yourself. The book is explicit that this filter eliminates most of the ~2,800 NYSE names <i>before</i> the quantitative work.</p>
+      <p><b>F2 · Free Cash Flow Yield (margin of safety).</b> <code>FCF / Enterprise Value</code>, where <code>FCF = Operating Cash Flow − CapEx</code> and <code>EV = Market Cap + Debt − Cash</code>. Must clear a <i>multiple</i> over the 10-yr Treasury (the exact multiple is proprietary; proxy = 2×). The book's Amazon example (0.224% FCF yield vs 2.75% risk-free) is the anti-pattern.</p>
+      <p><b>F3 · Return on Invested Capital.</b> <code>ROIC = NOPAT / Invested Capital</code>, <code>NOPAT = Operating Income × (1 − tax rate)</code>, <code>Invested Capital = Total Assets − Excess Cash − Non-interest-bearing current liabilities</code>. Must exceed COC now <i>and</i> show a knack for it over time (book: 10yr; proxy: as many years as Polygon returns, default ≥3). Morningstar's ~15% wide-moat bar is the current-year floor.</p>
+      <p><b>F4 · Long-Term Debt / Free Cash Flow.</b> <code>≤ 3 years</code> (author is deliberately stricter than Buffett's 5). Snapshot of the latest filing, not a trend. Cummins 1.24yr vs Caterpillar 5.29yr is the worked example.</p>
+      <p><b>F5 · The 52-Week Low.</b> Trading at/near its 52-week low (examples entered 3–10% above). Optional TTM-return gate encodes Ch.12's "embrace a −25% trailing return." This is the <i>last</i> filter — value = where a structurally sound company meets depressed sentiment.</p>
+      <p><b>Data caveats (baked into the UI, per your standing preference):</b></p>
+      <p>• <b>CapEx</b> is not always a clean line in Polygon's standardized financials. The tool tries several field aliases and, if capex is truly absent, falls back to <code>FCF ≈ operating cash flow</code> and flags it <span class="warnc">approx</span> in the log — treat those FCF-yield / LTD-FCF numbers as optimistic.<br>
+      • <b>Tax rate</b> for NOPAT is derived from <code>income_tax_expense / pre-tax income</code> when available, else assumes 21%.<br>
+      • <b>10-year history</b> is impossible on the ~5-yr Polygon plan; F1/F3-history are proxied and flagged.<br>
+      • <b>ETFs</b> (SPY/GLD/TLT) have no financials — they're scored on F5 only and marked N/A elsewhere, since the book's fundamental filters don't apply to funds.</p>
+      <p><b>Score</b> = weighted blend of margin-of-safety depth (FCF ×RF), ROIC cushion over COC, debt headroom, and proximity to the low — a ranking aid only. The book's actual output is the top 25 names that pass <i>all</i> filters, rebalanced every 6–12 months.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    Single-file client-side tool. No backend; your key never leaves the browser except in direct calls to <code>api.polygon.io</code>.
+    This screens for candidates — it is not investment advice, and F1 always requires your own moat judgment. Rebalance discipline (every 6/12 months, sell on filter failure) is the strategy, not the screen.
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------- persistence ---------- */
+const $ = id => document.getElementById(id);
+const LS = 'wiley52wl_v1';
+function loadState(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS)||'{}');
+    if(s.apiKey) $('apiKey').value = s.apiKey;
+    if(s.rf) $('rf').value = s.rf;
+    if(s.universe) $('universe').value = s.universe;
+    if(s.customList) $('customList').value = s.customList;
+    for(const k of SLIDERS){ if(s[k.id]!=null){ $(k.id).value=s[k.id]; } }
+  }catch(e){}
+}
+function saveState(){
+  const s={apiKey:$('apiKey').value,rf:$('rf').value,universe:$('universe').value,customList:$('customList').value};
+  for(const k of SLIDERS) s[k.id]=$(k.id).value;
+  localStorage.setItem(LS,JSON.stringify(s));
+}
+
+/* ---------- sliders ---------- */
+const SLIDERS=[
+  {id:'s_fcfMult',out:'v_fcfMult',fmt:v=>v+'×'},
+  {id:'s_roicMin',out:'v_roicMin',fmt:v=>v+'%'},
+  {id:'s_coc',out:'v_coc',fmt:v=>v+'%'},
+  {id:'s_roicYears',out:'v_roicYears',fmt:v=>v},
+  {id:'s_ltd',out:'v_ltd',fmt:v=>(+v).toFixed(1)},
+  {id:'s_low',out:'v_low',fmt:v=>v+'%'},
+  {id:'s_ttm',out:'v_ttm',fmt:v=>v+'%'},
+];
+SLIDERS.forEach(s=>{
+  const el=$(s.id),out=$(s.out);
+  const upd=()=>{out.textContent=s.fmt(el.value);saveState();};
+  el.addEventListener('input',upd);upd();
+});
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tabs button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    ['results','log','method'].forEach(t=>$('tab-'+t).classList.toggle('hide',t!==b.dataset.tab));
+  });
+});
+
+/* ---------- S&P 500 static snapshot (edit freely) ---------- */
+const SP500 = "MMM AOS ABT ABBV ACN ADBE AMD AES AFL A APD ABNB AKAM ALB ARE ALGN ALLE LNT ALL GOOGL GOOG MO AMZN AMCR AEE AEP AXP AIG AMT AWK AMP AME AMGN APH ADI ANSS AON APA AAPL AMAT APTV ACGL ADM ANET AJG AIZ T ATO ADSK ADP AZO AVB AVY AXON BKR BALL BAC BK BBWI BAX BDX BRK.B BBY TECH BIIB BLK BX BA BKNG BWA BSX BMY AVGO BR BRO BF.B BLDR BG CDNS CZR CPT CPB COF CAH KMX CCL CARR CAT CBOE CBRE CDW CE COR CNC CNP CF CRL SCHW CHTR CVX CMG CB CHD CI CINF CTAS CSCO C CFG CLX CME CMS KO CTSH CL CMCSA CMA CAG COP ED STZ CEG COO CPRT GLW CTVA CSGP COST CTRA CCI CSX CMI CVS DHR DRI DVA DAY DECK DE DAL DVN DXCM FANG DLR DFS DG DLTR D DPZ DOV DOW DHI DTE DUK DD EMN ETN EBAY ECL EIX EW EA ELV EMR ENPH ETR EOG EPAM EQT EFX EQIX EQR ESS EL ETSY EG EVRG ES EXC EXPE EXPD EXR XOM FFIV FDS FICO FAST FRT FDX FIS FITB FSLR FE FI FMC F FTNT FTV FOXA FOX BEN FCX GRMN IT GEHC GEN GNRC GD GE GIS GM GPC GILD GPN GL GDDY GS HAL HIG HAS HCA DOC HSIC HSY HES HPE HLT HOLX HD HON HRL HST HWM HPQ HUBB HUM HBAN HII IBM IEX IDXX ITW ILMN INCY IR PODD INTC ICE IFF IP IPG INTU ISRG IVZ INVH IQV IRM JBHT JBL JKHY J JNJ JCI JPM JNPR K KVUE KDP KEY KEYS KMB KIM KMI KLAC KHC KR LHX LH LRCX LW LVS LDOS LEN LLY LIN LYV LKQ LMT L LOW LULU LYB MTB MPC MKTX MAR MMC MLM MAS MA MTCH MKC MCD MCK MDT MRK META MET MTD MGM MCHP MU MSFT MAA MRNA MHK MOH TAP MDLZ MPWR MNST MCO MS MOS MSI MSCI NDAQ NTAP NFLX NEM NWSA NWS NEE NKE NI NDSN NSC NTRS NOC NCLH NRG NUE NVDA NVR NXPI ORLY OXY ODFL OMC ON OKE ORCL OTIS PCAR PKG PANW PARA PH PAYX PAYC PYPL PNR PEP PFE PCG PM PSX PNW PNC POOL PPG PPL PFG PG PGR PLD PRU PEG PTC PSA PHM QRVO PWR QCOM DGX RL RJF RTX O REG REGN RF RSG RMD RVTY RHI ROK ROL ROP ROST RCL SPGI CRM SBAC SLB STX SRE NOW SHW SPG SWKS SJM SNA SOLV SO LUV SWK SBUX STT STLD STE SYK SMCI SYF SNPS SYY TMUS TROW TTWO TPR TRGP TGT TEL TDY TFX TER TSLA TXN TXT TMO TJX TSCO TT TDG TRV TRMB TFC TYL TSN USB UBER UDR ULTA UNP UAL UPS URI UNH UHS VLO VTR VLTO VRSN VRSK VZ VRTX VTRS VICI V VMC WAB WBA WMT DIS WBD WM WAT WEC WFC WELL WST WDC WRB WY WMB WTW GWW WYNN XEL XYL YUM ZBRA ZBH ZTS".trim().split(/\s+/);
+const ETFS=["SPY","GLD","TLT"];
+const ETFSET=new Set(ETFS);
+
+/* ---------- fetch with retry ---------- */
+let ABORT=false;
+async function robustFetch(url,tries=4){
+  for(let i=0;i<tries;i++){
+    if(ABORT) throw new Error('aborted');
+    let r;
+    try{ r=await fetch(url); }
+    catch(e){ if(i===tries-1) throw e; await sleep(400*(i+1)); continue; }
+    if(r.status===429){ await sleep(700*(i+1)+Math.random()*300); continue; }
+    if(r.status===403){ throw new Error('403 entitlement'); }
+    if(!r.ok){ if(i===tries-1) throw new Error('HTTP '+r.status); await sleep(300*(i+1)); continue; }
+    return r.json();
+  }
+  throw new Error('retries exhausted');
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---------- logging ---------- */
+function log(msg,cls){ const b=$('logBox'); const s=document.createElement('div'); if(cls)s.className=cls; s.textContent=msg; b.appendChild(s); b.scrollTop=b.scrollHeight; }
+function clearLog(){ $('logBox').innerHTML=''; }
+
+/* ---------- financial field helpers (defensive) ---------- */
+function pick(obj, ...paths){
+  for(const p of paths){
+    const parts=p.split('.'); let cur=obj, ok=true;
+    for(const part of parts){ if(cur&&typeof cur==='object'&&part in cur){cur=cur[part];} else {ok=false;break;} }
+    if(ok){ const val = (cur&&typeof cur==='object'&&'value'in cur)?cur.value:cur; if(val!=null&&!Number.isNaN(+val)) return +val; }
+  }
+  return null;
+}
+
+/* ---------- 52-week low + TTM from daily aggs ---------- */
+async function getPriceStats(tk,key){
+  const to=new Date(); const from=new Date(); from.setDate(from.getDate()-372);
+  const f=d=>d.toISOString().slice(0,10);
+  const url=`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(tk)}/range/1/day/${f(from)}/${f(to)}?adjusted=true&sort=asc&limit=400&apiKey=${key}`;
+  const j=await robustFetch(url);
+  if(!j.results||!j.results.length) return null;
+  const rows=j.results;
+  let lo=Infinity, hi=-Infinity;
+  for(const r of rows){ if(r.l<lo)lo=r.l; if(r.h>hi)hi=r.h; }
+  const last=rows[rows.length-1].c;
+  const first=rows[0].c;
+  const pctLow=(last-lo)/lo*100;
+  const ttm=(last-first)/first*100;
+  return {price:last, low52:lo, high52:hi, pctLow, ttm};
+}
+
+/* ---------- shares + market cap snapshot ---------- */
+async function getSnapshot(tk,key){
+  try{
+    const url=`https://api.polygon.io/v3/reference/tickers/${encodeURIComponent(tk)}?apiKey=${key}`;
+    const j=await robustFetch(url);
+    const r=j.results||{};
+    return {shares: r.weighted_shares_outstanding||r.share_class_shares_outstanding||null, type:r.type||null, name:r.name||tk};
+  }catch(e){ return {shares:null,type:null,name:tk}; }
+}
+
+/* ---------- financials (annual, most recent first) ---------- */
+async function getFinancials(tk,key,years){
+  const url=`https://api.polygon.io/vX/reference/financials?ticker=${encodeURIComponent(tk)}&timeframe=annual&order=desc&limit=${years+1}&apiKey=${key}`;
+  const j=await robustFetch(url);
+  return (j.results||[]);
+}
+
+/* ---------- per-filing extraction ---------- */
+function extractFiling(f){
+  const fin=f.financials||{};
+  const bs=fin.balance_sheet||{}, is=fin.income_statement||{}, cf=fin.cash_flow_statement||{};
+  const opCash = pick(cf,'net_cash_flow_from_operating_activities','net_cash_flow_from_operating_activities_continuing');
+  // capex aliases — Polygon standardized set rarely has a clean one; try, else null
+  let capex = pick(cf,'purchase_of_property_plant_and_equipment','payments_to_acquire_property_plant_and_equipment','capital_expenditure','net_cash_flow_from_investing_activities_property');
+  const invAct = pick(cf,'net_cash_flow_from_investing_activities');
+  const opInc = pick(is,'operating_income_loss','operating_income');
+  const preTax = pick(is,'income_loss_from_continuing_operations_before_tax','income_before_equity_method_investments','income_loss_before_income_tax');
+  const tax = pick(is,'income_tax_expense_benefit');
+  const assets = pick(bs,'assets');
+  const cash = pick(bs,'cash','cash_and_equivalents');
+  const curLiab = pick(bs,'current_liabilities');
+  const ltd = pick(bs,'long_term_debt','long_term_debt_noncurrent','noncurrent_liabilities_long_term_debt');
+  const noncurLiab = pick(bs,'noncurrent_liabilities');
+  const equity = pick(bs,'equity','equity_attributable_to_parent');
+  return {opCash,capex,invAct,opInc,preTax,tax,assets,cash,curLiab,ltd,noncurLiab,equity,
+          period:f.fiscal_year||f.fiscal_period||f.end_date||'?', filing_date:f.filing_date};
+}
+
+/* FCF with capex handling + approx flag */
+function computeFCF(x){
+  if(x.opCash==null) return {fcf:null,approx:false};
+  if(x.capex!=null){
+    // capex may be reported negative (a cash outflow) or positive magnitude
+    const c = Math.abs(x.capex);
+    return {fcf: x.opCash - c, approx:false};
+  }
+  // no capex line -> approximate FCF = operating cash flow
+  return {fcf:x.opCash, approx:true};
+}
+
+/* ROIC for a filing */
+function computeROIC(x){
+  if(x.opInc==null||x.assets==null) return null;
+  let taxRate=0.21;
+  if(x.tax!=null && x.preTax!=null && x.preTax!==0){ const t=x.tax/x.preTax; if(t>=0&&t<0.6) taxRate=t; }
+  const nopat = x.opInc*(1-taxRate);
+  const excessCash = (x.cash!=null)?x.cash:0;
+  const nibcl = (x.curLiab!=null)?x.curLiab:0; // proxy: current liabilities ~ non-interest-bearing current liabilities
+  let ic = x.assets - excessCash - nibcl;
+  if(ic<=0){ // fallback to invested capital = debt + equity
+    ic = (x.ltd||0) + (x.equity||0);
+  }
+  if(ic<=0) return null;
+  return nopat/ic*100;
+}
+
+/* ---------- main scan ---------- */
+let RESULTS=[];
+async function run(){
+  const key=$('apiKey').value.trim();
+  if(!key){ alert('Enter your Polygon API key.'); return; }
+  saveState();
+  ABORT=false;
+  $('runBtn').disabled=true; $('stopBtn').disabled=false;
+  clearLog(); RESULTS=[]; $('resBody').innerHTML=''; $('resultMeta').textContent='';
+
+  const rf=parseFloat($('rf').value)||4.25;
+  const P={
+    fcfMult:+$('s_fcfMult').value, roicMin:+$('s_roicMin').value, coc:+$('s_coc').value,
+    roicYears:+$('s_roicYears').value, ltd:+$('s_ltd').value, low:+$('s_low').value, ttm:+$('s_ttm').value
+  };
+  const minFcfYield = P.fcfMult*rf;
+
+  // build universe
+  let list=[];
+  const u=$('universe').value;
+  const custom=$('customList').value.trim().split(/[\s,]+/).filter(Boolean);
+  if(u==='custom') list=custom;
+  else if(u==='etf') list=[...ETFS];
+  else if(u==='sp500') list=[...SP500];
+  else list=[...ETFS,...SP500];
+  if(u!=='custom' && custom.length) list=custom; // override if user typed a list
+  list=[...new Set(list.map(s=>s.toUpperCase()))];
+
+  log(`Universe: ${list.length} tickers. Risk-free=${rf}%  →  F2 min FCF-yield=${minFcfYield.toFixed(2)}%  (${P.fcfMult}×).`,'info');
+  log(`F3: ROIC ≥ ${P.roicMin}% and > COC ${P.coc}%, history ≥ ${P.roicYears}yr.  F4: LTD/FCF ≤ ${P.ltd}.  F5: ≤ ${P.low}% above 52wLo, TTM ≤ ${P.ttm}%.`,'info');
+  log('—'.repeat(40));
+
+  const conc=Math.max(1,Math.min(10,parseInt($('conc').value)||5));
+  let done=0, qualified=0, near=0;
+  const total=list.length;
+
+  async function worker(tk){
+    if(ABORT) return;
+    const isETF = ETFSET.has(tk);
+    const F={f1:'na',f2:'na',f3:'na',f4:'na',f5:'na'};
+    try{
+      const ps=await getPriceStats(tk,key);
+      if(!ps){ log(`${tk.padEnd(6)} ✗ no price data`,'no'); return; }
+      // F5 gate first (cheap)
+      const f5pass = ps.pctLow<=P.low && ps.ttm<=P.ttm;
+      F.f5 = f5pass?'on':'off';
+
+      if(isETF){
+        // ETFs: only F5 applies; fundamentals N/A
+        const rec={ticker:tk,isETF:true,price:ps.price,pctLow:ps.pctLow,ttm:ps.ttm,
+          fcfYield:null,fcfMultActual:null,roic:null,roicHistPass:null,ltdFcf:null,
+          F,approx:false,score:f5pass?50:0,
+          verdict:f5pass?'NEAR (ETF · F5 only)':'reject'};
+        if(f5pass){ RESULTS.push(rec); near++; log(`${tk.padEnd(6)} ● ETF at ${ps.pctLow.toFixed(1)}% above 52wLo — F5 only (fundamentals N/A)`,'wn'); }
+        else log(`${tk.padEnd(6)} ✗ ETF ${ps.pctLow.toFixed(1)}% above low / TTM ${ps.ttm.toFixed(1)}% — F5 fail`);
+        return;
+      }
+
+      // pull financials only for names that at least have price; we still compute fundamentals
+      // even if F5 fails, so the row can show why (but skip to save calls if F5 fails hard? -> book is sequential; we short-circuit)
+      if(!f5pass){
+        log(`${tk.padEnd(6)} ✗ F5: ${ps.pctLow.toFixed(1)}% above 52wLo, TTM ${ps.ttm.toFixed(1)}%`);
+        return;
+      }
+
+      const snap=await getSnapshot(tk,key);
+      let fils=[];
+      try{ fils=await getFinancials(tk,key,Math.max(P.roicYears,5)); }
+      catch(e){ log(`${tk.padEnd(6)} ✗ financials error: ${e.message}`,'no'); return; }
+      if(!fils.length){ log(`${tk.padEnd(6)} ✗ no financials`,'no'); return; }
+
+      const latest=extractFiling(fils[0]);
+      const {fcf,approx}=computeFCF(latest);
+      // market cap
+      let mcap=null;
+      if(snap.shares && ps.price) mcap=snap.shares*ps.price;
+      // enterprise value = mcap + total debt - cash. Use LTD as debt proxy if total debt absent.
+      const debt=(latest.ltd!=null)?latest.ltd:0;
+      const cash=(latest.cash!=null)?latest.cash:0;
+      let ev = (mcap!=null)? mcap+debt-cash : null;
+
+      // F2 FCF yield
+      let fcfYield=null, fcfMultActual=null;
+      if(fcf!=null && ev!=null && ev>0){ fcfYield=fcf/ev*100; fcfMultActual=fcfYield/rf; }
+      const f2pass = (fcfYield!=null) && fcfYield>=minFcfYield;
+      F.f2 = (fcfYield==null)?'na':(f2pass?'on':'off');
+
+      // F3 ROIC current + history
+      const roicNow=computeROIC(latest);
+      const f3now = (roicNow!=null) && roicNow>=P.roicMin && roicNow>P.coc;
+      let histGood=0, histTot=0;
+      for(let i=0;i<fils.length;i++){
+        const r=computeROIC(extractFiling(fils[i]));
+        if(r!=null){ histTot++; if(r>P.coc) histGood++; }
+      }
+      const f3hist = histGood>=P.roicYears;
+      const f3pass = f3now && f3hist;
+      F.f3 = (roicNow==null)?'na':(f3pass?'on':'off');
+
+      // F1 proxy = sustained ROIC>COC history (same signal as f3hist) -> green, but always MANUAL flag
+      F.f1 = (histTot===0)?'na':(f3hist?'on':'off');
+
+      // F4 LTD/FCF
+      let ltdFcf=null;
+      if(latest.ltd!=null && fcf!=null && fcf>0){ ltdFcf=latest.ltd/fcf; }
+      else if(latest.ltd!=null && (latest.ltd<=0)){ ltdFcf=0; }
+      const f4pass = (ltdFcf!=null) && ltdFcf<=P.ltd;
+      F.f4 = (ltdFcf==null)?'na':(f4pass?'on':'off');
+
+      // scoring (ranking aid)
+      let score=0;
+      if(fcfMultActual!=null) score += Math.min(30, fcfMultActual/P.fcfMult*15);
+      if(roicNow!=null) score += Math.min(30, Math.max(0,(roicNow-P.coc))*1.5);
+      if(ltdFcf!=null) score += Math.min(20, Math.max(0,(P.ltd-ltdFcf))/P.ltd*20);
+      score += Math.min(20, Math.max(0,(P.low-ps.pctLow))/Math.max(1,P.low)*20);
+      score=Math.round(score);
+
+      const computable=[F.f2,F.f3,F.f4].filter(v=>v!=='na');
+      const passes=[F.f2,F.f3,F.f4].filter(v=>v==='on').length;
+      const fails=computable.filter(v=>v==='off').length;
+      let verdict;
+      if(F.f5==='on' && f2pass && f3pass && f4pass){ verdict='QUALIFIED'; qualified++; }
+      else if(F.f5==='on' && fails<=1){ verdict='NEAR'; near++; }
+      else { verdict='reject'; }
+
+      if(verdict!=='reject'){
+        RESULTS.push({ticker:tk,isETF:false,name:snap.name,price:ps.price,pctLow:ps.pctLow,ttm:ps.ttm,
+          fcfYield,fcfMultActual,roic:roicNow,roicHistPass:`${histGood}/${histTot}`,ltdFcf,
+          F,approx,score,verdict});
+        const tag=verdict==='QUALIFIED'?'✔ QUALIFIED':'● NEAR';
+        const cls=verdict==='QUALIFIED'?'ok':'wn';
+        log(`${tk.padEnd(6)} ${tag}  FCFyld ${fcfYield?fcfYield.toFixed(2)+'%':'--'} (${fcfMultActual?fcfMultActual.toFixed(1)+'×':'--'})  ROIC ${roicNow?roicNow.toFixed(1)+'%':'--'} hist ${histGood}/${histTot}  LTD/FCF ${ltdFcf!=null?ltdFcf.toFixed(2):'--'}  ${approx?'[FCF approx]':''}`,cls);
+      } else {
+        const why=[];
+        if(!f2pass) why.push(F.f2==='na'?'F2 no-data':`F2 FCFyld ${fcfYield?fcfYield.toFixed(2)+'%':'--'}<${minFcfYield.toFixed(1)}%`);
+        if(!f3pass) why.push(F.f3==='na'?'F3 no-data':`F3 ROIC ${roicNow?roicNow.toFixed(1)+'%':'--'}/hist ${histGood}`);
+        if(!f4pass) why.push(F.f4==='na'?'F4 no-data':`F4 LTD/FCF ${ltdFcf!=null?ltdFcf.toFixed(2):'--'}>${P.ltd}`);
+        log(`${tk.padEnd(6)} ✗ ${why.join('  ·  ')}  ${approx?'[FCF approx]':''}`);
+      }
+    }catch(e){
+      if(String(e.message).includes('aborted')) return;
+      log(`${tk.padEnd(6)} ✗ error: ${e.message}`,'no');
+    }finally{
+      done++;
+      $('prog').style.width=(done/total*100)+'%';
+      $('counts').innerHTML=`<span class="count">${done}</span>/${total} scanned · <span class="pass">${qualified}</span> qualified · <span class="warnc">${near}</span> near`;
+    }
+  }
+
+  $('phase').textContent='scanning…';
+  // concurrency pool
+  let idx=0;
+  async function pool(){
+    while(idx<list.length && !ABORT){
+      const my=list[idx++];
+      await worker(my);
+    }
+  }
+  await Promise.all(Array.from({length:conc},pool));
+
+  $('phase').textContent = ABORT?'stopped':'complete';
+  render(P,rf,minFcfYield);
+  $('runBtn').disabled=false; $('stopBtn').disabled=true;
+  log('—'.repeat(40));
+  log(`Done. ${qualified} qualified, ${near} near. ${RESULTS.length} rows shown.`,'info');
+}
+
+/* ---------- render ---------- */
+let sortK='score', sortDir=-1;
+function render(P,rf,minFcfYield){
+  const meta=$('resultMeta');
+  meta.innerHTML = RESULTS.length
+    ? `<span class="count">${RESULTS.filter(r=>r.verdict==='QUALIFIED').length}</span> qualified &nbsp;·&nbsp; ${RESULTS.filter(r=>r.verdict.startsWith('NEAR')).length} near &nbsp;·&nbsp; every survivor still needs your F1 moat check &nbsp;·&nbsp; book output = top 25 that pass all five, rebalanced 6–12mo.`
+    : 'No candidates matched. Loosen sliders (esp. F5 % above low, or TTM gate) or check the log for data gaps.';
+  drawTable();
+}
+function drawTable(){
+  const body=$('resBody'); body.innerHTML='';
+  const rows=[...RESULTS].sort((a,b)=>{
+    let x=a[sortK], y=b[sortK];
+    if(x==null)x=-Infinity; if(y==null)y=-Infinity;
+    if(typeof x==='string'){ return sortDir*x.localeCompare(y); }
+    return sortDir*(x-y);
+  });
+  const dot=v=>`<span class="dot ${v}"></span>`;
+  for(const r of rows){
+    const tr=document.createElement('tr');
+    const filt=`<span class="flt">${dot(r.F.f1)}${dot(r.F.f2)}${dot(r.F.f3)}${dot(r.F.f4)}${dot(r.F.f5)}</span>`;
+    const verdictHtml = r.verdict==='QUALIFIED'
+      ? `<span class="pill q">QUALIFIED</span> <span class="pill man">F1?</span>`
+      : (r.verdict.startsWith('NEAR')
+          ? `<span class="pill near">${r.isETF?'NEAR·ETF':'NEAR'}</span>`
+          : r.verdict);
+    const fmtP=v=>v==null?'<span class="warnc">N/A</span>':v.toFixed(2);
+    const cls=(v,good)=>v==null?'':(good?'pass':'fail');
+    tr.innerHTML=`
+      <td><span class="tk">${r.ticker}</span>${r.approx?' <span class="warnc" title="FCF approximated (no capex line)">~</span>':''}</td>
+      <td>${r.price?r.price.toFixed(2):'--'}</td>
+      <td class="${r.pctLow<= (+$('s_low').value)?'pass':'fail'}">${r.pctLow!=null?r.pctLow.toFixed(1)+'%':'--'}</td>
+      <td class="${r.ttm<=(+$('s_ttm').value)?'pass':''}">${r.ttm!=null?r.ttm.toFixed(1)+'%':'--'}</td>
+      <td>${r.fcfYield!=null?r.fcfYield.toFixed(2)+'%':'<span class=warnc>N/A</span>'}</td>
+      <td class="${r.fcfMultActual!=null && r.fcfMultActual>=(+$('s_fcfMult').value)?'pass':'fail'}">${r.fcfMultActual!=null?r.fcfMultActual.toFixed(1)+'×':'--'}</td>
+      <td class="${r.roic!=null && r.roic>=(+$('s_roicMin').value)?'pass':'fail'}">${r.roic!=null?r.roic.toFixed(1)+'%':'<span class=warnc>N/A</span>'}</td>
+      <td>${r.roicHistPass!=null?r.roicHistPass:'--'}</td>
+      <td class="${r.ltdFcf!=null && r.ltdFcf<=(+$('s_ltd').value)?'pass':'fail'}">${r.ltdFcf!=null?r.ltdFcf.toFixed(2):'<span class=warnc>N/A</span>'}</td>
+      <td>${filt}</td>
+      <td>${r.score}</td>
+      <td style="text-align:left">${verdictHtml}</td>`;
+    body.appendChild(tr);
+  }
+}
+document.querySelectorAll('#resTable th').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k=th.dataset.k;
+    if(k==='filters')return;
+    if(sortK===k) sortDir*=-1; else {sortK=k;sortDir=(k==='ticker')?1:-1;}
+    drawTable();
+  });
+});
+
+/* ---------- wire buttons ---------- */
+$('runBtn').addEventListener('click',run);
+$('stopBtn').addEventListener('click',()=>{ABORT=true;$('phase').textContent='stopping…';});
+['apiKey','rf','universe','customList','conc'].forEach(id=>$(id).addEventListener('change',saveState));
+loadState();
+</script>
+</body>
+</html>
