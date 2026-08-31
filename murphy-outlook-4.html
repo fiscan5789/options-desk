@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Murphy Outlook — 30/60/90/120d + OI Walls</title>
+<style>
+:root{
+  --bg:#0a0e12;--panel:#111820;--panel2:#0d141b;--ink:#d6e0e8;--dim:#7d8b98;
+  --faint:#4a5763;--line:#1e2a35;--amber:#e8b13a;--up:#3fb98a;--down:#e06666;
+  --neu:#6b8cae;--call:#3fb98a;--put:#e06666;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;
+  line-height:1.5;min-height:100vh;
+  background-image:linear-gradient(rgba(30,42,53,.3) 1px,transparent 1px),linear-gradient(90deg,rgba(30,42,53,.3) 1px,transparent 1px);
+  background-size:28px 28px;}
+.wrap{max-width:960px;margin:0 auto;padding:22px 16px 80px}
+header{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+.brand{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
+.logo{font-family:var(--sans);font-weight:800;letter-spacing:-.02em;font-size:24px}
+.logo b{color:var(--amber)}
+.sub{color:var(--dim);font-size:11px}
+.srcline{margin-top:7px;color:var(--faint);font-size:11px;line-height:1.6}
+.srcline span{color:var(--dim)}
+
+.deck{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:4px;padding:16px;margin-bottom:16px}
+.dlabel{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:9px;display:block}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+  font-family:var(--mono);font-size:12px;padding:9px;border-radius:3px;cursor:pointer;letter-spacing:.03em}
+.tab.on{border-color:var(--amber);color:var(--amber);background:#0f1621}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.field{flex:1;min-width:140px}
+.field label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.field input,.field textarea{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  font-family:var(--mono);font-size:13px;padding:9px 11px;border-radius:3px;outline:none;resize:vertical}
+.field input:focus,.field textarea:focus{border-color:var(--amber)}
+.field input::placeholder,.field textarea::placeholder{color:var(--faint)}
+.optrow{margin-top:12px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim)}
+.optrow input[type=checkbox]{width:auto;accent-color:var(--amber)}
+.hide{display:none!important}
+.run{margin-top:14px;width:100%;background:var(--amber);color:#1a1205;border:none;
+  font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.04em;padding:12px;border-radius:3px;cursor:pointer}
+.run:hover:not(:disabled){filter:brightness(1.08)}
+.run:disabled{opacity:.4;cursor:not-allowed}
+.keyrow{margin-top:12px}
+.keyrow input{font-size:12px}
+.keynote{font-size:10px;color:var(--faint);margin-top:5px;line-height:1.5}
+.status{margin-top:12px;font-size:12px;color:var(--dim);display:flex;align-items:center;gap:8px;min-height:16px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+.err{color:var(--down)}
+
+.out{margin-top:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;margin-bottom:12px;overflow:hidden}
+.card-head{border-left:3px solid var(--neu);padding:14px 16px;background:linear-gradient(180deg,var(--panel),var(--panel2))}
+.card-head.bull{border-left-color:var(--up)}
+.card-head.bear{border-left-color:var(--down)}
+.card-head.neu{border-left-color:var(--neu)}
+.ch-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sym{font-family:var(--sans);font-weight:800;font-size:20px}
+.px{color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums}
+.stage{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.headline{margin-top:7px;font-size:13px;line-height:1.55;color:var(--ink)}
+
+.hz4{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}
+@media(max-width:560px){.hz4{grid-template-columns:1fr}}
+.hz{background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:12px}
+.hz-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.hz-t{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.bias{font-family:var(--sans);font-weight:700;font-size:14px;padding:1px 7px;border-radius:3px}
+.bias.bullish{color:var(--up);background:rgba(63,185,138,.1)}
+.bias.bearish{color:var(--down);background:rgba(224,102,102,.1)}
+.bias.neutral{color:var(--neu);background:rgba(107,140,174,.1)}
+.score-bar{height:5px;background:var(--panel);border-radius:3px;margin:8px 0;overflow:hidden;position:relative}
+.score-fill{height:100%;border-radius:3px}
+.hz-row{display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--line);font-size:12px}
+.hz-row:first-of-type{border-top:none}
+.hz-row .k{color:var(--dim)}
+.hz-row .v{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.hz-lv{margin-top:8px;border-top:1px solid var(--line);padding-top:7px}
+.hz-lv .lvh{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.lv-row{display:flex;justify-content:space-between;gap:6px;padding:2px 0;font-size:11px;font-variant-numeric:tabular-nums}
+.lv-row .lk{color:var(--dim)}
+.lv-tag{font-size:9px;padding:0 4px;border-radius:2px;letter-spacing:.04em}
+.lv-tag.call{color:var(--call);background:rgba(63,185,138,.09)}
+.lv-tag.put{color:var(--put);background:rgba(224,102,102,.09)}
+.lv-tag.swing{color:var(--neu);background:rgba(107,140,174,.09)}
+.lv-val.res{color:var(--down)}
+.lv-val.sup{color:var(--up)}
+
+details.sec{border-top:1px solid var(--line)}
+details.sec>summary{list-style:none;cursor:pointer;padding:11px 16px;display:flex;justify-content:space-between;
+  align-items:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary:hover{color:var(--ink)}
+.chev{color:var(--faint);transition:transform .2s}
+details.sec[open] .chev{transform:rotate(90deg)}
+.sec-body{padding:0 16px 14px}
+.factor{display:grid;grid-template-columns:16px 1fr auto;gap:9px;align-items:start;padding:6px 0;border-top:1px solid var(--line);font-size:12px}
+.factor:first-child{border-top:none}
+.fi{font-family:var(--sans);font-weight:700;font-size:13px;line-height:1.3}
+.fi.pos{color:var(--up)}.fi.neg{color:var(--down)}.fi.flat{color:var(--neu)}
+.fname{color:var(--ink)}
+.fval{color:var(--dim);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fnote{grid-column:2/4;color:var(--faint);font-size:11px;line-height:1.5;margin-top:1px}
+
+.wallwrap{padding:2px 16px 14px}
+.wallgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:560px){.wallgrid{grid-template-columns:1fr 1fr}}
+.wallcol{background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:9px}
+.wallcol h4{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:400;margin-bottom:6px}
+.wallcol .exp{font-size:9px;color:var(--faint);margin-bottom:6px}
+.wl{display:flex;justify-content:space-between;gap:5px;padding:2px 0;font-size:11px;font-variant-numeric:tabular-nums}
+.wl .oi{color:var(--faint);font-size:10px}
+.wl.c .k{color:var(--call)}
+.wl.p .k{color:var(--put)}
+
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;color:var(--faint);font-weight:400;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line)}
+.tbl th.r,.tbl td.r{text-align:right;font-variant-numeric:tabular-nums}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--ink)}
+.tbl tr.clk{cursor:pointer}
+.tbl tr.clk:hover{background:var(--panel2)}
+.tbl .tsym{font-family:var(--sans);font-weight:700}
+.pill{font-family:var(--sans);font-weight:700;font-size:11px;padding:1px 7px;border-radius:3px}
+.pill.bullish{color:var(--up);background:rgba(63,185,138,.1)}
+.pill.bearish{color:var(--down);background:rgba(224,102,102,.1)}
+.pill.neutral{color:var(--neu);background:rgba(107,140,174,.1)}
+.scorecell{font-variant-numeric:tabular-nums;font-weight:700}
+.log{font-size:11px;color:var(--faint);padding:2px 0;line-height:1.5}
+.log b{color:var(--dim)}
+.disc{margin-top:16px;padding:12px 14px;border:1px solid var(--line);border-radius:4px;background:var(--panel2);
+  font-size:11px;line-height:1.7;color:var(--faint)}
+.disc b{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">MURPHY<b>OUTLOOK</b></div>
+      <div class="sub">30 / 60 / 90 / 120-day technical read + OI walls · Polygon</div>
+    </div>
+    <div class="srcline">
+      <span>Murphy</span> trend / volume-confirmation / RSI / MACD / stochastics ·
+      <span>Shannon</span> multi-horizon read &amp; stage ·
+      <span>Edwards &amp; Magee</span> swing support-resistance ·
+      <span>Options OI</span> put/call open-interest walls per tenor
+    </div>
+  </header>
+
+  <div class="deck">
+    <div class="tabs">
+      <button class="tab on" id="tabSingle">Single ticker</button>
+      <button class="tab" id="tabList">Watchlist</button>
+    </div>
+
+    <div id="singlePane">
+      <div class="row">
+        <div class="field"><label>Ticker</label>
+          <input id="sym" placeholder="e.g. NVDA" autocomplete="off" spellcheck="false"></div>
+      </div>
+    </div>
+
+    <div id="listPane" class="hide">
+      <div class="field"><label>Tickers (comma or space separated)</label>
+        <textarea id="syms" rows="2" placeholder="AAPL MSFT NVDA GLD TLT SPY"></textarea></div>
+    </div>
+
+    <div class="keyrow field">
+      <label>Polygon API key</label>
+      <input id="key" type="password" placeholder="stored locally in this browser only" autocomplete="off">
+      <div class="keynote">Saved to localStorage on this device. Uses <b>v2/aggs</b> daily bars + <b>v3/snapshot/options</b> chains (Options Starter entitlement needed for OI walls).</div>
+    </div>
+
+    <div class="optrow">
+      <input type="checkbox" id="oiToggle" checked>
+      <label for="oiToggle" style="cursor:pointer">Compute options OI walls (put/call open-interest concentration per tenor)</label>
+    </div>
+
+    <button class="run" id="run">Run outlook</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="out" id="out"></div>
+
+  <div class="disc" id="disc" style="display:none">
+    <b>How to read this.</b> Scores are Murphy's indicator conditions computed from daily price/volume over each horizon's lookback — not a price forecast. <b>OI walls</b> are strikes with the largest open interest: heavy call OI above spot tends to act as resistance / a magnet, heavy put OI below spot as support. Walls are a positioning read, not a guarantee — they can break or shift as dealers hedge. Each tenor panel anchors to the single expiration carrying the most total open interest within a window around its target (30/60/90/120 DTE), so it snaps to the dominant monthly/quarterly OPEX date rather than the literal nearest expiration. Technical analysis is probabilistic. Not financial advice — every read is a hypothesis to confirm.
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const KEY='murphy_polygon_key';
+$('key').value=localStorage.getItem(KEY)||'';
+$('key').addEventListener('input',e=>localStorage.setItem(KEY,e.target.value.trim()));
+
+let mode='single';
+$('tabSingle').addEventListener('click',()=>setMode('single'));
+$('tabList').addEventListener('click',()=>setMode('list'));
+function setMode(m){mode=m;
+  $('tabSingle').classList.toggle('on',m==='single');
+  $('tabList').classList.toggle('on',m==='list');
+  $('singlePane').classList.toggle('hide',m!=='single');
+  $('listPane').classList.toggle('hide',m!=='list');
+}
+
+/* horizons in calendar days */
+const HORIZONS=[30,60,90,120];
+
+/* ---------- indicator math ---------- */
+const SMA=(a,n)=>a.length<n?null:a.slice(-n).reduce((s,x)=>s+x,0)/n;
+function EMAseries(a,n){if(a.length<n)return[];const k=2/(n+1);let e=a.slice(0,n).reduce((s,x)=>s+x,0)/n;const out=[e];
+  for(let i=n;i<a.length;i++){e=a[i]*k+e*(1-k);out.push(e);}return out;}
+function RSI(closes,n=14){if(closes.length<n+1)return null;let g=0,l=0;
+  for(let i=closes.length-n;i<closes.length;i++){const d=closes[i]-closes[i-1];if(d>=0)g+=d;else l-=d;}
+  const ag=g/n,al=l/n;if(al===0)return 100;const rs=ag/al;return 100-100/(1+rs);}
+function RSIseries(closes,n=14){const out=[];for(let i=n;i<closes.length;i++){out.push(RSI(closes.slice(0,i+1),n));}return out;}
+function MACD(closes){if(closes.length<35)return null;
+  const e12=EMAseries(closes,12),e26=EMAseries(closes,26);
+  const off=e12.length-e26.length;const macdLine=e26.map((v,i)=>e12[i+off]-v);
+  const sig=EMAseries(macdLine,9);const so=macdLine.length-sig.length;
+  const hist=sig.map((s,i)=>macdLine[i+so]-s);
+  return {macd:macdLine[macdLine.length-1],signal:sig[sig.length-1],hist:hist[hist.length-1],
+    histPrev:hist.length>1?hist[hist.length-2]:0,macdPrev:macdLine[macdLine.length-2]};}
+function Stoch(bars,n=14){if(bars.length<n)return null;const s=bars.slice(-n);
+  const hh=Math.max(...s.map(b=>b.h)),ll=Math.min(...s.map(b=>b.l));const c=s[s.length-1].c;
+  if(hh===ll)return 50;return (c-ll)/(hh-ll)*100;}
+function swingLevels(bars,look){const s=bars.slice(-look);const res=[],sup=[];
+  for(let i=2;i<s.length-2;i++){const h=s[i].h,l=s[i].l;
+    if(h>s[i-1].h&&h>s[i-2].h&&h>s[i+1].h&&h>s[i+2].h)res.push(h);
+    if(l<s[i-1].l&&l<s[i-2].l&&l<s[i+1].l&&l<s[i+2].l)sup.push(l);}
+  return {res:res.slice(-3),sup:sup.slice(-3)};}
+function rsiDivergence(closes,rsiS){
+  if(closes.length<20||rsiS.length<20)return null;
+  const pc=closes.slice(-10),pr=rsiS.slice(-10);
+  const pHi=Math.max(...pc), pHiPrev=Math.max(...closes.slice(-20,-10));
+  const rHi=Math.max(...pr), rHiPrev=Math.max(...rsiS.slice(-20,-10));
+  const pLo=Math.min(...pc), pLoPrev=Math.min(...closes.slice(-20,-10));
+  const rLo=Math.min(...pr), rLoPrev=Math.min(...rsiS.slice(-20,-10));
+  if(pHi>pHiPrev&&rHi<rHiPrev)return 'bearish';
+  if(pLo<pLoPrev&&rLo>rLoPrev)return 'bullish';
+  return null;}
+
+/* ---------- Murphy-faithful scoring for one horizon ----------
+   horizonDays scales the lookback window & MA config so a 30d read is
+   genuinely shorter than a 120d read. All computed from daily bars. */
+function scoreTF(dailyBars, horizonDays){
+  const tradBars=Math.round(horizonDays*5/7); // approx trading days in horizon
+  // MA config scaled to horizon: fast ~ half the window, slow ~ full window (bounded)
+  const maFast=Math.max(10,Math.min(50,Math.round(tradBars/2)));
+  const maSlow=Math.max(20,Math.min(200,tradBars));
+  const need=maSlow+40;
+  const bars=dailyBars.slice(-Math.max(need,tradBars+40));
+  const closes=bars.map(b=>b.c), vols=bars.map(b=>b.v);
+  const price=closes[closes.length-1];
+  const factors=[];
+  let score=0;
+
+  const fast=SMA(closes,maFast), slow=SMA(closes,maSlow);
+  const fastPrev=SMA(closes.slice(0,-3),maFast);
+
+  // 1. Trend: price vs MAs + MA stack (weight 3)
+  if(fast!=null&&slow!=null){
+    let t=0,notes=[];
+    if(price>fast){t++;notes.push('price>'+maFast+'MA');}else{t--;notes.push('price<'+maFast+'MA');}
+    if(price>slow){t++;notes.push('price>'+maSlow+'MA');}else{t--;notes.push('price<'+maSlow+'MA');}
+    if(fast>slow){t++;notes.push(maFast+'>'+maSlow+' (stacked up)');}else{t--;notes.push(maFast+'<'+maSlow+' (stacked down)');}
+    const dir=t>0?1:t<0?-1:0;
+    score+=dir*3;
+    factors.push({name:'Trend (moving-average structure)',sign:dir,
+      val:`${maFast}MA ${fast.toFixed(2)} / ${maSlow}MA ${slow.toFixed(2)}`,
+      note:'Murphy: trend presumed intact until reversed; MAs act as dynamic support/resistance. '+notes.join(', ')+'.'});
+  } else {
+    factors.push({name:'Trend',sign:0,val:'insufficient history',note:'Not enough bars for '+maSlow+'-period MA.'});
+  }
+
+  // 2. MA slope (weight 1)
+  if(fast!=null&&fastPrev!=null){
+    const sl=fast-fastPrev; const dir=sl>0?1:sl<0?-1:0;
+    score+=dir*1;
+    factors.push({name:maFast+'-period slope',sign:dir,val:(sl>=0?'+':'')+sl.toFixed(2)+' / 3 bars',
+      note:'Rising fast MA supports continuation; falling warns of loss of momentum.'});
+  }
+
+  // 3. Volume confirmation (weight 2)
+  if(vols.length>=25){
+    const recentAvg=SMA(vols,5), baseAvg=SMA(vols,20);
+    const lastMove=closes[closes.length-1]-closes[closes.length-5];
+    let dir=0,txt='';
+    if(recentAvg&&baseAvg){
+      const expanding=recentAvg>baseAvg*1.05;
+      if(lastMove>0){ dir=expanding?1:-0.4; txt=expanding?'volume expanding into the advance (confirms)':'advance on lighter volume (unconfirmed)';}
+      else if(lastMove<0){ dir=expanding?-1:0.4; txt=expanding?'volume expanding into the decline (confirms weakness)':'decline on lighter volume (selling may be drying up)';}
+      else {dir=0;txt='flat.';}
+      score+=dir*2;
+      factors.push({name:'Volume confirmation',sign:dir>0?1:dir<0?-1:0,
+        val:`5-bar ${(recentAvg/1e6).toFixed(1)}M vs 20-bar ${(baseAvg/1e6).toFixed(1)}M`,
+        note:'Murphy: volume must confirm price. '+txt+'.'});
+    }
+  }
+
+  // 4. RSI (weight 1.5 + divergence advisory)
+  const rsi=RSI(closes,14), rsiS=RSIseries(closes,14);
+  if(rsi!=null){
+    let dir=0,txt;
+    if(rsi>=70){dir=-0.5;txt='overbought (>70) — extended, pullback risk';}
+    else if(rsi<=30){dir=0.5;txt='oversold (<30) — washed out, bounce potential';}
+    else if(rsi>=55){dir=1;txt='bullish momentum zone';}
+    else if(rsi<=45){dir=-1;txt='bearish momentum zone';}
+    else{dir=0;txt='neutral';}
+    score+=dir*1.5;
+    factors.push({name:'RSI(14)',sign:dir>0?1:dir<0?-1:0,val:rsi.toFixed(1),
+      note:'Murphy: '+txt+'.'});
+    const div=rsiDivergence(closes,rsiS);
+    if(div){const d=div==='bullish'?0.7:-0.7;score+=d;
+      factors.push({name:'RSI divergence',sign:d>0?1:-1,val:div,
+        note:'Advisory (low weight): price/RSI '+div+' divergence hints at momentum fading against price.'});}
+  }
+
+  // 5. MACD (weight 2)
+  const m=MACD(closes);
+  if(m){
+    let dir=0,notes=[];
+    if(m.macd>m.signal){dir++;notes.push('above signal');}else{dir--;notes.push('below signal');}
+    if(m.macd>0){dir+=0.5;notes.push('above zero');}else{dir-=0.5;notes.push('below zero');}
+    if(m.hist>m.histPrev)notes.push('histogram rising');else notes.push('histogram falling');
+    const d=dir>0?1:dir<0?-1:0;
+    score+=d*2;
+    factors.push({name:'MACD (12/26/9)',sign:d,val:m.macd.toFixed(2)+' / sig '+m.signal.toFixed(2),
+      note:'Murphy: '+notes.join(', ')+'.'});
+  }
+
+  // 6. Stochastic (weight 0.5)
+  const st=Stoch(bars,14);
+  if(st!=null){
+    let dir=0,txt;
+    if(st>=80){dir=-0.4;txt='overbought';}else if(st<=20){dir=0.4;txt='oversold';}
+    else if(st>=55){dir=0.6;txt='upper range';}else if(st<=45){dir=-0.6;txt='lower range';}else{dir=0;txt='mid';}
+    score+=dir;
+    factors.push({name:'Stochastic %K',sign:dir>0?1:dir<0?-1:0,val:st.toFixed(0),note:txt+'.'});
+  }
+
+  const MAXABS=10.8;
+  const norm=Math.max(-100,Math.min(100,Math.round(score/MAXABS*100)));
+  const bias= norm>=18?'bullish':norm<=-18?'bearish':'neutral';
+  const lv=swingLevels(dailyBars, Math.min(dailyBars.length, tradBars));
+  return {score:norm,bias,factors,rsi,macd:m,price,maFast,maSlow,levels:lv,horizon:horizonDays};
+}
+
+/* ---------- stage (Shannon four-stage, from daily 150MA proxy) ---------- */
+function stageFrom(daily){
+  const closes=daily.map(b=>b.c);const price=closes[closes.length-1];
+  const s150=SMA(closes,150), s150prev=SMA(closes.slice(0,-20),150);
+  if(s150==null)return 'Undetermined';
+  const rising=s150prev!=null&&s150>s150prev;
+  const above=price>s150;
+  if(above&&rising)return 'Stage 2 Markup';
+  if(!above&&!rising)return 'Stage 4 Decline';
+  if(above&&!rising)return 'Stage 3 Distribution';
+  return 'Stage 1 Accumulation';
+}
+
+/* ---------- data fetch ---------- */
+async function robustFetch(url,tries=4){
+  for(let a=0;a<tries;a++){
+    const r=await fetch(url);
+    if(r.status===429){await new Promise(res=>setTimeout(res,1200*(a+1)));continue;}
+    if(!r.ok){throw new Error('HTTP '+r.status);}
+    return r.json();
+  }
+  throw new Error('rate-limited (429) after retries');
+}
+function ymd(d){return d.toISOString().slice(0,10);}
+async function getBars(sym,timespan,fromDaysAgo,key){
+  const to=new Date();const from=new Date(Date.now()-fromDaysAgo*864e5);
+  const url=`https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(sym)}/range/1/${timespan}/${ymd(from)}/${ymd(to)}?adjusted=true&sort=asc&limit=5000&apiKey=${encodeURIComponent(key)}`;
+  const j=await robustFetch(url);
+  if(!j.results||!j.results.length)throw new Error('no data');
+  return j.results.map(r=>({o:r.o,h:r.h,l:r.l,c:r.c,v:r.v,t:r.t}));
+}
+
+/* ---------- options OI walls ----------
+   Pull the chain snapshot filtered server-side to expirations within the
+   120d window and strikes near spot, then bucket OI by strike.
+   For each horizon we pick the expiration closest to that DTE and surface
+   the top call walls (>= spot = resistance) and put walls (<= spot = support). */
+async function getOIWalls(sym, price, key){
+  const today=new Date();
+  const loStrike=(price*0.80).toFixed(2), hiStrike=(price*1.20).toFixed(2);
+  const base=`https://api.polygon.io/v3/snapshot/options/${encodeURIComponent(sym)}`;
+
+  // fetch one horizon's slice: contracts whose expiration falls in [gteDate, lteDate]
+  // and whose strike is within ±20% of spot. Paginates, but each call is tightly
+  // bounded so the 250-cap is per-window, not shared across all tenors.
+  async function fetchWindow(gteDate, lteDate){
+    const params=new URLSearchParams({
+      'expiration_date.gte':ymd(gteDate),
+      'expiration_date.lte':ymd(lteDate),
+      'strike_price.gte':loStrike,
+      'strike_price.lte':hiStrike,
+      limit:'250',
+      apiKey:key
+    });
+    let url=`${base}?${params.toString()}`;
+    const rows=[]; let guard=0;
+    while(url&&guard<4){
+      const j=await robustFetch(url);
+      if(j.results){
+        for(const r of j.results){
+          const d=r.details||{};
+          const oi=r.open_interest||0;
+          if(!d.expiration_date||!d.strike_price||!d.contract_type)continue;
+          rows.push({exp:d.expiration_date,strike:d.strike_price,type:d.contract_type,oi});
+        }
+      }
+      url=j.next_url?`${j.next_url}&apiKey=${encodeURIComponent(key)}`:null;
+      guard++;
+    }
+    return rows;
+  }
+
+  const byHorizon={};
+  const claimed=new Set(); // expirations already used by a shorter horizon
+  for(const H of HORIZONS){
+    // date window around the target DTE — ±25% (min ±10d, cap ±25d) so one giant
+    // quarterly can't swallow two adjacent panels.
+    const wobble=Math.min(25,Math.max(10,Math.round(H*0.25)));
+    const gte=new Date(Date.now()+Math.max(0,H-wobble)*864e5);
+    const lte=new Date(Date.now()+(H+wobble)*864e5);
+    let rows;
+    try{ rows=await fetchWindow(gte,lte); }
+    catch(e){ byHorizon[H]={__err:e.message}; continue; }
+    if(!rows.length){ byHorizon[H]={__empty:'no contracts '+(H-wobble)+'–'+(H+wobble)+'DTE in ±20% strikes'}; continue; }
+
+    // total OI per expiration in this window → dominant expiration
+    const expTotalOI={};
+    for(const r of rows){ expTotalOI[r.exp]=(expTotalOI[r.exp]||0)+r.oi; }
+    const expInfo=[...new Set(rows.map(r=>r.exp))].map(e=>({
+      exp:e, dte:Math.round((new Date(e+'T00:00:00Z')-today)/864e5), oi:expTotalOI[e]||0
+    })).sort((a,b)=> b.oi-a.oi || Math.abs(a.dte-H)-Math.abs(b.dte-H));
+
+    let best=expInfo.find(x=>!claimed.has(x.exp)) || expInfo[0];
+    claimed.add(best.exp);
+    const chainRows=rows.filter(r=>r.exp===best.exp);
+    const callMap={},putMap={};
+    for(const r of chainRows){
+      if(r.type==='call')callMap[r.strike]=(callMap[r.strike]||0)+r.oi;
+      else if(r.type==='put')putMap[r.strike]=(putMap[r.strike]||0)+r.oi;
+    }
+    const calls=Object.entries(callMap).map(([s,oi])=>({strike:+s,oi}))
+      .filter(x=>x.oi>0).sort((a,b)=>b.oi-a.oi);
+    const puts=Object.entries(putMap).map(([s,oi])=>({strike:+s,oi}))
+      .filter(x=>x.oi>0).sort((a,b)=>b.oi-a.oi);
+    const callWalls=calls.filter(x=>x.strike>=price*0.995).slice(0,3)
+      .sort((a,b)=>a.strike-b.strike);
+    const putWalls=puts.filter(x=>x.strike<=price*1.005).slice(0,3)
+      .sort((a,b)=>b.strike-a.strike);
+    const allTop=[...calls,...puts].sort((a,b)=>b.oi-a.oi)[0]||null;
+    if(!calls.length&&!puts.length){ byHorizon[H]={__empty:'contracts found but 0 OI near spot ('+best.exp+')'}; continue; }
+    byHorizon[H]={exp:best.exp,dte:best.dte,totalOI:best.oi,callWalls,putWalls,magnet:allTop};
+  }
+  return byHorizon;
+}
+
+async function analyze(sym,key,withOI){
+  sym=sym.toUpperCase();
+  // one daily pull deep enough for the 120d slow MA (need ~125 bars; grab ~2yr for margin)
+  const daily=await getBars(sym,'day',760,key);
+  if(daily.length<70)throw new Error('insufficient history');
+  const price=daily[daily.length-1].c;
+  const stage=stageFrom(daily);
+  const horizons=HORIZONS.map(H=>scoreTF(daily,H));
+
+  let walls=null;
+  if(withOI){
+    try{ walls=await getOIWalls(sym,price,key); }
+    catch(e){ walls={__err:e.message}; }
+  }
+
+  const avg=Math.round(horizons.reduce((s,h)=>s+h.score,0)/horizons.length);
+  const overall= avg>=18?'bullish':avg<=-18?'bearish':'neutral';
+  const shortB=horizons[0].bias, longB=horizons[3].bias;
+  let headline;
+  if(overall!=='neutral' && shortB===longB && shortB!=='neutral'){
+    headline=`Aligned ${overall.toUpperCase()} across all tenors — highest-conviction condition. ${stage}.`;
+  } else if(shortB!==longB && shortB!=='neutral' && longB!=='neutral'){
+    headline=`Term-structure conflict: 30d ${shortB} vs 120d ${longB}. ${stage}.`;
+  } else {
+    headline=`Mixed/blended read (avg ${avg>0?'+':''}${avg}). ${stage}.`;
+  }
+
+  return {sym,price,stage,overall,avg,headline,horizons,walls};
+}
+
+/* ---------- render ---------- */
+function biasClass(b){return b==='bullish'?'bull':b==='bearish'?'bear':'neu';}
+function esc(x){return(x==null?'':String(x)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function scoreColor(s){return s>=18?'var(--up)':s<=-18?'var(--down)':'var(--neu)';}
+function fillBar(s){const pct=Math.abs(s);const col=scoreColor(s);
+  const side=s>=0?'left:50%':'right:50%';
+  return `<div class="score-bar"><div class="score-fill" style="width:${pct/2}%;${side};position:absolute;background:${col}"></div></div>`;}
+
+function factorRows(fs){return fs.map(f=>{
+  const cls=f.sign>0?'pos':f.sign<0?'neg':'flat';
+  const ic=f.sign>0?'▲':f.sign<0?'▼':'—';
+  return `<div class="factor"><div class="fi ${cls}">${ic}</div>
+    <div class="fname">${esc(f.name)}</div><div class="fval">${esc(f.val)}</div>
+    <div class="fnote">${esc(f.note)}</div></div>`;}).join('');}
+
+/* per-horizon levels block: OI walls (nearest tenor) + swing S/R */
+function levelsBlock(h, walls){
+  const swR=h.levels.res, swS=h.levels.sup;
+  let rows='';
+  const raw = walls && !walls.__err ? walls[h.horizon] : null;
+  const w = raw && raw.callWalls ? raw : null;       // valid only if it has wall data
+  const diag = raw && (raw.__empty||raw.__err) ? (raw.__empty||raw.__err) : null;
+  if(w){
+    for(const c of w.callWalls){
+      rows+=`<div class="lv-row"><span class="lk"><span class="lv-tag call">CALL OI</span></span><span class="lv-val res">${c.strike.toFixed(2)} <span style="color:var(--faint)">· ${(c.oi/1e3).toFixed(1)}k</span></span></div>`;
+    }
+    for(const p of w.putWalls){
+      rows+=`<div class="lv-row"><span class="lk"><span class="lv-tag put">PUT OI</span></span><span class="lv-val sup">${p.strike.toFixed(2)} <span style="color:var(--faint)">· ${(p.oi/1e3).toFixed(1)}k</span></span></div>`;
+    }
+  }
+  if(swR.length) rows+=`<div class="lv-row"><span class="lk"><span class="lv-tag swing">SWING R</span></span><span class="lv-val res">${swR.map(x=>x.toFixed(2)).join(' · ')}</span></div>`;
+  if(swS.length) rows+=`<div class="lv-row"><span class="lk"><span class="lv-tag swing">SWING S</span></span><span class="lv-val sup">${swS.map(x=>x.toFixed(2)).join(' · ')}</span></div>`;
+  const expNote = w ? `${w.exp} · ${w.dte}DTE · ${(w.totalOI/1e3).toFixed(0)}k OI`
+    : diag ? esc(diag)
+    : (walls&&walls.__err?'OI: '+esc(walls.__err):'no OI');
+  return `<div class="hz-lv"><div class="lvh">Levels · ${expNote}</div>${rows||'<div class="lv-row"><span class="lk">none clear</span></div>'}</div>`;
+}
+
+function hzBlock(h, walls){
+  return `<div class="hz">
+    <div class="hz-h"><span class="hz-t">${h.horizon} days · ${h.maFast}/${h.maSlow}MA</span><span class="bias ${h.bias}">${h.bias.toUpperCase()}</span></div>
+    ${fillBar(h.score)}
+    <div class="hz-row"><span class="k">score</span><span class="v" style="color:${scoreColor(h.score)}">${h.score>0?'+':''}${h.score}</span></div>
+    ${levelsBlock(h, walls)}
+  </div>`;
+}
+
+/* full-width OI wall matrix across all four tenors */
+function wallMatrix(walls, price){
+  if(!walls) return '';
+  if(walls.__err) return `<div class="wallwrap"><div class="log"><b>OI walls:</b> unavailable — ${esc(walls.__err)}</div></div>`;
+  const cols=HORIZONS.map(H=>{
+    const w=walls[H];
+    if(!w || (!w.callWalls && (w.__empty||w.__err))){
+      const msg=w?(w.__empty||w.__err):'no data';
+      return `<div class="wallcol"><h4>~${H}d</h4><div class="exp">${esc(msg)}</div></div>`;
+    }
+    const calls=w.callWalls.map(c=>`<div class="wl c"><span class="k">C ${c.strike.toFixed(2)}</span><span class="oi">${(c.oi/1e3).toFixed(1)}k</span></div>`).join('')||'<div class="wl"><span class="oi">—</span></div>';
+    const puts=w.putWalls.map(p=>`<div class="wl p"><span class="k">P ${p.strike.toFixed(2)}</span><span class="oi">${(p.oi/1e3).toFixed(1)}k</span></div>`).join('')||'<div class="wl"><span class="oi">—</span></div>';
+    const mag=w.magnet?`<div class="exp" style="margin-top:6px">max-OI ${w.magnet.strike.toFixed(2)} · ${(w.magnet.oi/1e3).toFixed(1)}k</div>`:'';
+    return `<div class="wallcol"><h4>~${H}d → ${w.dte}DTE</h4><div class="exp">${w.exp} · ${(w.totalOI/1e3).toFixed(0)}k total OI</div>${calls}${puts}${mag}</div>`;
+  }).join('');
+  return `<div class="wallwrap"><div class="wallgrid">${cols}</div></div>`;
+}
+
+function singleCard(r){
+  const factorSecs=r.horizons.map((h,i)=>
+    `<details class="sec"${i===0?' open':''}><summary>${h.horizon}-day factors <span class="chev">›</span></summary>
+      <div class="sec-body">${factorRows(h.factors)}</div></details>`).join('');
+  return `<div class="card">
+    <div class="card-head ${biasClass(r.overall)}">
+      <div class="ch-top"><div><span class="sym">${esc(r.sym)}</span></div>
+        <span class="px">$${r.price.toFixed(2)}</span></div>
+      <div class="stage">${esc(r.stage)} · overall ${esc(r.overall)} (avg ${r.avg>0?'+':''}${r.avg})</div>
+      <div class="headline">${esc(r.headline)}</div>
+    </div>
+    <div class="hz4">
+      ${r.horizons.map(h=>hzBlock(h,r.walls)).join('')}
+    </div>
+    <details class="sec" open><summary>OI wall matrix (all tenors) <span class="chev">›</span></summary>
+      ${wallMatrix(r.walls,r.price)}
+      <div class="sec-body" style="padding-top:0"><div class="log">Call walls above spot = resistance/magnet; put walls below spot = support. OI in thousands of contracts. Each column anchors to the single expiration carrying the most total open interest within a window around its target DTE — so panels snap to the real monthly/quarterly OPEX dates where OI concentrates, not a stray weekly. Header shows target → actual DTE.</div></div>
+    </details>
+    ${factorSecs}
+  </div>`;
+}
+
+function tableRows(results){
+  const sorted=[...results].sort((a,b)=>b.avg-a.avg);
+  return sorted.map(r=>{
+    const cells=r.horizons.map(h=>`<td class="r scorecell" style="color:${scoreColor(h.score)}">${h.score>0?'+':''}${h.score}</td>`).join('');
+    return `<tr class="clk" data-sym="${esc(r.sym)}">
+    <td class="tsym">${esc(r.sym)}</td>
+    <td class="r">$${r.price.toFixed(2)}</td>
+    <td><span class="pill ${r.overall}">${r.overall}</span></td>
+    ${cells}
+    <td style="color:var(--dim);font-size:11px">${esc(r.stage.replace('Stage ',''))}</td>
+  </tr>`;}).join('');
+}
+
+$('run').addEventListener('click',run);
+async function run(){
+  const key=$('key').value.trim();
+  if(!key){$('status').innerHTML='<span class="err">Enter your Polygon API key.</span>';return;}
+  const withOI=$('oiToggle').checked;
+  let syms=[];
+  if(mode==='single'){const s=$('sym').value.trim();if(!s){$('status').innerHTML='<span class="err">Enter a ticker.</span>';return;}syms=[s];}
+  else{syms=$('syms').value.split(/[\s,]+/).map(x=>x.trim()).filter(Boolean);
+    if(!syms.length){$('status').innerHTML='<span class="err">Enter at least one ticker.</span>';return;}
+    if(syms.length>25)syms=syms.slice(0,25);}
+
+  $('run').disabled=true;$('out').innerHTML='';$('disc').style.display='none';
+  const results=[],failed=[];
+  for(let i=0;i<syms.length;i++){
+    $('status').innerHTML=`<span class="dot"></span> Analyzing ${esc(syms[i].toUpperCase())} (${i+1}/${syms.length})…`;
+    try{results.push(await analyze(syms[i],key,withOI));}
+    catch(e){failed.push({s:syms[i].toUpperCase(),e:e.message});}
+  }
+  $('run').disabled=false;$('status').textContent='';
+
+  if(!results.length){
+    $('out').innerHTML=`<div class="card"><div class="sec-body" style="padding:16px">
+      <span class="err">No results.</span> ${failed.map(f=>esc(f.s)+': '+esc(f.e)).join(' · ')}</div></div>`;
+    return;
+  }
+
+  if(mode==='single'||results.length===1){
+    $('out').innerHTML=results.map(singleCard).join('');
+  } else {
+    $('out').innerHTML=`<div class="card">
+      <table class="tbl"><thead><tr>
+        <th>Ticker</th><th class="r">Price</th><th>Overall</th>
+        <th class="r">30d</th><th class="r">60d</th><th class="r">90d</th><th class="r">120d</th><th>Stage</th>
+      </tr></thead><tbody>${tableRows(results)}</tbody></table>
+      <div class="sec-body" style="padding:12px 16px 4px;color:var(--faint);font-size:11px">Tap any row for the full factor breakdown and OI walls. Sorted by average horizon score.</div>
+    </div>
+    <div id="detail"></div>`;
+    document.querySelectorAll('tr.clk').forEach(tr=>tr.addEventListener('click',()=>{
+      const r=results.find(x=>x.sym===tr.dataset.sym);
+      $('detail').innerHTML=singleCard(r);
+      $('detail').scrollIntoView({behavior:'smooth',block:'start'});
+    }));
+  }
+  if(failed.length){
+    $('out').innerHTML+=`<div class="disc"><b>Skipped:</b> ${failed.map(f=>esc(f.s)+' ('+esc(f.e)+')').join(' · ')}</div>`;
+  }
+  $('disc').style.display='block';
+}
+</script>
+</body>
+</html>
