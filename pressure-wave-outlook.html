@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pressure &amp; Wave Outlook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: controls → three ticker tiles → desk: outlook + scenarios, chart with zones, factor checklist, conditions, levels, engine history */
+:root{
+  --bg:#0b0f12; --panel:#11171b; --panel2:#161e23; --line:#212b31; --line2:#2c3940;
+  --fg:#d8e2e6; --dim:#7c8d96; --faint:#52626b;
+  --accent:#3fb7c2; --accent-bg:rgba(63,183,194,.12);
+  --bull:#3cc48c; --bear:#ec6b5e; --warn:#e0b050;
+  --bull-bg:rgba(60,196,140,.12); --bear-bg:rgba(236,107,94,.12); --warn-bg:rgba(224,176,80,.12);
+  --ema:#6aa9da; --band:#8aa0ad;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --cond:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:13px/1.5 var(--mono);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--cond);font-weight:600;margin:0;text-wrap:balance;letter-spacing:.02em}
+.lbl{font-family:var(--cond);text-transform:uppercase;letter-spacing:.1em;font-size:12px;color:var(--dim)}
+.num{font-variant-numeric:tabular-nums}
+button,select,input{font:inherit;color:var(--fg);background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:6px 10px}
+button{cursor:pointer;font-family:var(--cond);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:13px}
+button:hover{border-color:var(--dim)}
+button.primary{background:var(--accent);color:#06181a;border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button:disabled{opacity:.5;cursor:default}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 20px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.brand h1{font-size:26px}
+.brand h1 b{color:var(--accent);font-weight:700}
+.brand .sub{color:var(--dim);font-size:12px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+.controls input[type=password]{width:230px;max-width:60vw}
+.chk{display:flex;gap:6px;align-items:center;color:var(--dim);font-size:12px}
+.status{font-size:12px;color:var(--dim);width:100%;display:flex;flex-wrap:wrap;gap:4px 14px}
+.status .err{color:var(--bear)}
+.banner{border:1px dashed var(--warn);color:var(--warn);background:var(--warn-bg);padding:6px 10px;font-size:12px;border-radius:3px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;cursor:pointer;display:grid;grid-template-columns:auto 1fr;gap:2px 12px;text-align:left;text-transform:none;letter-spacing:0;font-family:var(--mono);font-weight:400;font-size:13px}
+.tile[aria-pressed="true"]{border-color:var(--accent);background:var(--panel2)}
+.tile .tk{font-family:var(--cond);font-size:26px;font-weight:700;grid-row:span 2;align-self:center}
+.tile .px{justify-self:end;font-size:15px}
+.tile .bias{justify-self:end;font-family:var(--cond);font-weight:700;font-size:17px;letter-spacing:.03em}
+.tile .meta{grid-column:1/-1;color:var(--dim);font-size:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.bull{color:var(--bull)} .bear{color:var(--bear)} .two{color:var(--warn)}
+.desk{background:var(--panel);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column}
+.desk>section{padding:12px 14px;border-top:1px solid var(--line)}
+.desk>section:first-child{border-top:0}
+.replay,.liverow{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.replay input[type=range]{flex:1 1 260px;accent-color:var(--accent);padding:0;min-width:0}
+.replay .asof{font-size:15px;min-width:92px}
+.liverow input{width:120px}
+.livebox{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line2);border-radius:3px;padding:10px 12px;background:var(--bg);font-size:12.5px;margin-top:10px}
+.livebox .head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.st{font-family:var(--cond);font-weight:700;letter-spacing:.06em;padding:1px 8px;border-radius:2px}
+.livebox .st{font-size:17px}
+.st.cur{color:var(--bull);background:var(--bull-bg)} .st.age{color:var(--warn);background:var(--warn-bg)} .st.stale{color:var(--bear);background:var(--bear-bg)}
+.warn{color:var(--bear)}
+.verdict{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:14px 24px;align-items:start}
+.call .big{font-family:var(--cond);font-weight:700;font-size:46px;line-height:1;letter-spacing:.02em}
+.call .score{font-size:13px;color:var(--dim);margin-top:6px}
+.meter{height:6px;background:var(--line);border-radius:3px;position:relative;margin-top:10px;overflow:hidden}
+.meter i{position:absolute;top:0;bottom:0}
+.meter:after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--dim)}
+.grade{display:inline-flex;align-items:baseline;gap:8px;margin-top:10px}
+.grade b{font-family:var(--cond);font-size:28px;line-height:1;padding:2px 10px;border-radius:3px;border:1px solid var(--line2)}
+.g-A{color:var(--bull);border-color:var(--bull)!important} .g-B{color:var(--accent);border-color:var(--accent)!important} .g-C{color:var(--warn);border-color:var(--warn)!important} .g-Skip{color:var(--bear);border-color:var(--bear)!important}
+.scen{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sc{border:1px solid var(--line2);border-radius:3px;padding:10px 12px;background:var(--bg);min-width:0}
+.sc.prim{border-color:var(--accent)}
+.sc h3{font-size:17px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.sc dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:8px 0 0;font-size:12.5px}
+.sc dt{color:var(--dim)} .sc dd{margin:0}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px}
+.fact{border:1px solid var(--line);border-radius:3px;padding:8px 10px;background:var(--bg);min-width:0}
+.fact .v{font-size:16px;font-weight:600;margin-top:2px}
+.fact .s{color:var(--dim);font-size:11.5px;margin-top:2px}
+.chartbox{overflow-x:auto}
+.chartbox svg{display:block;width:100%;min-width:640px;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;color:var(--dim);font-size:11.5px;margin-top:6px}
+.legend i{display:inline-block;width:14px;height:8px;vertical-align:middle;margin-right:6px}
+.cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px}
+.col h3{font-size:18px;margin-bottom:8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{font-family:var(--cond);text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--dim);font-weight:600;text-align:left;padding:4px 6px;border-bottom:1px solid var(--line2)}
+td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+td.r,th.r{text-align:right}
+tr.now td{background:var(--accent-bg);color:var(--accent);font-weight:600}
+.tblwrap{overflow-x:auto}
+.dirc{font-weight:700;text-align:center;width:28px}
+.src{color:var(--faint);font-size:11px;white-space:nowrap}
+.barcell{width:70px}
+.hbar{height:6px;background:var(--line);position:relative;border-radius:2px}
+.hbar i{position:absolute;top:0;bottom:0}
+.hbar:after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--faint)}
+ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+ul.items li{display:grid;grid-template-columns:14px 1fr;gap:6px;font-size:12.5px;line-height:1.5}
+ul.items li .mk{font-size:10px;padding-top:3px;color:var(--faint)}
+ul.items li.t1 .mk{color:var(--bull)} ul.items li.t-1 .mk{color:var(--bear)}
+ul.checks li .mk{font-size:12px;padding-top:1px}
+ul.checks li.ok .mk{color:var(--bull)} ul.checks li.no .mk{color:var(--bear)}
+.two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.outcome{border:1px solid var(--line2);border-radius:3px;padding:10px 12px;background:var(--bg);font-size:12.5px}
+.outcome b.ok{color:var(--bull)} .outcome b.no{color:var(--bear)}
+details{font-size:12px}
+details summary{cursor:pointer;color:var(--dim);font-family:var(--cond);text-transform:uppercase;letter-spacing:.08em;font-size:13px}
+.log{max-height:220px;overflow:auto;background:var(--bg);border:1px solid var(--line);padding:8px;font-size:11.5px;color:var(--dim);margin-top:8px;white-space:pre-wrap}
+.note{color:var(--dim);font-size:11.5px;max-width:110ch}
+.empty{padding:40px 14px;color:var(--dim);text-align:center}
+@media (max-width:980px){.cols,.verdict,.two-col{grid-template-columns:1fr}}
+@media (max-width:640px){.tiles,.scen{grid-template-columns:1fr}.controls{margin-left:0}.call .big{font-size:36px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1><b>PRESSURE &amp; WAVE</b> OUTLOOK</h1>
+      <div class="sub">Rest-of-session outlook from today's waves, pressure, zones and candles · SPY · TLT · GLD · 5-minute bars</div>
+    </div>
+    <div class="controls">
+      <label class="lbl" for="key">Polygon key</label>
+      <input id="key" type="password" autocomplete="off" placeholder="paste API key">
+      <label class="lbl" for="hist">History</label>
+      <select id="hist"><option value="90">90 days</option><option value="150" selected>150 days</option><option value="240">240 days</option></select>
+      <button id="scan" class="primary">Scan</button>
+      <button id="demo">Demo data</button>
+      <label class="chk"><input id="auto" type="checkbox"> auto-refresh 5 min</label>
+    </div>
+    <div class="status" id="status"></div>
+  </header>
+  <div id="banner" hidden></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="desk" id="desk"><div class="empty">Paste your Polygon key and press Scan, or load demo data.</div></div>
+  <details>
+    <summary>How this builds the outlook · scan log</summary>
+    <div class="note" style="margin-top:8px">
+      Each 5-minute bar of the regular session up to the as-of time is read the way the two books read a chart. From Bob Volman's <i>Understanding Price Action</i>: the dominant pressure (slope of the 25 EMA and which side the closes sit on), buildup (tight clusters pressing against a barrier), the quality of the latest break (proper, tease or premature), false highs and lows, round-number magnets, and his list of conditions for skipping a trade.
+      From Schlotmann and Czubatinski's <i>Technical Analysis Masterclass</i>: the chart phase (trend, correction, consolidation, breakout, reversal), price waves (length, angle, impulse-to-correction ratio, higher highs and lows), candle character and patterns, support/resistance and supply/demand zones with order absorption, and one indicator per group (RSI, MACD, Bollinger Bands at 2.5 SD), plus the 60-minute and daily trend.
+      Volman's EUR/USD numbers are scaled to each ETF's 20-day average daily range (ADR): his 20-pip target is 0.2 ADR, the 10-pip stop is 0.1 ADR, the 14-pip minimum room is 0.14 ADR, and round numbers are spaced at about half an ADR.
+      Waves are built with a zigzag that needs a reversal of at least 9% of ADR (or 2.5 normal bars).
+      The score adds the eleven factors (−100 to +100). The grade counts failed conditions: A = none, B = 1, C = 2, Skip = 3 or more.
+      Neither book uses volume beyond noting that breaks need participation, so relative volume is shown for context and is not scored. The projected range uses this ETF's own history and is not from either book.
+      The engine history replays this same engine every 30 minutes on every loaded session using only bars up to that time. It checks whether the close went the outlook's way and whether a Volman bracket (+0.2 ADR target before a −0.1 ADR stop) would have won. That bracket breaks even at 33%.
+      Polygon's Starter plan is 15 minutes delayed. Use the live price box to check whether a read is still current. The bar still forming is always dropped.
+    </div>
+    <div class="log" id="log"></div>
+  </details>
+</div>
+<script>
+/* ===== Pressure & Wave engine (Volman, Understanding Price Action + Schlotmann/Czubatinski, Technical Analysis Masterclass) ===== */
+const PW = (() => {
+  const RTH_START = 570, RTH_END = 960;
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN;
+  function median(a) { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+  function quant(sorted, q) { if (!sorted.length) return NaN; const p = (sorted.length - 1) * q, lo = Math.floor(p), hi = Math.ceil(p); return sorted[lo] + (sorted[hi] - sorted[lo]) * (p - lo); }
+  const fmtMin = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  const px = v => (v == null || !isFinite(v)) ? '—' : v.toFixed(2);
+  const pc = v => (v * 100).toFixed(0) + '%';
+
+  /* ---------- time ---------- */
+  const ET_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  function etParts(ms) { const p = {}; for (const x of ET_FMT.formatToParts(new Date(ms))) p[x.type] = x.value; let hh = +p.hour; if (hh === 24) hh = 0; return { date: `${p.year}-${p.month}-${p.day}`, min: hh * 60 + +p.minute }; }
+  const offCache = new Map();
+  function etFast(ms) {
+    const key = Math.floor(ms / 864e5); let off = offCache.get(key);
+    if (off === undefined) { const p = etParts(ms), d = new Date(ms); off = p.min - (d.getUTCHours() * 60 + d.getUTCMinutes()); if (off > 720) off -= 1440; if (off < -720) off += 1440; offCache.set(key, off); }
+    const local = new Date(ms + off * 60000);
+    return { date: local.toISOString().slice(0, 10), min: local.getUTCHours() * 60 + local.getUTCMinutes() };
+  }
+  function buildSessions(raw) {
+    const map = new Map();
+    for (const r of raw) {
+      const { date, min } = etFast(r.t); if (min < RTH_START || min >= RTH_END) continue;
+      if (!map.has(date)) map.set(date, []);
+      map.get(date).push({ t: r.t, o: r.o, h: r.h, l: r.l, c: r.c, v: r.v || 0, min, slot: (min - RTH_START) / 5 });
+    }
+    const out = [];
+    for (const [date, bars] of [...map.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1)) { bars.sort((a, b) => a.t - b.t); if (bars.length >= 6) out.push({ date, bars }); }
+    return out;
+  }
+
+  /* ---------- indicators over the continuous RTH series ---------- */
+  function indicators(all) {
+    const e25 = 2 / 26, e12 = 2 / 13, e26 = 2 / 27, e9 = 2 / 10;
+    let ema = null, f = null, s = null, sig = null, ag = null, al = null;
+    for (let i = 0; i < all.length; i++) {
+      const b = all[i], c = b.c;
+      ema = ema == null ? c : ema + e25 * (c - ema); b.ema = ema;
+      f = f == null ? c : f + e12 * (c - f); s = s == null ? c : s + e26 * (c - s);
+      const macd = f - s; sig = sig == null ? macd : sig + e9 * (macd - sig); b.macd = macd; b.sig = sig;
+      if (i > 0) {
+        const d = c - all[i - 1].c, g = Math.max(0, d), l = Math.max(0, -d);
+        if (ag == null) { ag = g; al = l; } else { ag = (ag * 13 + g) / 14; al = (al * 13 + l) / 14; }
+        b.rsi = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+      } else b.rsi = 50;
+      if (i >= 19) {
+        let sm = 0; for (let j = i - 19; j <= i; j++) sm += all[j].c; const m = sm / 20;
+        let v = 0; for (let j = i - 19; j <= i; j++) v += (all[j].c - m) ** 2; const sd = Math.sqrt(v / 20);
+        b.bbm = m; b.bbu = m + 2.5 * sd; b.bbl = m - 2.5 * sd;
+      } else { b.bbm = c; b.bbu = c; b.bbl = c; }
+    }
+  }
+
+  function prep(ticker, raw5, rawDaily) {
+    const sessions = buildSessions(raw5);
+    indicators(sessions.flatMap(s => s.bars));
+    sessions.forEach((s, i) => {
+      const B = s.bars;
+      s.open = B[0].o; s.close = B[B.length - 1].c;
+      s.high = Math.max(...B.map(b => b.h)); s.low = Math.min(...B.map(b => b.l)); s.range = s.high - s.low;
+      const prior = sessions.slice(Math.max(0, i - 20), i).filter(p => p.bars.length >= 60);
+      s.adrN = prior.length; s.adr = prior.length ? mean(prior.map(p => p.range)) : s.range;
+      const p5 = sessions.slice(Math.max(0, i - 5), i);
+      s.refBar = median((p5.length ? p5.flatMap(p => p.bars) : B).map(b => b.h - b.l)) || s.adr / 15;
+      s.prevClose = i > 0 ? sessions[i - 1].close : s.open;
+      s.cum = new Array(78).fill(null); let cv = 0, ls = -1;
+      for (const b of B) { cv += b.v; for (let q = ls + 1; q <= b.slot && q < 78; q++) s.cum[q] = cv; ls = b.slot; }
+      const pv = sessions.slice(Math.max(0, i - 20), i);
+      s.avgCum = new Array(78).fill(null);
+      for (let q = 0; q < 78; q++) { const c = pv.map(p => p.cum[q]).filter(x => x != null); if (c.length) s.avgCum[q] = mean(c); }
+    });
+    // 60-minute bars and EMA21 (higher time frame filter)
+    let he = null;
+    for (const s of sessions) {
+      s.hourly = [];
+      for (let h = 0; h < 7; h++) {
+        const seg = s.bars.filter(b => b.min >= 570 + h * 60 && b.min < 630 + h * 60); if (!seg.length) continue;
+        const hb = { o: seg[0].o, h: Math.max(...seg.map(b => b.h)), l: Math.min(...seg.map(b => b.l)), c: seg[seg.length - 1].c, endMin: seg[seg.length - 1].min + 5 };
+        s.hourly.push(hb);
+      }
+    }
+    const hAll = sessions.flatMap(s => s.hourly);
+    hAll.forEach(hb => { he = he == null ? hb.c : he + (2 / 22) * (hb.c - he); hb.ema = he; });
+    // extension stats
+    const extBySlot = Array.from({ length: 78 }, () => []);
+    sessions.slice(0, -1).forEach(s => {
+      if (s.bars.length < 70) return; let hi = -Infinity, lo = Infinity;
+      for (const b of s.bars) { hi = Math.max(hi, b.h); lo = Math.min(lo, b.l); const r = hi - lo; if (r > 0 && b.slot < 78) extBySlot[b.slot].push(s.range / r); }
+    });
+    extBySlot.forEach(a => a.sort((x, y) => x - y));
+    const daily = (rawDaily || []).map(r => ({ date: etFast(r.t + 12 * 3600e3).date, o: r.o, h: r.h, l: r.l, c: r.c })).sort((a, b) => a.date < b.date ? -1 : 1);
+    return { ticker, sessions, extBySlot, daily };
+  }
+
+  /* ---------- daily (higher time frame) context ---------- */
+  function dailyCtx(T, date) {
+    const d = T.daily.filter(x => x.date < date);
+    if (d.length < 25) return { n: d.length, trend: 0, text: 'Not enough daily history', levels: [] };
+    const sma = n => d.length >= n ? mean(d.slice(-n).map(x => x.c)) : null;
+    const s20 = sma(20), s50 = sma(50), s200 = sma(200), lc = d[d.length - 1].c;
+    let t = 0, parts = [];
+    if (s50) { t += lc > s50 ? 0.4 : -0.4; parts.push(`${lc > s50 ? 'above' : 'below'} the 50-day`); }
+    if (s200) { t += lc > s200 ? 0.35 : -0.35; parts.push(`${lc > s200 ? 'above' : 'below'} the 200-day`); }
+    if (s20) t += lc > s20 ? 0.25 : -0.25;
+    const last20 = d.slice(-20); const hi20 = Math.max(...last20.map(x => x.h)), lo20 = Math.min(...last20.map(x => x.l));
+    const levels = [];
+    if (s20) levels.push({ price: s20, label: 'Daily 20 SMA', kind: 'htf' });
+    if (s50) levels.push({ price: s50, label: 'Daily 50 SMA', kind: 'htf' });
+    if (s200) levels.push({ price: s200, label: 'Daily 200 SMA', kind: 'htf' });
+    levels.push({ price: hi20, label: '20-day high', kind: 'htf' }, { price: lo20, label: '20-day low', kind: 'htf' });
+    return { n: d.length, trend: clamp(t, -1, 1), text: `Daily close ${parts.join(' and ') || 'n/a'}`, s20, s50, s200, hi20, lo20, levels };
+  }
+
+  /* ---------- bar helpers ---------- */
+  function cl(b, ref) {
+    const rng = Math.max(b.h - b.l, 1e-9), body = Math.abs(b.c - b.o), up = b.h - Math.max(b.o, b.c), dn = Math.min(b.o, b.c) - b.l;
+    const dir = b.c > b.o ? 1 : b.c < b.o ? -1 : 0;
+    return { rng, body, br: body / rng, up: up / rng, dn: dn / rng, dir, power: body / rng >= 0.6 && rng >= 1.3 * ref ? dir : 0 };
+  }
+
+  /* zigzag waves: reversal threshold th (price) */
+  function zigzag(bars, th) {
+    if (bars.length < 2) return [];
+    const piv = []; let dir = 0, exI = 0, exP = bars[0].c, hiI = 0, loI = 0;
+    for (let i = 1; i < bars.length; i++) {
+      const b = bars[i];
+      if (dir >= 0 && b.h > bars[hiI].h) hiI = i;
+      if (dir <= 0 && b.l < bars[loI].l) loI = i;
+      if (dir === 0) {
+        if (bars[hiI].h - bars[loI].l >= th) {
+          if (hiI > loI) { piv.push({ i: loI, p: bars[loI].l, t: 'L' }); dir = 1; loI = i; }
+          else { piv.push({ i: hiI, p: bars[hiI].h, t: 'H' }); dir = -1; hiI = i; }
+        }
+      } else if (dir === 1) {
+        if (bars[hiI].h - b.l >= th && i > hiI) { piv.push({ i: hiI, p: bars[hiI].h, t: 'H' }); dir = -1; loI = i; for (let j = hiI + 1; j <= i; j++) if (bars[j].l < bars[loI].l) loI = j; }
+      } else {
+        if (b.h - bars[loI].l >= th && i > loI) { piv.push({ i: loI, p: bars[loI].l, t: 'L' }); dir = 1; hiI = i; for (let j = loI + 1; j <= i; j++) if (bars[j].h > bars[hiI].h) hiI = j; }
+      }
+    }
+    // provisional last extreme
+    const last = bars.length - 1;
+    if (dir === 1) piv.push({ i: hiI, p: bars[hiI].h, t: 'H', prov: true });
+    else if (dir === -1) piv.push({ i: loI, p: bars[loI].l, t: 'L', prov: true });
+    const waves = [];
+    for (let j = 1; j < piv.length; j++) {
+      const a = piv[j - 1], b = piv[j]; const len = Math.abs(b.p - a.p), n = Math.max(1, b.i - a.i);
+      waves.push({ from: a.i, to: b.i, a: a.p, b: b.p, dir: b.p > a.p ? 1 : -1, len, n, angle: len / n, prov: !!b.prov });
+    }
+    // current unfinished leg from last pivot to last bar
+    const lp = piv[piv.length - 1];
+    if (lp && lp.i < last) {
+      const p = bars[last].c; const len = Math.abs(p - lp.p);
+      waves.push({ from: lp.i, to: last, a: lp.p, b: p, dir: p >= lp.p ? 1 : -1, len, n: last - lp.i, angle: len / Math.max(1, last - lp.i), live: true });
+    }
+    return { piv, waves };
+  }
+
+  /* ---------- main ---------- */
+  function analyze(T, si, k, opts = {}) {
+    const S = T.sessions[si], P = si > 0 ? T.sessions[si - 1] : null;
+    k = Math.min(k, S.bars.length - 1);
+    const bars = S.bars.slice(0, k + 1), n = bars.length, last = bars[k], price = last.c;
+    const ADR = S.adr || S.range || 1, ref = S.refBar || ADR / 15, u = x => x / ADR;
+    const endMin = last.min + 5;
+    const C = bars.map(b => cl(b, ref));
+    let hi = -Infinity, lo = Infinity, hiIdx = 0, loIdx = 0;
+    bars.forEach((b, i) => { if (b.h > hi) { hi = b.h; hiIdx = i; } if (b.l < lo) { lo = b.l; loIdx = i; } });
+    const open = bars[0].o, range = hi - lo;
+    const prev = P ? { h: P.high, l: P.low, c: P.close } : null;
+
+    // context window = last 24 bars of yesterday + today (for waves & zones)
+    const ctxPrev = P ? P.bars.slice(-24) : [];
+    const W = ctxPrev.concat(bars), off = ctxPrev.length, wk = W.length - 1;
+    const th = Math.max(2.5 * ref, 0.09 * ADR);
+    const zz = zigzag(W, th);
+    const waves = zz.waves || [], piv = zz.piv || [];
+
+    /* 1. dominant pressure (Volman ch.2/3: 25 EMA slope and closes) */
+    const slope = u(last.ema - bars[Math.max(0, k - 6)].ema) / Math.min(6, Math.max(1, k)) * 6;
+    const recent = W.slice(Math.max(0, wk - 11));
+    const above = recent.filter(b => b.c > b.ema).length / recent.length;
+    const pressure = clamp(0.55 * clamp(slope / 0.12, -1, 1) + 0.45 * (above * 2 - 1), -1, 1);
+    const pressDir = pressure > 0.25 ? 1 : pressure < -0.25 ? -1 : 0;
+
+    /* 2. swing structure (Masterclass 4.3.2, 4.4.4) */
+    const conf = piv.filter(p => !p.prov);
+    const Hs = conf.filter(p => p.t === 'H'), Ls = conf.filter(p => p.t === 'L');
+    let structure = 0, structTxt = 'No clear swing structure yet', structBreak = null;
+    if (Hs.length >= 2 && Ls.length >= 2) {
+      const hh = Hs[Hs.length - 1].p > Hs[Hs.length - 2].p, hl = Ls[Ls.length - 1].p > Ls[Ls.length - 2].p;
+      if (hh && hl) { structure = 1; structTxt = 'Higher highs and higher lows'; }
+      else if (!hh && !hl) { structure = -1; structTxt = 'Lower highs and lower lows'; }
+      else structTxt = hh ? 'Higher high but lower low (mixed, ranging)' : 'Lower high but higher low (contracting)';
+    }
+    const lastL = Ls[Ls.length - 1], lastH = Hs[Hs.length - 1];
+    if (structure === 1 && lastL && price < lastL.p) { structBreak = { dir: -1, level: lastL.p }; structTxt += `, but price is now below the last higher low ${px(lastL.p)} (structure broken)`; }
+    if (structure === -1 && lastH && price > lastH.p) { structBreak = { dir: 1, level: lastH.p }; structTxt += `, but price is now above the last lower high ${px(lastH.p)} (structure broken)`; }
+    if (structure === 0 && lastH && lastL) {
+      if (price > lastH.p && W[wk].c > lastH.p) structBreak = { dir: 1, level: lastH.p, soft: true };
+      if (price < lastL.p && W[wk].c < lastL.p) structBreak = { dir: -1, level: lastL.p, soft: true };
+    }
+
+    /* trend direction for wave analysis */
+    const tdir = structBreak && !structBreak.soft ? structBreak.dir : structure !== 0 ? structure : pressDir;
+
+    /* 3–4. wave analysis (Masterclass 4.3.1, 4.4.1–4.4.3) */
+    const done = waves.filter(w => !w.live);
+    const imp = done.filter(w => w.dir === (tdir || 1)), cor = done.filter(w => w.dir === -(tdir || 1));
+    const lastImp = imp.slice(-2), lastCor = cor.slice(-2);
+    const ratio = lastImp.length && lastCor.length ? mean(lastImp.map(w => w.len)) / Math.max(1e-9, mean(lastCor.map(w => w.len))) : null;
+    let waveMom = 0, waveMomTxt = '';
+    if (imp.length >= 2) {
+      const a = imp[imp.length - 2], b = imp[imp.length - 1];
+      const lenCh = b.len / a.len, angCh = b.angle / a.angle;
+      if (lenCh < 0.8 && angCh < 0.9) { waveMom = -1; waveMomTxt = `The last ${tdir === 1 ? 'up' : 'down'} wave was ${pc(1 - lenCh)} shorter and flatter than the one before`; }
+      else if (lenCh > 1.15) { waveMom = 1; waveMomTxt = `The last ${tdir === 1 ? 'up' : 'down'} wave was ${lenCh > 3 ? 'much' : pc(lenCh - 1)} longer than the one before`; }
+      else waveMomTxt = 'Impulse waves are holding a similar length';
+    }
+    const todayImpulses = imp.filter(w => w.from >= off).length;
+    const curWave = waves[waves.length - 1] || null;
+    let retr = null, inCorrection = false;
+    if (curWave && tdir && curWave.dir === -tdir) {
+      const prevImp = [...done].reverse().find(w => w.dir === tdir && w.to <= curWave.from + 0);
+      if (prevImp) { retr = curWave.len / prevImp.len; inCorrection = retr >= 0.15; }
+    }
+    const curWavePower = curWave ? W.slice(curWave.from + 1, wk + 1).filter((b, j) => { const c = cl(b, ref); return c.power === curWave.dir; }).length : 0;
+
+    /* consolidation box */
+    let box = null;
+    {
+      const maxSpan = Math.max(0.22 * ADR, 3 * ref); let j = wk, bHi = W[wk].h, bLo = W[wk].l;
+      while (j > 0) { const nh = Math.max(bHi, W[j - 1].h), nl = Math.min(bLo, W[j - 1].l); if (nh - nl > maxSpan) break; bHi = nh; bLo = nl; j--; }
+      if (wk - j + 1 >= 8) box = { from: j, to: wk, hi: bHi, lo: bLo, n: wk - j + 1, live: true };
+      else {
+        // most recent completed box that ended within the last 6 bars (for breakout reads)
+        for (let e = wk - 1; e >= Math.max(1, wk - 6); e--) {
+          let s = e, h = W[e].h, l = W[e].l;
+          while (s > 0) { const nh = Math.max(h, W[s - 1].h), nl = Math.min(l, W[s - 1].l); if (nh - nl > maxSpan) break; h = nh; l = nl; s--; }
+          if (e - s + 1 >= 8) { box = { from: s, to: e, hi: h, lo: l, n: e - s + 1, live: false }; break; }
+        }
+      }
+    }
+    let boxBreak = null;
+    if (box && !box.live) {
+      const after = W.slice(box.to + 1, wk + 1);
+      const up = after.findIndex(b => b.c > box.hi), dn = after.findIndex(b => b.c < box.lo);
+      if (up >= 0 && (dn < 0 || up < dn)) boxBreak = { dir: 1, i: box.to + 1 + up, level: box.hi };
+      else if (dn >= 0) boxBreak = { dir: -1, i: box.to + 1 + dn, level: box.lo };
+    }
+
+    /* 5. candle character (Masterclass 3.3) */
+    const last8 = W.slice(Math.max(0, wk - 7)).map(b => cl(b, ref));
+    const firstHalf = last8.slice(0, 4), secondHalf = last8.slice(4);
+    const bodyCh = mean(secondHalf.map(c => c.body)) / Math.max(1e-9, mean(firstHalf.map(c => c.body)));
+    const shadowShare = mean(last8.map(c => c.up + c.dn));
+    const bullBodies = last8.filter(c => c.dir === 1).reduce((s, c) => s + c.body, 0), bearBodies = last8.filter(c => c.dir === -1).reduce((s, c) => s + c.body, 0);
+    const bodyBias = (bullBodies - bearBodies) / Math.max(1e-9, bullBodies + bearBodies);
+    let candleTxt = `Bodies ${bodyCh > 1.25 ? 'growing' : bodyCh < 0.75 ? 'shrinking' : 'steady'} over the last 8 bars, shadows ${pc(shadowShare)} of bar range, ${bodyBias > 0.25 ? 'bull' : bodyBias < -0.25 ? 'bear' : 'balanced'} bodies dominate`;
+
+    /* 6. candle patterns at the right edge (Masterclass 3.5–3.6; Volman combi) */
+    const patterns = [];
+    const B0 = W[wk], B1 = W[wk - 1], B2 = W[wk - 2];
+    const c0 = cl(B0, ref), c1 = B1 ? cl(B1, ref) : null, c2 = B2 ? cl(B2, ref) : null;
+    if (c0.up >= 0.6 && c0.dn <= 0.15) patterns.push({ name: 'Bearish pinbar', dir: -1, txt: 'long upper shadow: buyers pushed up and sellers rejected it' });
+    if (c0.dn >= 0.6 && c0.up <= 0.15) patterns.push({ name: 'Bullish pinbar', dir: 1, txt: 'long lower shadow: sellers pushed down and buyers rejected it' });
+    if (c0.br >= 0.85 && c0.rng >= 1.2 * ref) patterns.push({ name: c0.dir === 1 ? 'Bullish marubozu' : 'Bearish marubozu', dir: c0.dir, txt: 'impulse candle with almost no shadows' });
+    if (c0.br <= 0.1) patterns.push({ name: 'Doji', dir: 0, txt: 'pause and indecision; the next candle decides' });
+    if (c1 && c0.dir && c1.dir === -c0.dir && Math.max(B0.o, B0.c) >= Math.max(B1.o, B1.c) && Math.min(B0.o, B0.c) <= Math.min(B1.o, B1.c) && c0.rng > c1.rng && c0.br >= 0.55)
+      patterns.push({ name: c0.dir === 1 ? 'Bullish engulfing' : 'Bearish engulfing', dir: c0.dir, txt: 'second candle engulfs the first: the strength ratio flipped' });
+    if (c1 && c2 && c0.dir && c0.dir === c1.dir && c1.dir === c2.dir && c0.br >= 0.5 && c1.br >= 0.5 && c2.br >= 0.5 && (c0.dir === 1 ? B0.c > B1.c && B1.c > B2.c : B0.c < B1.c && B1.c < B2.c))
+      patterns.push({ name: c0.dir === 1 ? 'Three white soldiers' : 'Three black crows', dir: c0.dir, txt: 'three consecutive strong candles in one direction' });
+    if (c1 && c2 && B1.h <= B2.h && B1.l >= B2.l && c2.dir && c0.dir === -c2.dir && c0.br >= 0.5 && (c0.dir === 1 ? B0.c > B2.o : B0.c < B2.o))
+      patterns.push({ name: c0.dir === 1 ? 'Three inside up' : 'Three inside down', dir: c0.dir, txt: 'inside bar then a strong candle the other way' });
+    if (c1 && c2 && c2.br >= 0.55 && c1.br <= 0.25 && c0.dir === -c2.dir && c0.br >= 0.55)
+      patterns.push({ name: c0.dir === -1 ? 'Evening star' : 'Morning star', dir: c0.dir, txt: 'trend candle, pause, then a strong candle the other way' });
+    if (c1 && c1.power && B0.h <= B1.h && B0.l >= B1.l)
+      patterns.push({ name: c1.power === 1 ? 'Bull combi (powerbar + inside bar)' : 'Bear combi (powerbar + inside bar)', dir: c1.power, txt: 'Volman signal: tension next to a powerbar; its break is the trigger' });
+
+    /* 7–9. indicators (Masterclass ch.7: one per group) */
+    const rsi = last.rsi;
+    let rsiDiv = null;
+    {
+      const hp = conf.filter(p => p.t === 'H').slice(-2), lp = conf.filter(p => p.t === 'L').slice(-2);
+      if (hp.length === 2 && hp[1].p > hp[0].p && W[hp[1].i].rsi < W[hp[0].i].rsi - 3 && wk - hp[1].i <= 18) rsiDiv = { dir: -1, txt: `bearish RSI divergence: higher price high at ${px(hp[1].p)} with a lower RSI (${W[hp[1].i].rsi.toFixed(0)} vs ${W[hp[0].i].rsi.toFixed(0)})` };
+      if (lp.length === 2 && lp[1].p < lp[0].p && W[lp[1].i].rsi > W[lp[0].i].rsi + 3 && wk - lp[1].i <= 18) rsiDiv = { dir: 1, txt: `bullish RSI divergence: lower price low at ${px(lp[1].p)} with a higher RSI (${W[lp[1].i].rsi.toFixed(0)} vs ${W[lp[0].i].rsi.toFixed(0)})` };
+    }
+    const bbW = W.slice(Math.max(0, wk - 9));
+    const walkUp = bbW.filter(b => b.h >= b.bbu - 0.15 * (b.bbu - b.bbm)).length, walkDn = bbW.filter(b => b.l <= b.bbl + 0.15 * (b.bbm - b.bbl)).length;
+    let bb = { state: 'inside', dir: 0, txt: '' };
+    if (B0.c > B0.bbu) bb = { state: 'close-out', dir: 1, txt: 'closed outside the upper band (2.5 SD): extreme strength, continuation favored' };
+    else if (B0.c < B0.bbl) bb = { state: 'close-out', dir: -1, txt: 'closed outside the lower band (2.5 SD): extreme weakness, continuation favored' };
+    else if (B0.h > B0.bbu && B0.c < B0.bbu) bb = { state: 'reject', dir: -1, txt: 'pierced the upper band and closed back inside: rejection' };
+    else if (B0.l < B0.bbl && B0.c > B0.bbl) bb = { state: 'reject', dir: 1, txt: 'pierced the lower band and closed back inside: rejection' };
+    else if (walkUp >= 4) bb = { state: 'walk', dir: 1, txt: `price rode the upper band on ${walkUp} of the last 10 bars: strong trend` };
+    else if (walkDn >= 4) bb = { state: 'walk', dir: -1, txt: `price rode the lower band on ${walkDn} of the last 10 bars: strong trend` };
+    else if (tdir && curWave && curWave.dir === tdir && !inCorrection) {
+      const reached = tdir === 1 ? Math.max(...W.slice(curWave.from, wk + 1).map(b => b.h - b.bbu)) >= 0 : Math.min(...W.slice(curWave.from, wk + 1).map(b => b.l - b.bbl)) <= 0;
+      if (!reached && walkUp + walkDn === 0 && imp.length >= 2) bb = { state: 'miss', dir: -tdir, txt: 'the latest trend wave failed to reach the outer band: exhaustion warning' };
+    }
+    if (!bb.txt) bb.txt = `price between the bands, ${B0.c > B0.bbm ? 'above' : 'below'} the middle band`;
+    const macdUp = last.macd > 0 && last.macd > last.sig, macdDn = last.macd < 0 && last.macd < last.sig;
+    const sep = Math.abs(last.macd - last.sig) - Math.abs(W[Math.max(0, wk - 3)].macd - W[Math.max(0, wk - 3)].sig);
+    const macdTxt = `MACD ${last.macd >= 0 ? 'above' : 'below'} zero, ${last.macd >= last.sig ? 'above' : 'below'} its signal line, lines ${sep > 0 ? 'separating' : 'converging'}`;
+
+    /* 10. higher time frame */
+    const hrs = S.hourly.filter(h => h.endMin <= endMin);
+    const hAll = (P ? P.hourly : []).concat(hrs);
+    const hLast = hAll[hAll.length - 1];
+    const h60 = hLast ? (hLast.c > hLast.ema ? 1 : -1) * (hAll.length >= 3 && Math.sign(hLast.ema - hAll[hAll.length - 3].ema) === (hLast.c > hLast.ema ? 1 : -1) ? 1 : 0.5) : 0;
+    const daily = dailyCtx(T, S.date);
+    const htf = clamp(0.55 * h60 + 0.45 * daily.trend, -1, 1);
+
+    /* levels: zones, round numbers, prior day, ema */
+    const levels = [];
+    const addL = (price, label, kind, extra = {}) => { if (isFinite(price)) levels.push({ price, label, kind, ...extra }); };
+    if (prev) { addL(prev.h, "Yesterday's high", 'prev'); addL(prev.l, "Yesterday's low", 'prev'); addL(prev.c, "Yesterday's close", 'prev'); }
+    addL(open, "Today's open", 'day'); addL(hi, 'Day high', 'day'); addL(lo, 'Day low', 'day');
+    addL(last.ema, '25 EMA', 'ema');
+    (daily.levels || []).forEach(l => { if (Math.abs(u(l.price - price)) <= 1.2) levels.push({ ...l }); });
+    // round numbers (Volman: the market's "00 and 50" levels, scaled to this ETF's range)
+    const nice = [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50];
+    const major = nice.find(x => x >= ADR * 0.5) || 50, minor = major / 2;
+    const rn = [];
+    for (let p = Math.floor((price - 1.2 * ADR) / minor) * minor; p <= price + 1.2 * ADR; p += minor) { const isMaj = Math.abs(p / major - Math.round(p / major)) < 1e-6; rn.push({ price: +p.toFixed(4), major: isMaj }); addL(+p.toFixed(4), isMaj ? 'Round number' : 'Half round number', isMaj ? 'round' : 'round2'); }
+    // support/resistance zones from swing pivots (Masterclass 6.2: zones, 3 touches, order absorption)
+    const zw = Math.max(0.05 * ADR, 0.8 * ref);
+    const pts = conf.map(p => ({ p: p.p, i: p.i, t: p.t }));
+    if (prev) { pts.push({ p: prev.h, i: -1, t: 'H' }, { p: prev.l, i: -1, t: 'L' }); }
+    const srZones = [];
+    pts.sort((a, b) => a.p - b.p).forEach(pt => {
+      const z = srZones.find(z => Math.abs(z.mid - pt.p) <= zw);
+      if (z) { z.pts.push(pt); z.lo = Math.min(z.lo, pt.p); z.hi = Math.max(z.hi, pt.p); z.mid = (z.lo + z.hi) / 2; }
+      else srZones.push({ lo: pt.p, hi: pt.p, mid: pt.p, pts: [pt] });
+    });
+    srZones.forEach(z => {
+      // count touches from bars too (bars whose extreme entered the zone and reversed)
+      let touches = 0, lastT = -99, gaps = [];
+      for (let i = 0; i <= wk; i++) { const b = W[i]; const inZ = b.l <= z.hi + zw * 0.3 && b.h >= z.lo - zw * 0.3; if (inZ && i - lastT > 3) { touches++; if (lastT >= 0) gaps.push(i - lastT); lastT = i; } else if (inZ) lastT = i; }
+      z.touches = Math.max(z.pts.length, touches);
+      z.absorb = gaps.length >= 2 && gaps[gaps.length - 1] < gaps[gaps.length - 2] * 0.7;
+      z.lo -= zw * 0.25; z.hi += zw * 0.25;
+    });
+    const zones = srZones.filter(z => z.touches >= 2).map(z => ({ type: 'sr', lo: z.lo, hi: z.hi, mid: z.mid, touches: z.touches, absorb: z.absorb, side: z.mid > price ? 'resistance' : 'support' }));
+    // supply / demand zones (Masterclass 6.3): narrow base then an explosive move
+    const sd = [];
+    for (let i = 1; i < wk - 2; i++) {
+      for (const L of [1, 2, 3]) {
+        const bs = i, be = i + L - 1; if (be + 3 > wk) continue;
+        const base = W.slice(bs, be + 1); const bh = Math.max(...base.map(b => b.h)), bl = Math.min(...base.map(b => b.l));
+        if (bh - bl > 1.6 * ref || base.some(b => b.h - b.l > 1.2 * ref)) continue;
+        const go = W.slice(be + 1, be + 4); const upMove = Math.max(...go.map(b => b.h)) - bh, dnMove = bl - Math.min(...go.map(b => b.l));
+        const strong = go.filter(b => cl(b, ref).power !== 0).length;
+        const need = Math.max(0.2 * ADR, 3 * ref);
+        if (upMove >= need && strong >= 1 && go[0].c > go[0].o) sd.push({ type: 'demand', lo: bl, hi: bh, i: be + 1 });
+        else if (dnMove >= need && strong >= 1 && go[0].c < go[0].o) sd.push({ type: 'supply', lo: bl, hi: bh, i: be + 1 });
+      }
+    }
+    const sdz = [];
+    sd.forEach(z => { if (!sdz.some(y => y.type === z.type && Math.abs(y.i - z.i) <= 3)) sdz.push(z); });
+    sdz.forEach(z => {
+      let visits = 0, inside = false, broken = false;
+      for (let i = z.i + 3; i <= wk; i++) {
+        const b = W[i]; const touch = b.l <= z.hi && b.h >= z.lo;
+        if (touch && !inside) visits++; inside = touch;
+        if (z.type === 'demand' && b.c < z.lo - 0.3 * ref) broken = true;
+        if (z.type === 'supply' && b.c > z.hi + 0.3 * ref) broken = true;
+      }
+      z.visits = visits; z.broken = broken; z.status = broken ? 'broken' : visits === 0 ? 'fresh' : visits === 1 ? 'tested once' : visits === 2 ? 'tested twice' : 'used up';
+      z.mid = (z.lo + z.hi) / 2; z.when = W[z.i] ? fmtMin(W[z.i].min) : '';
+    });
+    const sdLive = sdz.filter(z => !z.broken && z.visits <= 2 && Math.abs(u(z.mid - price)) <= 1).slice(-6);
+    zones.push(...sdLive.map(z => ({ type: z.type, lo: z.lo, hi: z.hi, mid: z.mid, status: z.status, when: z.when })));
+    zones.forEach(z => { z.dist = z.mid - price; z.distA = u(z.dist); });
+    zones.sort((a, b) => b.mid - a.mid);
+    zones.forEach(z => addL(z.mid, z.type === 'sr' ? `S/R zone (${z.touches} touches${z.absorb ? ', absorbing' : ''})` : `${z.type === 'demand' ? 'Demand' : 'Supply'} zone ${z.when} (${z.status})`, z.type, { lo: z.lo, hi: z.hi }));
+    levels.forEach(l => { l.dist = l.price - price; l.distA = u(l.dist); });
+    levels.sort((a, b) => b.price - a.price);
+
+    /* 11. buildup at a barrier (Volman ch.2, 5) */
+    let buildup = null;
+    for (let L = 8; L >= 3; L--) {
+      if (wk - L + 1 < 0) continue;
+      const cbars = W.slice(wk - L + 1, wk + 1); const ch = Math.max(...cbars.map(b => b.h)), clo = Math.min(...cbars.map(b => b.l));
+      const avgR = mean(cbars.map(b => b.h - b.l));
+      const tol = 0.35 * ref;
+      const topT = cbars.filter(b => b.h >= ch - tol).length, botT = cbars.filter(b => b.l <= clo + tol).length;
+      if (ch - clo <= Math.max(2.2 * ref, 2.4 * avgR) && ch - clo <= 0.2 * ADR && Math.max(topT, botT) >= 2) {
+        const nearTop = levels.filter(l => !['day'].includes(l.kind) && Math.abs(l.price - ch) <= 0.6 * ref).map(l => l.label);
+        const nearBot = levels.filter(l => !['day'].includes(l.kind) && Math.abs(l.price - clo) <= 0.6 * ref).map(l => l.label);
+        const emaSide = last.ema < clo ? 1 : last.ema > ch ? -1 : 0;
+        // the better-defined side (more touches) with pressure support is the likely break side
+        let side = topT > botT ? 1 : botT > topT ? -1 : pressDir;
+        if (pressDir && side !== pressDir && Math.abs(topT - botT) <= 1) side = pressDir;
+        buildup = { n: L, hi: ch, lo: clo, topT, botT, side, nearTop, nearBot, emaSide, from: wk - L + 1 };
+        break;
+      }
+    }
+
+    /* 12. latest break and its quality (Volman ch.2: proper / tease / false; ch.7 trade for failure) */
+    let brk = null;
+    {
+      const cands = levels.filter(l => ['prev', 'sr', 'round', 'demand', 'supply', 'htf'].includes(l.kind) || l.label === "Today's open");
+      for (let j = wk; j >= Math.max(1, wk - 12) && !brk; j--) {
+        const b = W[j], p = W[j - 1];
+        for (const L of cands) {
+          const up = p.c <= L.price && b.c > L.price, dn = p.c >= L.price && b.c < L.price;
+          if (!up && !dn) continue;
+          const d = up ? 1 : -1;
+          const pre = W.slice(Math.max(0, j - 5), j);
+          const press = pre.filter(x => d === 1 ? x.h >= L.price - 0.6 * ref && x.h <= L.price + 0.3 * ref : x.l <= L.price + 0.6 * ref && x.l >= L.price - 0.3 * ref).length;
+          const farStart = Math.abs(W[Math.max(0, j - 3)].c - L.price) > 2 * ref;
+          const quality = press >= 3 ? 'proper' : press >= 1 && !farStart ? 'tease' : 'false-trap';
+          const after = W.slice(j + 1, wk + 1);
+          const failed = after.slice(0, 4).some(x => d === 1 ? x.c < L.price : x.c > L.price);
+          const held = after.length >= 2 && !failed;
+          brk = { i: j, dir: d, level: L.price, label: L.label, quality, failed, held, barsAgo: wk - j, withPressure: d === pressDir };
+          break;
+        }
+      }
+    }
+    // false high / low (Volman ch.2)
+    let falseHL = null;
+    for (let j = wk; j >= Math.max(2, wk - 4); j--) {
+      const a = W[j - 2], b = W[j - 1], c = W[j];
+      if (b.h > a.h && c.l < b.l) { falseHL = { dir: -1, i: j - 1, level: b.h, txt: `false high at ${px(b.h)}: a bull break was immediately followed by a bear break` }; break; }
+      if (b.l < a.l && c.h > b.h) { falseHL = { dir: 1, i: j - 1, level: b.l, txt: `false low at ${px(b.l)}: a bear break was immediately followed by a bull break` }; break; }
+    }
+
+    /* 13. environment (Volman ch.7 error list; Masterclass 6.4.2) */
+    const last6 = W.slice(Math.max(0, wk - 5));
+    const frantic = last6.filter(b => b.h - b.l > 1.6 * ref).length >= 3;
+    const emaDist = u(price - last.ema);
+    const rvol = S.avgCum[Math.min(77, last.slot)] ? S.cum[Math.min(77, last.slot)] / S.avgCum[Math.min(77, last.slot)] : null;
+
+    /* ---------- phase (Masterclass 4.1) ---------- */
+    let phase;
+    if (box && box.live) phase = { key: 'consolidation', dir: 0, label: `Consolidation ${px(box.lo)}–${px(box.hi)} (${box.n} bars)` };
+    else if (boxBreak && wk - boxBreak.i <= 8) phase = { key: 'breakout', dir: boxBreak.dir, label: `Breakout ${boxBreak.dir === 1 ? 'up' : 'down'} from a ${box.n}-bar consolidation` };
+    else if (structBreak && !structBreak.soft && u(structBreak.dir * (price - structBreak.level)) >= 0.35) phase = { key: 'trend', dir: structBreak.dir, label: `${structBreak.dir === 1 ? 'Bull' : 'Bear'} trend phase (new, after the ${structBreak.dir === 1 ? 'down' : 'up'}trend broke at ${px(structBreak.level)})` };
+    else if (structBreak && !structBreak.soft) phase = { key: 'reversal', dir: structBreak.dir, label: `${structBreak.dir === 1 ? 'Down' : 'Up'}trend structure broken at ${px(structBreak.level)}: possible reversal ${structBreak.dir === 1 ? 'up' : 'down'}` };
+    else if (tdir && inCorrection) phase = { key: 'correction', dir: tdir, label: `Correction in a ${tdir === 1 ? 'bull' : 'bear'} trend (${pc(retr)} retraced)` };
+    else if (tdir && (structure !== 0 || Math.abs(pressure) > 0.5)) phase = { key: 'trend', dir: tdir, label: `${tdir === 1 ? 'Bull' : 'Bear'} trend phase` };
+    else phase = { key: 'range', dir: 0, label: 'Two-sided / ranging' };
+    if (n < 6) phase = { key: 'early', dir: 0, label: 'Opening bars: too early for structure' };
+
+    /* ---------- factor scoring ---------- */
+    const F = [];
+    const add = (key, name, val, max, reading, src) => F.push({ key, name, val: clamp(val, -1, 1) * max, max, dir: Math.sign(Math.round(clamp(val, -1, 1) * 10)), reading, src });
+    add('press', 'Dominant pressure (25 EMA)', pressure, 16, `25 EMA ${slope > 0.02 ? 'rising' : slope < -0.02 ? 'falling' : 'flat'}, ${pc(above)} of the last 12 closes above it`, 'Volman ch.2–3');
+    add('struct', 'Swing structure', structBreak && !structBreak.soft ? structBreak.dir * 0.8 : structBreak && structBreak.soft ? structBreak.dir * 0.5 : structure, 16, structTxt, 'Masterclass 4.3.2, 4.4.4');
+    add('waves', 'Impulse vs. correction waves', ratio == null ? 0 : (tdir || 0) * clamp((ratio - 1) / 1.5, -1, 1), 10, ratio == null ? 'Not enough completed waves' : (ratio < 0.9 ? `Corrections are now larger than the ${tdir === 1 ? 'up' : 'down'} waves (${ratio.toFixed(1)}×): the strength ratio is shifting` : `${tdir === 1 ? 'Up' : tdir === -1 ? 'Down' : 'Trend'} waves average ${ratio.toFixed(1)}× the corrections${ratio >= 2 ? ' (strong imbalance)' : ratio < 1.2 ? ' (balanced: the trend is on the brink)' : ''}`), 'Masterclass 4.4.3');
+    add('mom', 'Wave length and angle', (tdir || 0) * waveMom * 0.8, 8, waveMomTxt || 'Fewer than two impulse waves so far', 'Masterclass 4.4.1–4.4.2');
+    add('candles', 'Candle character', bodyBias * (bodyCh > 1.25 ? 1 : bodyCh < 0.75 ? 0.5 : 0.75), 6, candleTxt, 'Masterclass 3.3');
+    const patScore = patterns.reduce((s, p) => s + p.dir, 0);
+    add('pattern', 'Latest candle pattern', clamp(patScore, -1, 1) * 0.8, 6, patterns.length ? patterns.map(p => p.name).join(', ') : 'No textbook pattern on the last bars', 'Masterclass 3.5–3.6; Volman ch.5');
+    add('rsi', 'RSI (14) momentum', clamp((rsi - 50) / 25, -1, 1) * 0.7 + (rsiDiv ? rsiDiv.dir * 0.6 : 0), 8, `RSI ${rsi.toFixed(0)}${rsi >= 70 ? ': strong buying momentum (not a sell signal)' : rsi <= 30 ? ': strong selling momentum (not a buy signal)' : ''}${rsiDiv ? '; ' + rsiDiv.txt : ''}`, 'Masterclass 7.3');
+    add('bb', 'Bollinger Bands (20, 2.5)', bb.dir * (bb.state === 'close-out' ? 0.8 : bb.state === 'walk' ? 0.9 : bb.state === 'reject' ? 0.7 : bb.state === 'miss' ? 0.5 : 0), 6, bb.txt, 'Masterclass 7.5');
+    add('macd', 'MACD (12, 26, 9)', macdUp ? (sep > 0 ? 1 : 0.5) : macdDn ? (sep > 0 ? -1 : -0.5) : 0, 6, macdTxt, 'Masterclass 7.6');
+    add('htf', 'Higher time frames', htf, 10, `60-min close ${h60 > 0 ? 'above' : h60 < 0 ? 'below' : 'near'} its 21 EMA; ${daily.text}`, 'Masterclass 6.2.5, 7.2.4');
+    let brkVal = 0, brkTxt = 'No level broken in the last hour';
+    if (brk) {
+      const q = { proper: 'proper (buildup at the level)', tease: 'tease (some buildup, not at the level)', 'false-trap': 'premature (no buildup, came from far)' }[brk.quality];
+      if (brk.failed) { brkVal = -brk.dir * (brk.withPressure ? 0.6 : 1); brkTxt = `${brk.dir === 1 ? 'Bull' : 'Bear'} break of ${brk.label} ${px(brk.level)} ${brk.barsAgo} bars ago failed. It was ${q}${!brk.withPressure ? '; it went against the pressure, so this is a trade-for-failure situation' : ''}`; }
+      else { brkVal = brk.dir * (brk.quality === 'proper' ? 1 : brk.quality === 'tease' ? 0.5 : 0.2) * (brk.withPressure ? 1 : 0.6); brkTxt = `${brk.dir === 1 ? 'Bull' : 'Bear'} break of ${brk.label} ${px(brk.level)} ${brk.barsAgo} bars ago${brk.held ? ', holding' : ''}. Quality: ${q}`; }
+    }
+    if (falseHL) { brkVal += falseHL.dir * 0.3; brkTxt += `. Also a ${falseHL.txt}`; }
+    add('break', 'Break quality and traps', brkVal, 10, brkTxt, 'Volman ch.2, 7; Masterclass 6.4');
+
+    let raw = F.reduce((s, f) => s + f.val, 0);
+    // damping for ranging conditions
+    if (phase.key === 'consolidation' || phase.key === 'range') raw *= 0.7;
+    const score = Math.round(clamp(raw, -100, 100));
+    const sg = Math.sign(score), mag = Math.abs(score);
+    const bucket = mag >= 45 ? 'strong' : mag >= 25 ? 'clear' : mag >= 12 ? 'lean' : 'two';
+    const word = sg > 0 ? 'BULLISH' : 'BEARISH';
+    const label = bucket === 'two' ? (phase.key === 'consolidation' ? 'RANGE-BOUND' : 'NEUTRAL') : bucket === 'lean' ? `LEAN ${word}` : bucket === 'clear' ? word : `STRONG ${word}`;
+    const agree = F.filter(f => f.dir === sg && sg !== 0).length, against = F.filter(f => f.dir === -sg && sg !== 0).length;
+
+    /* ---------- room to obstruction (Volman ch.6: skip if < 14 of 20 pip) ---------- */
+    const od = sg || pressDir || 1;
+    const obst = levels.filter(l => !['ema', 'round2'].includes(l.kind) && od * (l.price - price) > 0.02 * ADR).sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price))[0] || null;
+    const room = obst ? u(Math.abs(obst.price - price)) : null;
+
+    /* ---------- conditions checklist (Volman ch.7 errors; Masterclass 6.4.2) ---------- */
+    const checks = [];
+    const ck = (ok, name, txt, src) => checks.push({ ok, name, txt, src });
+    ck(!(sg && pressDir && sg !== pressDir), 'In line with dominance', sg && pressDir && sg !== pressDir ? 'The outlook leans against the 25 EMA pressure' : 'Outlook and pressure agree (or pressure is neutral)', 'Volman ch.7 #1');
+    ck(room == null || room >= 0.14, 'Room to the next obstacle', obst ? `${obst.label} ${px(obst.price)} is ${(room * 100).toFixed(0)}% of ADR away (Volman needs ≈14% for a 20%-of-ADR target)` : 'No obstacle within range', 'Volman ch.6–7 #2');
+    ck(!(phase.key === 'consolidation' && bucket !== 'two'), 'Trend vs. range read', phase.key === 'consolidation' ? 'Price is inside a consolidation; directional reads are weaker until a break' : 'Not boxed in', 'Volman ch.7 #3');
+    ck(Math.abs(emaDist) <= 0.3, 'Distance from the 25 EMA', `${(emaDist * 100).toFixed(0)}% of ADR ${emaDist >= 0 ? 'above' : 'below'} the EMA${Math.abs(emaDist) > 0.3 ? ': stretched, an explosive move away from the MA warns of a pullback' : ''}`, 'Volman ch.7 #4; Masterclass 7.2.4.4');
+    ck(!frantic, 'Calm bars', frantic ? 'Half or more of the last 6 bars exceed 1.6× the normal bar range: frantic' : 'Bar ranges are normal', 'Volman ch.7 #5');
+    ck(!(inCorrection && curWavePower >= 2), 'Pullback without powerbars', inCorrection ? (curWavePower >= 2 ? `The current pullback has ${curWavePower} powerbars: do not anticipate its reversal yet` : 'The current pullback is orderly') : 'No pullback in progress', 'Volman ch.7 #6');
+    ck(todayImpulses < 4, 'Not a late trend', `${todayImpulses} impulse wave${todayImpulses === 1 ? '' : 's'} today in the trend direction${todayImpulses >= 4 ? ': late entries after 4–5 waves are trap-prone' : ''}`, 'Masterclass 6.4.2');
+    const fails = checks.filter(c => !c.ok).length;
+    const grade = fails === 0 ? 'A' : fails === 1 ? 'B' : fails === 2 ? 'C' : 'Skip';
+
+    /* ---------- scenarios with triggers (wait for a close beyond: Masterclass 6.4.2) ---------- */
+    const above1 = levels.filter(l => l.price > price + 0.25 * ref && !['round2', 'ema'].includes(l.kind)).sort((a, b) => a.price - b.price);
+    const below1 = levels.filter(l => l.price < price - 0.25 * ref && !['round2', 'ema'].includes(l.kind)).sort((a, b) => b.price - a.price);
+    const trigUp = buildup && buildup.side === 1 ? { price: buildup.hi, label: `buildup barrier (${buildup.n}-bar cluster)` } : box && box.live ? { price: box.hi, label: 'consolidation top' } : lastH && lastH.p > price ? { price: lastH.p, label: 'last swing high' } : above1[0] ? { price: above1[0].price, label: above1[0].label } : { price: hi, label: 'day high' };
+    const trigDn = buildup && buildup.side === -1 ? { price: buildup.lo, label: `buildup barrier (${buildup.n}-bar cluster)` } : box && box.live ? { price: box.lo, label: 'consolidation bottom' } : lastL && lastL.p < price ? { price: lastL.p, label: 'last swing low' } : below1[0] ? { price: below1[0].price, label: below1[0].label } : { price: lo, label: 'day low' };
+    const tgt = (from, d) => { const lv = levels.filter(l => !['round2', 'ema', 'day'].includes(l.kind) && d * (l.price - from) > 0.08 * ADR).sort((a, b) => d * (a.price - b.price))[0]; return { bracket: from + d * 0.2 * ADR, level: lv || null }; };
+    const mk = (d) => {
+      const tr = d === 1 ? trigUp : trigDn, inv = d === 1 ? trigDn : trigUp, t = tgt(tr.price, d);
+      return { dir: d, trigger: tr, invalid: inv, target: t, stop: tr.price - d * 0.1 * ADR };
+    };
+    const primary = mk(sg || pressDir || (structure || 1)), alt = mk(-(sg || pressDir || (structure || 1)));
+
+    /* ---------- projection (statistical, not from the books) ---------- */
+    const slot = Math.min(77, last.slot), extArr = T.extBySlot[slot] || [];
+    const medR = quant(extArr, 0.5); const projRange = isFinite(medR) ? range * medR : Math.max(range, ADR);
+    const extra = Math.max(0, projRange - range), upShare = clamp(0.5 + score / 120, 0.12, 0.88);
+    const proj = { extra, high: hi + extra * upShare, low: lo - extra * (1 - upShare), adrLeft: Math.max(0, ADR - range), upShare, n: extArr.length };
+
+    /* ---------- narrative ---------- */
+    const expect = [];
+    const E = (txt, src, tone = 0) => expect.push({ txt, src, tone });
+    if (!opts.lite) {
+      switch (phase.key) {
+        case 'trend':
+          E(tdir === 1 ? `Trend phase: expect continuation while the swing structure holds. The uptrend is intact until price closes below the last higher low${lastL ? ' ' + px(lastL.p) : ''}.` : `Trend phase: expect continuation while the swing structure holds. The downtrend is intact until price closes above the last lower high${lastH ? ' ' + px(lastH.p) : ''}.`, 'Masterclass 4.2, 4.4.4', tdir);
+          if (ratio != null && ratio < 1.2) E('Trend and correction waves are nearly equal. The book calls this a trend on the brink: a small shift can turn it.', 'Masterclass 4.4.3', -tdir);
+          if (waveMom === -1) E('Shorter, flatter impulse waves point to a trend that is slowing. Watch for the first lower high.', 'Masterclass 4.4.2', -tdir);
+          E(`Best continuation entries come from a pullback that reaches the 25 EMA (${px(last.ema)}) and then builds up before breaking back in the trend direction.`, 'Volman ch.5', tdir);
+          break;
+        case 'correction': {
+          const strongT = ratio != null && ratio >= 2;
+          E(`Correction at ${pc(retr)} of the last ${tdir === 1 ? 'up' : 'down'} wave. Volman looks for the turn at 50–60% (about 40% in a strong trend${strongT ? ', which this is' : ''}) and ideally after price reaches the 25 EMA at ${px(last.ema)}.`, 'Volman ch.5', 0);
+          E(retr < (strongT ? 0.4 : 0.5) ? 'The pullback has not retraced enough yet. Expect more correction before the trend resumes.' : retr > 0.8 ? 'The pullback is deep (over 80%). The longer and deeper corrections get, the more the trend is at risk of reversing.' : 'The pullback is in the reversal zone. Wait for a small buildup and a break back in the trend direction.', 'Volman ch.5; Masterclass 4.4.3', retr > 0.8 ? -tdir : 0);
+          if (curWavePower >= 2) E('The pullback contains powerbars. Volman warns against anticipating a reversal of a pullback this aggressive.', 'Volman ch.7', -tdir);
+          break; }
+        case 'consolidation':
+          E(`Consolidation between ${px(box.lo)} and ${px(box.hi)}: buyers and sellers are in balance. Expect rotation inside the box until one side wins and price closes outside it.`, 'Masterclass 4.1–4.2', 0);
+          E(`Ranges tend to break in the direction of the pressure and away from the 25 EMA. Pressure is ${pressDir === 1 ? 'bullish, so the top is the likelier break side' : pressDir === -1 ? 'bearish, so the bottom is the likelier break side' : 'neutral'}.`, 'Volman ch.2, 7', pressDir);
+          E('Trust a break only if it comes from buildup pressing against the edge. A break that arrives from the middle of the box with no buildup is a likely trap.', 'Volman ch.2', 0);
+          break;
+        case 'breakout':
+          E(`Breakout ${phase.dir === 1 ? 'up' : 'down'} from the consolidation. Expect a retest of the broken edge (${px(boxBreak.level)}); if it holds, the move usually continues.`, 'Masterclass 5.5.1; Volman ch.5', phase.dir);
+          if (brk && brk.quality !== 'proper') E('The break came without proper buildup at the edge. Volman calls these tease or false breaks: they often get pulled back inside first.', 'Volman ch.2', -phase.dir);
+          if (rvol != null && rvol < 0.8) E('Participation is light for this time of day. Breaks need volume to follow through.', 'Volman ch.2 (volume)', 0);
+          break;
+        case 'reversal':
+          E(`The swing structure broke at ${px(structBreak.level)}. By the Dow-theory definition the old trend is over. Expect a retest of the broken level from the other side, like a neckline retest.`, 'Masterclass 4.3.2, 5.1.1.2', structBreak.dir);
+          E('Reversals are confirmed by a lower high (or higher low) after the break. Until then this can still be a deep correction.', 'Masterclass 4.4.4', 0);
+          break;
+        case 'early':
+          E('Opening bars: Volman notes the US opening hour prints tall, fickle bars that are hard to trade with a tight stop. Let structure form first.', 'Volman ch.11', 0);
+          break;
+        default:
+          E('No dominant side. Expect two-way trade. Volman: do not force a trend read on a ranging market.', 'Volman ch.7', 0);
+      }
+      if (buildup) E(`Buildup: the last ${buildup.n} bars are packed into ${px(buildup.lo)}–${px(buildup.hi)} with ${buildup.topT} touches at the top and ${buildup.botT} at the bottom${buildup.side === 1 && buildup.nearTop.length ? ` under ${buildup.nearTop[0]}` : buildup.side === -1 && buildup.nearBot.length ? ` on ${buildup.nearBot[0]}` : ''}. This is pre-breakout tension; a break ${buildup.side === 1 ? 'up' : 'down'} is favored.`, 'Volman ch.2, 5', buildup.side);
+      if (rsiDiv) E(`${rsiDiv.txt[0].toUpperCase() + rsiDiv.txt.slice(1)}. Divergence warns the last wave lost strength; wait for a structure break to confirm.`, 'Masterclass 7.3.6', rsiDiv.dir);
+      if (bb.state === 'miss') E('The trend wave failed to reach the outer Bollinger band, the book’s exhaustion signal before a reversal.', 'Masterclass 7.5.2', bb.dir);
+      if (bb.state === 'close-out') E('A close outside the 2.5 SD band signals an extremely strong move. Continuation is likelier than reversal.', 'Masterclass 7.5.3', bb.dir);
+      if (rsi >= 70 || rsi <= 30) E(`RSI at ${rsi.toFixed(0)} is a sign of strong momentum. The book is explicit that overbought or oversold is not a reversal signal.`, 'Masterclass 7.3.4', rsi >= 70 ? 1 : -1);
+      if (falseHL) E(`${falseHL.txt[0].toUpperCase() + falseHL.txt.slice(1)}. At a key level this often announces a move the other way.`, 'Volman ch.2', falseHL.dir);
+      if (brk && brk.failed && !brk.withPressure) E(`The failed ${brk.dir === 1 ? 'bull' : 'bear'} break against the pressure has trapped traders. Volman trades these for failure in the direction of the pressure.`, 'Volman ch.7', -brk.dir);
+      const zNear = zones.filter(z => Math.abs(z.distA) <= 0.25);
+      zNear.forEach(z => {
+        if (z.type === 'sr' && z.absorb) E(`The ${z.side} zone ${px(z.lo)}–${px(z.hi)} is being revisited faster each time (order absorption). It is weakening and a break through it becomes likelier.`, 'Masterclass 6.2.4', z.side === 'resistance' ? 1 : -1);
+        else if (z.type === 'demand' || z.type === 'supply') E(`${z.type === 'demand' ? 'Demand' : 'Supply'} zone ${px(z.lo)}–${px(z.hi)} from ${z.when} is ${z.status}. The first or second return to a zone like this tends to draw a reaction.`, 'Masterclass 6.3.2', z.type === 'demand' ? 1 : -1);
+      });
+      const rnNear = rn.filter(r => r.major && Math.abs(u(r.price - price)) <= 0.3).sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price))[0];
+      if (rnNear) E(`Round number ${px(rnNear.price)} is ${(Math.abs(u(rnNear.price - price)) * 100).toFixed(0)}% of ADR ${rnNear.price > price ? 'above' : 'below'}. Round numbers act as magnets; expect price to be drawn toward it and to fight around it.`, 'Volman ch.2', Math.sign(rnNear.price - price) * 0.5);
+      if (endMin >= 900) E('Late session: Volman suggests taking profits into the 4:00 close rather than holding a day trade past it.', 'Volman ch.11', 0);
+      if (endMin > 690 && endMin < 840 && rvol != null && rvol < 0.85) E('Midday with light activity: breaks in thin trade often fail to follow through.', 'Volman ch.11', 0);
+    }
+
+    return {
+      ticker: T.ticker, date: S.date, k, n, nTotal: S.bars.length, endMin, time: fmtMin(endMin), price, ADR, ref, open, hi, lo, hiIdx, loIdx, prev,
+      off, W, waves, piv, box, boxBreak, buildup, brk, falseHL, patterns, zones, levels, rn, major, minor,
+      pressure, pressDir, slope, structure, structBreak, ratio, waveMom, tdir, retr, inCorrection, todayImpulses,
+      rsi, rsiDiv, bb, macd: { up: macdUp, dn: macdDn, sep, txt: macdTxt }, htf, h60, daily, rvol, emaDist, frantic,
+      phase, factors: F, score, bucket, label, agree, against, checks, grade, obst, room, primary, alt, proj, expect,
+      bars,
+    };
+  }
+
+  /* outcome for replay/calibration: Volman bracket (+0.2 ADR target vs -0.1 ADR stop) and close direction */
+  function outcome(T, si, k, dir) {
+    const S = T.sessions[si], b = S.bars; if (k >= b.length - 1) return null;
+    const p = b[k].c, tg = 0.2 * S.adr, st = 0.1 * S.adr; let bracket = 0;
+    if (dir) for (let j = k + 1; j < b.length; j++) {
+      const hitT = dir === 1 ? b[j].h >= p + tg : b[j].l <= p - tg, hitS = dir === 1 ? b[j].l <= p - st : b[j].h >= p + st;
+      if (hitS) { bracket = -1; break; } if (hitT) { bracket = 1; break; }
+    }
+    const fut = b.slice(k + 1);
+    return { price: p, close: S.close, closeMove: (S.close - p) / S.adr, bracket, futHi: Math.max(...fut.map(x => x.h)), futLo: Math.min(...fut.map(x => x.l)) };
+  }
+  function calibrate(T) {
+    const out = [];
+    for (let si = 1; si < T.sessions.length - 1; si++) {
+      const S = T.sessions[si]; if (S.adrN < 10 || S.bars.length < 70) continue;
+      for (let k = 5; k <= S.bars.length - 4; k += 6) {
+        const r = analyze(T, si, k, { lite: true }); const d = Math.sign(r.score);
+        const o = outcome(T, si, k, d); if (!o) continue;
+        out.push({ min: r.endMin, score: r.score, bucket: r.bucket, grade: r.grade, phase: r.phase.key, closeMove: o.closeMove, bracket: o.bracket });
+      }
+    }
+    return out;
+  }
+  function stats(s) {
+    const dir = s.filter(x => x.bucket !== 'two');
+    const cm = dir.filter(x => Math.abs(x.closeMove) > 0.02); const ch = cm.filter(x => Math.sign(x.closeMove) === Math.sign(x.score)).length;
+    const br = dir.filter(x => x.bracket !== 0); const bw = br.filter(x => x.bracket === 1).length;
+    const two = s.filter(x => x.bucket === 'two'); const flat = two.filter(x => Math.abs(x.closeMove) < 0.25).length;
+    return { n: s.length, closeN: cm.length, closeRate: cm.length ? ch / cm.length : null, brN: br.length, brRate: br.length ? bw / br.length : null, twoN: two.length, flatRate: two.length ? flat / two.length : null };
+  }
+  return { prep, analyze, outcome, calibrate, stats, etParts, fmtMin, clamp };
+})();
+
+
+</script>
+<script>
+/* Synthetic demo data generator (clearly labeled demo; not market data) */
+const DEMO = (() => {
+  function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  function gauss(r) { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  // build trading days back from a reference date (weekdays only)
+  function days(endDate, count) {
+    const out = []; const d = new Date(endDate + 'T12:00:00Z');
+    while (out.length < count) { const wd = d.getUTCDay(); if (wd !== 0 && wd !== 6) out.unshift(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() - 1); }
+    return out;
+  }
+  function etToMs(date, min) {
+    // approximate ET offset: EDT (UTC-4) Mar-Nov, EST otherwise
+    const mo = +date.slice(5, 7); const off = (mo >= 4 && mo <= 10) ? 4 : 5;
+    const [y, m, dd] = date.split('-').map(Number);
+    return Date.UTC(y, m - 1, dd, Math.floor(min / 60) + off, min % 60);
+  }
+  function make(ticker, endDate, opts = {}) {
+    const base = { SPY: 580, TLT: 88, GLD: 245 }[ticker] || 100;
+    const vol = { SPY: 0.0011, TLT: 0.0009, GLD: 0.0010 }[ticker] || 0.001;
+    const seed = [...ticker].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) + (opts.seed || 0);
+    const r = rng(seed);
+    const D = days(endDate, opts.days || 70);
+    const raw = [], daily = []; let p = base;
+    D.forEach((date, di) => {
+      const isLast = di === D.length - 1;
+      const kind = isLast ? (opts.lastKind || 'trend') : ['trend', 'range', 'range', 'rev', 'range', 'trend'][Math.floor(r() * 6)];
+      const dirn = r() < 0.5 ? -1 : 1;
+      p *= 1 + gauss(r) * vol * 3; // overnight gap
+      const dO = p; let dh = p, dl = p, dv = 0;
+      const nBars = isLast && opts.lastBars ? opts.lastBars : 78;
+      let mid = p;
+      for (let s = 0; s < nBars; s++) {
+        const min = 570 + s * 5;
+        let drift = 0;
+        if (kind === 'trend') drift = dirn * vol * 0.35;
+        if (kind === 'rev') drift = (s < 30 ? dirn : -dirn) * vol * 0.4;
+        if (kind === 'range') drift = (mid - p) / p * 0.08;
+        const o = p, c = o * (1 + drift + gauss(r) * vol);
+        const h = Math.max(o, c) * (1 + Math.abs(gauss(r)) * vol * 0.5), l = Math.min(o, c) * (1 - Math.abs(gauss(r)) * vol * 0.5);
+        const v = Math.round((s < 6 || s > 70 ? 2.2 : 1) * (2e5 + r() * 2e5) * (ticker === 'SPY' ? 5 : 1));
+        raw.push({ t: etToMs(date, min), o, h, l, c, v });
+        p = c; dh = Math.max(dh, h); dl = Math.min(dl, l); dv += v;
+      }
+      daily.push({ t: etToMs(date, 0) + 4 * 3600e3, o: dO, h: dh, l: dl, c: p, v: dv });
+    });
+    return { raw, daily };
+  }
+  return { make };
+})();
+
+
+</script>
+<script>
+const TICKERS = ['SPY', 'TLT', 'GLD'];
+const API = 'https://api.polygon.io';
+const $ = id => document.getElementById(id);
+const state = { data: {}, sel: 'SPY', demo: false, busy: false, showFuture: true, timer: null };
+const fmt = (v, d = 2) => (v == null || !isFinite(v)) ? '—' : v.toFixed(d);
+const pct = v => (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(0) + '%';
+const sgnCls = v => v > 0 ? 'bull' : v < 0 ? 'bear' : 'two';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { } }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function log(m) { const el = $('log'); el.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; el.scrollTop = el.scrollHeight; }
+function setStatus(h) { $('status').innerHTML = h; }
+
+/* ---------- data ---------- */
+async function robustFetch(url, tries = 5) {
+  let lastErr;
+  for (let a = 0; a < tries; a++) {
+    try {
+      const res = await fetch(url);
+      if (res.status === 429 || res.status >= 500) { lastErr = new Error('HTTP ' + res.status); await sleep(700 * 2 ** a); continue; }
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(j.error || j.message || ('HTTP ' + res.status)), { fatal: true });
+      return j;
+    } catch (e) { lastErr = e; if (e.fatal) throw e; await sleep(700 * 2 ** a); }
+  }
+  throw lastErr;
+}
+async function aggs(t, mult, span, from, to, key) {
+  let url = `${API}/v2/aggs/ticker/${t}/range/${mult}/${span}/${from}/${to}?adjusted=true&sort=asc&limit=50000&apiKey=${encodeURIComponent(key)}`;
+  const out = []; let pages = 0;
+  while (url && pages < 25) {
+    const j = await robustFetch(url);
+    if (j.status === 'ERROR' || j.status === 'NOT_AUTHORIZED') throw new Error(j.error || j.message || j.status);
+    if (j.results) out.push(...j.results); pages++;
+    url = j.next_url ? j.next_url + (j.next_url.includes('?') ? '&' : '?') + 'apiKey=' + encodeURIComponent(key) : null;
+  }
+  const seen = new Set(); const d = out.filter(r => !seen.has(r.t) && seen.add(r.t)).sort((a, b) => a.t - b.t);
+  log(`${t} ${mult}/${span}: ${d.length} bars in ${pages} page${pages > 1 ? 's' : ''}`); return d;
+}
+function isoMinus(date, days) { const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - days); return d.toISOString().slice(0, 10); }
+function liveInfo() { const p = PW.etParts(Date.now()); return { date: p.date, min: p.min, inRTH: p.min >= 570 && p.min < 960 }; }
+
+function finishTicker(tk, raw5, daily, isDemo) {
+  const now = liveInfo(); let dropped = false;
+  if (!isDemo && raw5.length) { const p = PW.etParts(raw5[raw5.length - 1].t); if (p.date === now.date && now.inRTH && p.min >= 570) { raw5 = raw5.slice(0, -1); dropped = true; } }
+  const T = PW.prep(tk, raw5, daily);
+  if (!T.sessions.length) throw new Error(`${tk}: no regular-session bars returned`);
+  const si = T.sessions.length - 1, S = T.sessions[si];
+  const live = !isDemo && S.date === now.date && now.inRTH;
+  state.data[tk] = { T, si, k: S.bars.length - 1, live, dropped, calib: null, latestSi: si, livePx: null };
+  log(`${tk}: ${T.sessions.length} sessions, current ${S.date} (${S.bars.length} bars${live ? ', live' : ''}${dropped ? ', forming bar dropped' : ''}), ADR ${fmt(S.adr)}`);
+}
+async function runCalib(tk) { const D = state.data[tk]; if (!D) return; await sleep(10); const t0 = performance.now(); D.calib = PW.calibrate(D.T); log(`${tk}: engine history ${D.calib.length} calls replayed in ${Math.round(performance.now() - t0)} ms`); }
+
+async function scan() {
+  const key = $('key').value.trim();
+  if (!key) { setStatus('<span class="err">Paste a Polygon API key first, or press Demo data.</span>'); $('key').focus(); return; }
+  if (state.busy) return; state.busy = true; $('scan').disabled = true;
+  store('pwo_key', key); state.demo = false; $('banner').hidden = true;
+  const hist = +$('hist').value; store('pwo_hist', String(hist));
+  const today = liveInfo().date;
+  setStatus('Fetching 5-minute and daily bars…');
+  const errs = [];
+  await Promise.all(TICKERS.map(async tk => {
+    try { const [r5, d] = await Promise.all([aggs(tk, 5, 'minute', isoMinus(today, hist), today, key), aggs(tk, 1, 'day', isoMinus(today, 420), today, key)]); finishTicker(tk, r5, d, false); }
+    catch (e) { errs.push(`${tk}: ${e.message}`); log(`${tk} ERROR ${e.message}`); }
+  }));
+  render();
+  for (const tk of TICKERS) if (state.data[tk] && !state.data[tk].calib) { await runCalib(tk); render(); }
+  state.busy = false; $('scan').disabled = false;
+  const D = state.data[state.sel] || Object.values(state.data)[0]; const now = liveInfo();
+  let s = errs.length ? `<span class="err">${esc(errs.join(' · '))}</span>` : '';
+  if (D) {
+    const S = D.T.sessions[D.latestSi]; const lm = S.bars[S.bars.length - 1].min + 5;
+    s += `<span>Session ${S.date} · last complete bar ends ${PW.fmtMin(lm)} ET</span>`;
+    s += D.live ? `<span>Live: now ${PW.fmtMin(now.min)} ET · data lag ${Math.max(0, now.min - lm)} min</span>` : '<span>Market closed: showing the most recent full session. Use the slider to replay any time of day.</span>';
+  }
+  setStatus(s);
+}
+function demo() {
+  state.demo = true;
+  const b = $('banner'); b.hidden = false; b.className = 'banner';
+  b.textContent = 'DEMO DATA: synthetic bars generated in the browser to show how the outlook works. These are not market prices. Paste your Polygon key and press Scan for real data.';
+  const now = new Date(); const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12));
+  while ([0, 6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() - 1);
+  const end = d.toISOString().slice(0, 10), kinds = { SPY: 'trend', TLT: 'range', GLD: 'rev' };
+  for (const tk of TICKERS) { const g = DEMO.make(tk, end, { lastKind: kinds[tk], days: 90 }); finishTicker(tk, g.raw, g.daily, true); }
+  for (const tk of TICKERS) state.data[tk].calib = PW.calibrate(state.data[tk].T);
+  setStatus('<span>Demo session loaded. Drag the slider to watch the outlook change through the day.</span>');
+  render();
+}
+
+/* ---------- helpers ---------- */
+function current(tk) { const D = state.data[tk]; if (!D) return null; return { D, r: PW.analyze(D.T, D.si, D.k) }; }
+function lookup(D, r) {
+  if (!D.calib || !D.calib.length) return null;
+  const b = r.bucket, sg = Math.sign(r.score); const m = x => x.bucket === b && (b === 'two' || Math.sign(x.score) === sg);
+  let st = PW.stats(D.calib.filter(x => m(x) && Math.abs(x.min - r.endMin) <= 60)), scope = `within ±60 min of ${r.time}`;
+  if (st.n < 12) { st = PW.stats(D.calib.filter(m)); scope = 'all times of day'; }
+  return { ...st, scope };
+}
+function parsePx(s) { const v = parseFloat(String(s || '').replace(/[$,\s]/g, '')); return isFinite(v) && v > 0 ? v : null; }
+function liveCheck(D, r) {
+  const v = D.livePx; if (v == null) return null;
+  const S = D.T.sessions[D.si];
+  if (!(D.si === D.latestSi && D.k === S.bars.length - 1)) return { inactive: true, why: 'The live price only applies at the latest bar. Press Latest bar to use it.' };
+  const move = v - r.price, moveA = move / r.ADR;
+  if (Math.abs(moveA) > 1.5) return { invalid: true, why: `${fmt(v)} is ${(Math.abs(moveA) * 100).toFixed(0)}% of ADR away from the last bar (${fmt(r.price)}). Check that the price was typed for ${r.ticker}. It is being ignored.` };
+  const sg = r.bucket === 'two' ? 0 : Math.sign(r.score), md = Math.sign(move);
+  const crossed = r.levels.filter(l => !['day', 'round2'].includes(l.kind) && (l.price - r.price) * (l.price - v) < 0);
+  const against = crossed.filter(l => ['prev', 'sr', 'demand', 'supply', 'ema', 'round'].includes(l.kind) && sg !== 0 && md === -sg);
+  const pT = r.primary.trigger.price, aT = r.alt.trigger.price;
+  const primHit = r.primary.dir === 1 ? v > pT : v < pT, altHit = r.alt.dir === 1 ? v > aT : v < aT;
+  const newHi = v > r.hi, newLo = v < r.lo, emaSide = v > r.bars[r.bars.length - 1].ema ? 1 : -1;
+  let status = 'cur', reasons = [];
+  if (Math.abs(moveA) >= 0.25) { status = 'stale'; reasons.push(`price moved ${(Math.abs(moveA) * 100).toFixed(0)}% of ADR since the last bar`); }
+  if (altHit) { status = 'stale'; reasons.push(`price is beyond the alternative scenario's trigger (${fmt(aT)})`); }
+  if (against.length) { status = 'stale'; reasons.push(`price crossed ${against.map(l => l.label).join(', ')} against the outlook`); }
+  if (status === 'cur' && Math.abs(moveA) >= 0.10) status = 'age';
+  if (status === 'cur' && primHit) status = 'age';
+  const label = { cur: 'CURRENT', age: 'AGING', stale: 'STALE' }[status];
+  const advice = status === 'cur' ? 'The outlook stands. Price is within 10% of ADR of the last bar and no trigger has been crossed.'
+    : status === 'age' ? (primHit ? `Price is beyond the primary trigger (${fmt(pT)}) but no 5-minute bar has closed there yet in the data. Both books wait for the close; check your real-time chart.` : 'Direction is probably intact. Use the live distances below rather than the delayed ones.')
+    : `Treat the outlook as stale: ${reasons.join('; ')}. Rescan, and check the latest bars on a real-time chart before acting.`;
+  return { v, move, moveA, crossed, against, primHit, altHit, newHi, newLo, emaSide, status, label, advice };
+}
+
+/* ---------- tiles ---------- */
+function renderTiles() {
+  $('tiles').innerHTML = TICKERS.map(tk => {
+    const c = current(tk);
+    if (!c) return `<button class="tile" data-tk="${tk}" aria-pressed="${state.sel === tk}"><span class="tk">${tk}</span><span class="px">—</span><span class="bias two">no data</span><span class="meta"><span>not scanned</span></span></button>`;
+    const { r, D } = c; const cl = r.bucket === 'two' ? 'two' : sgnCls(r.score);
+    const chg = r.prev ? (r.price - r.prev.c) / r.prev.c * 100 : 0; const lc = liveCheck(D, r);
+    const chip = lc && lc.label ? ` <span class="st ${lc.status}" style="font-size:12px">${lc.label}</span>` : '';
+    return `<button class="tile" data-tk="${tk}" aria-pressed="${state.sel === tk}">
+      <span class="tk">${tk}</span><span class="px num">${fmt(r.price)} <span class="${sgnCls(chg)}" style="font-size:12px">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span></span>
+      <span class="bias ${cl}">${r.label} <span class="num">${r.score > 0 ? '+' : ''}${r.score}</span></span>
+      <span class="meta"><span>${esc(r.phase.label)}</span><span>grade ${r.grade} · ${r.time} ET${chip}</span></span></button>`;
+  }).join('');
+  document.querySelectorAll('.tile').forEach(b => b.onclick = () => { state.sel = b.dataset.tk; render(); });
+}
+
+/* ---------- chart ---------- */
+function niceStep(x) { const p = 10 ** Math.floor(Math.log10(x)); const m = x / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+function chartSVG(D, r, lc) {
+  const S = D.T.sessions[D.si], all = S.bars, k = r.k, showF = state.showFuture && k < all.length - 1;
+  const W = 1000, H = 470, ml = 8, mr = 168, mt = 14, ph = 340, rsiTop = mt + ph + 26, rsiH = 70, pw = W - ml - mr;
+  const vis = showF ? all : all.slice(0, k + 1);
+  let yHi = Math.max(...vis.map(b => b.h)), yLo = Math.min(...vis.map(b => b.l));
+  const pad = 0.35 * r.ADR;
+  const lv = r.levels.filter(l => l.kind !== 'day' && l.price <= yHi + pad && l.price >= yLo - pad);
+  lv.forEach(l => { yHi = Math.max(yHi, l.hi ?? l.price); yLo = Math.min(yLo, l.lo ?? l.price); });
+  [r.primary.trigger.price, r.alt.trigger.price].forEach(p => { if (Math.abs(p - r.price) < r.ADR) { yHi = Math.max(yHi, p); yLo = Math.min(yLo, p); } });
+  const span = (yHi - yLo) || 1; yHi += span * .03; yLo -= span * .03;
+  const X = s => ml + (s + 0.5) * (pw / 78), Y = p => mt + (yHi - p) / (yHi - yLo) * ph, bw = Math.max(2, pw / 78 * 0.62);
+  let g = '';
+  for (let h = 10; h <= 16; h++) { const x = ml + ((h * 60 - 570) / 5) * (pw / 78); g += `<line x1="${x}" x2="${x}" y1="${mt}" y2="${rsiTop + rsiH}" stroke="var(--line)"/><text x="${x}" y="${mt + ph + 16}" fill="var(--dim)" font-size="11" text-anchor="middle" font-family="var(--mono)">${h > 12 ? h - 12 : h}:00</text>`; }
+  const step = niceStep(span / 6); for (let p = Math.ceil(yLo / step) * step; p <= yHi; p += step) { const y = Y(p); g += `<line x1="${ml}" x2="${ml + pw}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="2 4"/><text x="${ml + 4}" y="${y - 3}" fill="var(--faint)" font-size="10" font-family="var(--mono)">${fmt(p)}</text>`; }
+  // zones as bands
+  r.zones.forEach(z => {
+    if (z.hi < yLo || z.lo > yHi) return;
+    const col = z.type === 'demand' ? 'var(--bull)' : z.type === 'supply' ? 'var(--bear)' : 'var(--band)';
+    const y1 = Y(Math.min(yHi, z.hi)), y2 = Y(Math.max(yLo, z.lo));
+    g += `<rect x="${ml}" y="${y1}" width="${pw}" height="${Math.max(2, y2 - y1)}" fill="${col}" fill-opacity="${z.type === 'sr' ? 0.08 : 0.12}" stroke="${col}" stroke-opacity=".35"/>`;
+  });
+  // round numbers
+  r.rn.forEach(n => { if (n.price < yLo || n.price > yHi) return; const y = Y(n.price); g += `<line x1="${ml}" x2="${ml + pw}" y1="${y}" y2="${y}" stroke="var(--fg)" stroke-opacity="${n.major ? 0.28 : 0.12}" stroke-width="1"/>`; });
+  // consolidation box & buildup box (indices in r.W; map to session slot)
+  const slotOf = i => { const b = r.W[i]; return i < r.off ? null : b.slot; };
+  if (r.box) { const s0 = slotOf(r.box.from), s1 = slotOf(r.box.to); if (s0 != null && s1 != null) g += `<rect x="${X(s0) - bw}" y="${Y(r.box.hi)}" width="${X(s1) - X(s0) + 2 * bw}" height="${Math.max(2, Y(r.box.lo) - Y(r.box.hi))}" fill="var(--warn)" fill-opacity=".06" stroke="var(--warn)" stroke-dasharray="4 3" stroke-opacity=".7"/>`; }
+  if (r.buildup) { const s0 = slotOf(r.buildup.from); if (s0 != null) g += `<rect x="${X(s0) - bw}" y="${Y(r.buildup.hi) - 2}" width="${X(all[k].slot) - X(s0) + 2 * bw}" height="${Math.max(3, Y(r.buildup.lo) - Y(r.buildup.hi) + 4)}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>`; }
+  // Bollinger bands & EMA
+  const path = (key) => vis.map(b => `${X(b.slot).toFixed(1)},${Y(b[key]).toFixed(1)}`).join(' ');
+  g += `<polyline points="${path('bbu')}" fill="none" stroke="var(--band)" stroke-opacity=".45" stroke-dasharray="3 3"/><polyline points="${path('bbl')}" fill="none" stroke="var(--band)" stroke-opacity=".45" stroke-dasharray="3 3"/>`;
+  g += `<polyline points="${path('ema')}" fill="none" stroke="var(--ema)" stroke-width="1.6"/>`;
+  // future shade
+  if (showF) { const x = X(all[k].slot) + bw; g += `<rect x="${x}" y="${mt}" width="${ml + pw - x}" height="${ph}" fill="var(--bg)" fill-opacity=".45"/><line x1="${x}" x2="${x}" y1="${mt}" y2="${rsiTop + rsiH}" stroke="var(--accent)"/><text x="${x + 4}" y="${mt + 11}" fill="var(--accent)" font-size="11" font-family="var(--cond)" letter-spacing=".06em">AS OF ${r.time} · REST OF DAY (ACTUAL)</text>`; }
+  // candles
+  vis.forEach((b, i) => {
+    const up = b.c >= b.o, col = up ? 'var(--bull)' : 'var(--bear)', x = X(b.slot), top = Y(Math.max(b.o, b.c)), bot = Y(Math.min(b.o, b.c));
+    g += `<g opacity="${i > k ? 0.32 : 1}"><line x1="${x}" x2="${x}" y1="${Y(b.h)}" y2="${Y(b.l)}" stroke="${col}"/><rect x="${x - bw / 2}" y="${top}" width="${bw}" height="${Math.max(1, bot - top)}" fill="${up ? 'var(--bg)' : col}" stroke="${col}"/></g>`;
+  });
+  // zigzag waves (today's part)
+  const zp = r.piv.filter(p => p.i >= r.off).map(p => `${X(r.W[p.i].slot).toFixed(1)},${Y(p.p).toFixed(1)}`);
+  const lw = r.waves[r.waves.length - 1]; if (lw && lw.live) zp.push(`${X(all[k].slot).toFixed(1)},${Y(r.price).toFixed(1)}`);
+  if (zp.length >= 2) g += `<polyline points="${zp.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-opacity=".85"/>`;
+  r.piv.filter(p => p.i >= r.off && !p.prov).forEach(p => { const x = X(r.W[p.i].slot), y = Y(p.p); g += `<circle cx="${x}" cy="${y}" r="2.6" fill="var(--accent)"/>`; });
+  // labels on the right: triggers, prev day, zones
+  const labs = [];
+  const pushLab = (p, text, col, dash) => { if (p > yHi || p < yLo) return; labs.push({ y: Y(p), p, text, col, dash }); };
+  if (r.prev) { pushLab(r.prev.h, 'Y high', 'var(--dim)', '5 4'); pushLab(r.prev.l, 'Y low', 'var(--dim)', '5 4'); pushLab(r.prev.c, 'Y close', 'var(--dim)', '5 4'); }
+  pushLab(r.primary.trigger.price, `${r.primary.dir === 1 ? '▲' : '▼'} primary trigger`, 'var(--accent)', '');
+  pushLab(r.alt.trigger.price, `${r.alt.dir === 1 ? '▲' : '▼'} alt. trigger`, 'var(--warn)', '6 3');
+  if (r.primary.target.level) pushLab(r.primary.target.level.price, 'target level', 'var(--accent)', '1 3');
+  r.zones.forEach(z => pushLab(z.mid, z.type === 'sr' ? `S/R ×${z.touches}` : `${z.type} ${z.status}`, z.type === 'demand' ? 'var(--bull)' : z.type === 'supply' ? 'var(--bear)' : 'var(--band)', 'none'));
+  r.rn.filter(n => n.major).forEach(n => pushLab(n.price, 'round', 'var(--faint)', 'none'));
+  labs.sort((a, b) => a.y - b.y); for (let i = 1; i < labs.length; i++) if (labs[i].y - (labs[i - 1].ly ?? labs[i - 1].y) < 12) labs[i].ly = (labs[i - 1].ly ?? labs[i - 1].y) + 12;
+  labs.forEach(l => {
+    if (l.dash !== 'none') g += `<line x1="${ml}" x2="${ml + pw}" y1="${l.y}" y2="${l.y}" stroke="${l.col}" stroke-dasharray="${l.dash}" opacity=".9"/>`;
+    g += `<text x="${ml + pw + 6}" y="${Math.min(mt + ph, l.ly ?? l.y) + 3.5}" fill="${l.col}" font-size="10" font-family="var(--mono)">${fmt(l.p)} ${esc(l.text)}</text>`;
+  });
+  // price + live
+  const yp = Y(r.price); g += `<line x1="${ml}" x2="${ml + pw}" y1="${yp}" y2="${yp}" stroke="var(--fg)" stroke-width=".6" stroke-dasharray="1 2"/><rect x="${ml + pw - 64}" y="${yp - 8}" width="62" height="16" fill="var(--fg)"/><text x="${ml + pw - 60}" y="${yp + 4}" fill="var(--bg)" font-size="11" font-weight="600" font-family="var(--mono)">${fmt(r.price)}</text>`;
+  if (lc && !lc.inactive && !lc.invalid && lc.v <= yHi && lc.v >= yLo) { const y = Y(lc.v); g += `<line x1="${ml}" x2="${ml + pw}" y1="${y}" y2="${y}" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="6 3"/><rect x="${ml + pw - 64}" y="${y - 8}" width="62" height="16" fill="var(--warn)"/><text x="${ml + pw - 60}" y="${y + 4}" fill="var(--bg)" font-size="11" font-weight="600" font-family="var(--mono)">${fmt(lc.v)}</text><text x="${ml + pw - 68}" y="${y + 4}" fill="var(--warn)" font-size="10" text-anchor="end" font-family="var(--cond)">LIVE</text>`; }
+  // RSI pane
+  const RY = v => rsiTop + (100 - v) / 100 * rsiH;
+  g += `<rect x="${ml}" y="${rsiTop}" width="${pw}" height="${rsiH}" fill="none" stroke="var(--line2)"/>`;
+  [30, 50, 70].forEach(v => g += `<line x1="${ml}" x2="${ml + pw}" y1="${RY(v)}" y2="${RY(v)}" stroke="var(--line2)" stroke-dasharray="${v === 50 ? '2 4' : ''}"/><text x="${ml + pw + 6}" y="${RY(v) + 3.5}" fill="var(--faint)" font-size="10" font-family="var(--mono)">${v}</text>`);
+  g += `<polyline points="${vis.map(b => `${X(b.slot).toFixed(1)},${RY(b.rsi).toFixed(1)}`).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="1.2"/>`;
+  g += `<text x="${ml + 4}" y="${rsiTop + 12}" fill="var(--dim)" font-size="10" font-family="var(--cond)" letter-spacing=".08em">RSI 14 · ${fmt(r.rsi, 0)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${rsiTop + rsiH + 4}" role="img" aria-label="${r.ticker} 5-minute chart for ${r.date} as of ${r.time} ET with waves, zones, Bollinger Bands and RSI">${g}</svg>`;
+}
+
+/* ---------- desk ---------- */
+const mark = t => t > 0 ? '▲' : t < 0 ? '▼' : '◆';
+function scenarioCard(sc, r, primary) {
+  const d = sc.dir, word = d === 1 ? 'Bull' : 'Bear';
+  const tl = sc.target.level;
+  return `<div class="sc ${primary ? 'prim' : ''}"><h3><span class="${sgnCls(d)}">${primary ? 'Primary' : 'Alternative'}: ${word} ${d === 1 ? 'continuation up' : 'move down'}</span><span class="lbl">${primary ? 'favored' : 'if triggered'}</span></h3>
+    <dl class="num">
+      <dt>Trigger</dt><dd>5-min close ${d === 1 ? 'above' : 'below'} <b>${fmt(sc.trigger.price)}</b> (${esc(sc.trigger.label)})</dd>
+      <dt>First target</dt><dd>${fmt(sc.target.bracket)} (+0.2 ADR, Volman bracket)${tl ? `<br>next level ${fmt(tl.price)} · ${esc(tl.label)}` : ''}</dd>
+      <dt>Stop idea</dt><dd>${fmt(sc.stop)} (0.1 ADR beyond the trigger)</dd>
+      <dt>Invalidated</dt><dd>close ${d === 1 ? 'below' : 'above'} ${fmt(sc.invalid.price)} (${esc(sc.invalid.label)})</dd>
+      <dt>Distance</dt><dd>${((sc.trigger.price - r.price) / r.ADR * 100).toFixed(0)}% of ADR from last price</dd>
+    </dl></div>`;
+}
+
+function renderDesk() {
+  const c = current(state.sel);
+  if (!c) { $('desk').innerHTML = `<div class="empty">Paste your Polygon key and press Scan, or load demo data.</div>`; return; }
+  const { D, r } = c; const S = D.T.sessions[D.si];
+  const lc = liveCheck(D, r), lcOn = lc && !lc.inactive && !lc.invalid;
+  const cl = r.bucket === 'two' ? 'two' : sgnCls(r.score);
+  const hist = lookup(D, r);
+  const sessOpts = D.T.sessions.map((s, i) => ({ s, i })).slice(-40).reverse().map(({ s, i }) => `<option value="${i}" ${i === D.si ? 'selected' : ''}>${s.date}${i === D.latestSi ? (D.live ? ' (live)' : ' (latest)') : ''}</option>`).join('');
+  const fill = Math.abs(r.score) / 2;
+  const mStyle = r.score >= 0 ? `left:50%;width:${fill}%;background:var(--bull)` : `left:${50 - fill}%;width:${fill}%;background:var(--bear)`;
+  const histFact = hist ? (r.bucket === 'two'
+    ? `<div class="v num">${pct(hist.flatRate)}</div><div class="s">closed within ±25% ADR of the scan price · n=${hist.twoN} · ${hist.scope}</div>`
+    : `<div class="v num">${pct(hist.brRate)} <span style="font-size:12px;color:var(--dim)">bracket</span> · ${pct(hist.closeRate)} <span style="font-size:12px;color:var(--dim)">close</span></div><div class="s">bracket wins (+0.2 before −0.1 ADR; break-even 33%) n=${hist.brN} · close in direction n=${hist.closeN} · ${hist.scope}</div>`)
+    : '<div class="v">…</div><div class="s">replaying history</div>';
+  const out = r.k < S.bars.length - 1 ? PW.outcome(D.T, D.si, r.k, Math.sign(r.score)) : null;
+  let outHTML = '';
+  if (out) {
+    const sg = Math.sign(r.score), right = r.bucket === 'two' ? Math.abs(out.closeMove) < 0.25 : Math.sign(out.closeMove) === sg;
+    const pHit = r.primary.dir === 1 ? out.futHi > r.primary.trigger.price : out.futLo < r.primary.trigger.price;
+    const aHit = r.alt.dir === 1 ? out.futHi > r.alt.trigger.price : out.futLo < r.alt.trigger.price;
+    outHTML = `<section><div class="outcome"><div class="lbl" style="margin-bottom:4px">Replay: what actually happened after ${r.time}</div>
+      Closed at <b class="num">${fmt(out.close)}</b> (${out.close >= r.price ? '+' : ''}${fmt(out.close - r.price)}, ${(out.closeMove * 100).toFixed(0)}% of ADR) · high after ${fmt(out.futHi)} · low after ${fmt(out.futLo)} ·
+      outlook by the close: <b class="${right ? 'ok' : 'no'}">${right ? 'RIGHT' : 'WRONG'}</b>${r.bucket !== 'two' ? ` · Volman bracket from ${r.time}: <b class="${out.bracket === 1 ? 'ok' : out.bracket === -1 ? 'no' : ''}">${out.bracket === 1 ? 'target first' : out.bracket === -1 ? 'stop first' : 'neither hit'}</b>` : ''}
+      <div style="margin-top:4px;color:var(--dim)">Primary trigger ${fmt(r.primary.trigger.price)} ${pHit ? 'was crossed' : 'was not reached'} · alternative trigger ${fmt(r.alt.trigger.price)} ${aHit ? 'was crossed' : 'was not reached'}</div></div></section>`;
+  }
+  const factorRows = r.factors.map(f => {
+    const w = Math.abs(f.val) / f.max * 50; const bs = f.val >= 0 ? `left:50%;width:${w}%;background:var(--bull)` : `left:${50 - w}%;width:${w}%;background:var(--bear)`;
+    return `<tr><td class="dirc ${sgnCls(f.dir)}">${f.dir > 0 ? '▲' : f.dir < 0 ? '▼' : '·'}</td><td><b>${esc(f.name)}</b><br>${esc(f.reading)} <span class="src">${esc(f.src)}</span></td><td class="barcell"><div class="hbar"><i style="${bs}"></i></div></td><td class="r num">${f.val >= 0 ? '+' : ''}${f.val.toFixed(0)}<span style="color:var(--faint)">/${f.max}</span></td></tr>`;
+  }).join('');
+  const checks = `<ul class="items checks">${r.checks.map(ck => `<li class="${ck.ok ? 'ok' : 'no'}"><span class="mk">${ck.ok ? '✓' : '✕'}</span><span><b>${esc(ck.name)}</b>: ${esc(ck.txt)} <span class="src">${esc(ck.src)}</span></span></li>`).join('')}</ul>`;
+  const base = lcOn ? lc.v : r.price;
+  const lvRows = (() => {
+    const rows = r.levels.filter(l => l.kind !== 'round2' && Math.abs((l.price - base) / r.ADR) <= 0.8).map(l => ({ ...l, dist: l.price - base }));
+    rows.push({ price: base, label: lcOn ? 'Live price' : 'Last price', kind: 'now', dist: 0 });
+    if (lcOn) rows.push({ price: r.price, label: `Last bar close (${r.time})`, kind: 'bar', dist: r.price - base });
+    rows.sort((a, b) => b.price - a.price);
+    return rows.map(l => `<tr class="${l.kind === 'now' ? 'now' : ''}"><td>${esc(l.label)}${l.lo != null ? `<br><span class="src">${fmt(l.lo)}–${fmt(l.hi)}</span>` : ''}</td><td class="r num">${fmt(l.price)}</td><td class="r num ${l.kind === 'now' ? '' : sgnCls(l.dist)}">${l.kind === 'now' ? '' : (l.dist >= 0 ? '+' : '') + fmt(l.dist)}</td><td class="r num">${l.kind === 'now' ? '' : (l.dist / r.ADR * 100).toFixed(0) + '%'}</td></tr>`).join('');
+  })();
+  const calibRows = (() => {
+    if (!D.calib) return '<tr><td colspan="5">Replaying…</td></tr>';
+    const defs = [['strong', 1, 'Strong bullish ≥ +45'], ['clear', 1, 'Bullish +25…+44'], ['lean', 1, 'Lean bullish +12…+24'], ['two', 0, 'Neutral / range −11…+11'], ['lean', -1, 'Lean bearish −12…−24'], ['clear', -1, 'Bearish −25…−44'], ['strong', -1, 'Strong bearish ≤ −45']];
+    return defs.map(([b, sg, lab]) => {
+      const st = PW.stats(D.calib.filter(x => x.bucket === b && (b === 'two' || Math.sign(x.score) === sg)));
+      const cur = r.bucket === b && (b === 'two' || Math.sign(r.score) === sg);
+      return `<tr class="${cur ? 'now' : ''}"><td>${lab}</td><td class="r num">${st.n}</td><td class="r num">${b === 'two' ? '—' : pct(st.closeRate)}</td><td class="r num">${b === 'two' ? '—' : pct(st.brRate)}</td><td class="r num">${b === 'two' ? pct(st.flatRate) : '—'}</td></tr>`;
+    }).join('');
+  })();
+  const gradeRows = (() => {
+    if (!D.calib) return '';
+    return ['A', 'B', 'C', 'Skip'].map(g => { const st = PW.stats(D.calib.filter(x => x.grade === g && x.bucket !== 'two')); return `<tr class="${r.grade === g ? 'now' : ''}"><td>Grade ${g}</td><td class="r num">${st.n - st.twoN}</td><td class="r num">${pct(st.closeRate)}</td><td class="r num">${pct(st.brRate)}</td><td class="r num">—</td></tr>`; }).join('');
+  })();
+  const kv = [
+    ['ADR (20d)', fmt(r.ADR)], ['Range so far', fmt(r.hi - r.lo)], ['Range used', pct((r.hi - r.lo) / r.ADR)], ['Zigzag threshold', fmt(Math.max(2.5 * r.ref, 0.09 * r.ADR))],
+    ['Impulse/correction', r.ratio ? r.ratio.toFixed(2) + '×' : '—'], ['Impulse waves today', r.todayImpulses], ['Retracement', r.inCorrection ? pct(r.retr) : '—'], ['25 EMA distance', pct(r.emaDist) + ' ADR'],
+    ['RSI 14', fmt(r.rsi, 0)], ['60-min trend', r.h60 > 0 ? 'up' : r.h60 < 0 ? 'down' : 'flat'], ['Daily 50 / 200', `${fmt(r.daily.s50)} / ${fmt(r.daily.s200)}`], ['Round numbers', `${r.major} / ${r.minor}`],
+    ['Rel. volume', r.rvol ? r.rvol.toFixed(2) + '×' : '—'], ['Factors agreeing', `${r.agree} for · ${r.against} against`], ['Proj. range', `${fmt(r.proj.low)}–${fmt(r.proj.high)}`], ['ADR budget left', fmt(r.proj.adrLeft)],
+  ].map(([a, b]) => `<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted var(--line);padding:2px 0"><span style="color:var(--dim)">${a}</span><span class="num">${b}</span></div>`).join('');
+  const liveHTML = `<section>
+    <div class="liverow"><label class="lbl" for="livepx">Live price (optional)</label>
+      <input id="livepx" inputmode="decimal" autocomplete="off" placeholder="e.g. ${fmt(r.price)}" value="${D.livePx != null ? D.livePx : ''}">
+      <button id="liveapply">Check</button>${D.livePx != null ? '<button id="liveclr">Clear</button>' : ''}
+      <span class="note">${D.livePx == null ? `Type the current ${r.ticker} price from your broker to test whether this ${r.time} ET outlook is still current. Leave it empty to use the outlook as is.` : ''}</span></div>
+    ${lc ? (lc.inactive || lc.invalid ? `<div class="livebox"><span class="${lc.invalid ? 'warn' : 'note'}">${esc(lc.why)}</span></div>` : `<div class="livebox">
+      <div class="head"><span class="st ${lc.status}">${lc.label}</span><span class="num">Live ${fmt(lc.v)} vs last bar ${fmt(r.price)} at ${r.time} ET: <b class="${sgnCls(lc.move)}">${lc.move >= 0 ? '+' : ''}${fmt(lc.move)}</b> (${lc.moveA >= 0 ? '+' : ''}${(lc.moveA * 100).toFixed(0)}% of ADR)</span></div>
+      <div>${esc(lc.advice)}</div>
+      <div class="num">Live price is ${lc.emaSide > 0 ? 'above' : 'below'} the 25 EMA · primary trigger ${fmt(r.primary.trigger.price)} ${lc.primHit ? '<b class="bull">crossed</b>' : 'not crossed'} · alternative trigger ${fmt(r.alt.trigger.price)} ${lc.altHit ? '<b class="bear">crossed</b>' : 'not crossed'}${lc.newHi ? ' · <b class="bull">new high of day</b>' : ''}${lc.newLo ? ' · <b class="bear">new low of day</b>' : ''}</div>
+      ${lc.crossed.length ? `<div>Crossed since the last bar: ${lc.crossed.map(l => `<span class="${lc.against.includes(l) ? 'warn' : ''}">${esc(l.label)} ${fmt(l.price)}</span>`).join(' · ')}</div>` : ''}</div>`) : ''}
+  </section>`;
+
+  $('desk').innerHTML = `
+  <section class="replay"><label class="lbl" for="sess">Session</label><select id="sess">${sessOpts}</select>
+    <label class="lbl" for="slider">As of</label><input id="slider" type="range" min="1" max="${S.bars.length - 1}" value="${D.k}" step="1">
+    <span class="asof num">${r.time} ET</span><button id="latest">Latest bar</button>
+    <label class="chk"><input id="fut" type="checkbox" ${state.showFuture ? 'checked' : ''}> show rest of day</label></section>
+  ${liveHTML}
+  <section class="verdict">
+    <div class="call">
+      <div class="lbl">${r.ticker} · outlook for the rest of the session</div>
+      <div class="big ${cl}">${r.label}</div>
+      <div class="score num">score ${r.score > 0 ? '+' : ''}${r.score} / 100 · ${r.agree} factors for, ${r.against} against</div>
+      <div class="meter"><i style="${mStyle}"></i></div>
+      <div class="note" style="margin-top:10px;font-size:12.5px;color:var(--fg)">${esc(r.phase.label)}</div>
+      <div class="grade"><b class="g-${r.grade}">${r.grade}</b><span class="note">conditions grade: ${r.checks.filter(x => !x.ok).length} of ${r.checks.length} checks failed</span></div>
+    </div>
+    <div>
+      <div class="scen">${scenarioCard(r.primary, r, true)}${scenarioCard(r.alt, r, false)}</div>
+      <div class="facts">
+        <div class="fact"><div class="lbl">Engine history · ${r.ticker}</div>${histFact}</div>
+        <div class="fact"><div class="lbl">Projected rest-of-day range</div><div class="v num">${fmt(r.proj.low)} – ${fmt(r.proj.high)}</div><div class="s">median extension +${fmt(r.proj.extra)} from this ETF's history, ${Math.round(r.proj.upShare * 100)}% allotted upside by the score</div></div>
+        <div class="fact"><div class="lbl">Activity (context only)</div><div class="v num">${r.rvol ? r.rvol.toFixed(2) + '×' : '—'}</div><div class="s">volume so far vs. the 20-day average at this time. Not scored: neither book uses volume beyond "breaks need participation"</div></div>
+      </div>
+    </div>
+  </section>
+  <section><div class="chartbox">${chartSVG(D, r, lc)}</div>
+    <div class="legend"><span><i style="background:var(--ema);height:2px"></i>25 EMA</span><span><i style="border-top:1px dashed var(--band)"></i>Bollinger 20, 2.5 SD</span><span><i style="background:var(--accent);height:2px"></i>Price waves (zigzag)</span><span><i style="background:var(--bull);opacity:.35"></i>Demand zone</span><span><i style="background:var(--bear);opacity:.35"></i>Supply zone</span><span><i style="background:var(--band);opacity:.3"></i>S/R zone</span><span><i style="border:1px dashed var(--warn)"></i>Consolidation</span><span><i style="border:1.5px solid var(--accent)"></i>Buildup</span></div></section>
+  ${outHTML}
+  <section class="cols">
+    <div class="col"><h3>Factor checklist</h3><div class="tblwrap"><table><thead><tr><th></th><th>Factor and reading</th><th></th><th class="r">Pts</th></tr></thead><tbody>${factorRows}</tbody></table></div></div>
+    <div class="col"><h3>What to expect for the rest of the session</h3><ul class="items">${r.expect.map(x => `<li class="t${Math.sign(x.tone)}"><span class="mk">${mark(x.tone)}</span><span>${esc(x.txt)} <span class="src">${esc(x.src)}</span></span></li>`).join('')}</ul>
+      <h3 style="margin-top:16px">Conditions to trade it</h3>${checks}</div>
+  </section>
+  <section class="two-col">
+    <div><h3 style="font-size:18px;margin-bottom:6px">Levels, zones and magnets</h3><div class="tblwrap"><table><thead><tr><th>Level</th><th class="r">Price</th><th class="r">From ${lcOn ? 'live' : 'last'}</th><th class="r">% ADR</th></tr></thead><tbody>${lvRows}</tbody></table></div></div>
+    <div><h3 style="font-size:18px;margin-bottom:6px">Engine history for ${r.ticker} <span class="lbl">${D.calib ? D.calib.length + ' replayed calls' : ''}</span></h3>
+      <div class="tblwrap"><table><thead><tr><th>Bucket</th><th class="r">n</th><th class="r">Close in dir.</th><th class="r">Bracket win</th><th class="r">Close ±¼ ADR</th></tr></thead><tbody>${calibRows}${gradeRows}</tbody></table></div>
+      <p class="note">Replayed every 30 minutes on each loaded session using only bars up to that time. "Bracket win" is how often a Volman-style bracket in the outlook's direction (+0.2 ADR target, −0.1 ADR stop, from the scan price) hit the target first; above 33% beats break-even. The grade rows test whether the conditions checklist improves results for this ETF.</p>
+      <h3 style="font-size:18px;margin:14px 0 6px">Measurements</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px 14px;font-size:12px">${kv}</div></div>
+  </section>`;
+
+  $('slider').oninput = e => { D.k = +e.target.value; renderTiles(); renderDesk(); const s = $('slider'); if (s) s.focus(); };
+  $('latest').onclick = () => { D.si = D.latestSi; D.k = D.T.sessions[D.si].bars.length - 1; render(); };
+  $('sess').onchange = e => { D.si = +e.target.value; D.k = D.T.sessions[D.si].bars.length - 1; render(); };
+  $('fut').onchange = e => { state.showFuture = e.target.checked; renderDesk(); };
+  const applyLive = () => { const raw = $('livepx').value.trim(); D.livePx = raw ? parsePx(raw) : null; render(); const el = $('livepx'); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } };
+  $('livepx').onkeydown = e => { if (e.key === 'Enter') applyLive(); };
+  $('livepx').onchange = applyLive; $('liveapply').onclick = applyLive;
+  if ($('liveclr')) $('liveclr').onclick = () => { D.livePx = null; render(); };
+}
+function render() { renderTiles(); renderDesk(); }
+
+(function boot() {
+  const k = load('pwo_key') || load('bsr_key'); if (k) $('key').value = k;
+  const h = load('pwo_hist'); if (h) $('hist').value = h;
+  $('scan').onclick = scan; $('demo').onclick = demo;
+  $('key').addEventListener('keydown', e => { if (e.key === 'Enter') scan(); });
+  $('auto').onchange = e => { clearInterval(state.timer); state.timer = null; if (e.target.checked) state.timer = setInterval(() => { if (!state.demo && liveInfo().inRTH && !state.busy) { const s = state.sel; scan().then(() => { state.sel = s; }); } }, 300000); };
+  if (k) scan(); else demo();
+})();
+</script>
+</body>
+</html>

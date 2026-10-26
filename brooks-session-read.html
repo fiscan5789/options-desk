@@ -1,0 +1,1313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Brooks Session Read</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: control strip → three ticker tiles → selected-ticker desk (verdict, chart, reads/expectations/plan, levels, evidence) */
+:root{
+  --bg:#0c1013; --panel:#12181c; --panel2:#171f24; --line:#232e35; --line2:#2e3b43;
+  --fg:#d9e2e6; --dim:#7f8f98; --faint:#55646d;
+  --bull:#3cc48c; --bear:#ec6b5e; --amber:#e3b14f; --ema:#6aa9da; --mm:#c58fe0;
+  --bull-bg:rgba(60,196,140,.12); --bear-bg:rgba(236,107,94,.12); --amber-bg:rgba(227,177,79,.12);
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --cond:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:13px/1.5 var(--mono);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--cond);font-weight:600;margin:0;text-wrap:balance}
+.lbl{font-family:var(--cond);text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--dim)}
+.num{font-variant-numeric:tabular-nums}
+button,select,input{font:inherit;color:var(--fg);background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:6px 10px}
+button{cursor:pointer;font-family:var(--cond);font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:12px}
+button:hover{border-color:var(--dim)}
+button.primary{background:var(--amber);color:#1a1405;border-color:var(--amber)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+button:disabled{opacity:.5;cursor:default}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 20px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.brand h1{font-size:22px;letter-spacing:.02em}
+.brand h1 b{color:var(--amber);font-weight:700}
+.brand .sub{color:var(--dim);font-size:12px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+.controls input[type=password]{width:230px;max-width:60vw}
+.chk{display:flex;gap:6px;align-items:center;color:var(--dim);font-size:12px}
+.status{font-size:12px;color:var(--dim);width:100%;display:flex;flex-wrap:wrap;gap:4px 14px}
+.status .err{color:var(--bear)}
+.banner{border:1px dashed var(--amber);color:var(--amber);background:var(--amber-bg);padding:6px 10px;font-size:12px;border-radius:3px}
+
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;cursor:pointer;display:grid;grid-template-columns:auto 1fr;gap:2px 12px;text-align:left;text-transform:none;letter-spacing:0;font-family:var(--mono);font-weight:400;font-size:13px}
+.tile[aria-pressed="true"]{border-color:var(--amber);background:var(--panel2)}
+.tile .tk{font-family:var(--cond);font-size:22px;font-weight:700;grid-row:span 2;align-self:center}
+.tile .px{justify-self:end;font-size:15px}
+.tile .bias{justify-self:end;font-family:var(--cond);font-weight:700;font-size:15px}
+.tile .meta{grid-column:1/-1;color:var(--dim);font-size:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.bull{color:var(--bull)} .bear{color:var(--bear)} .two{color:var(--amber)}
+
+.desk{background:var(--panel);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column}
+.desk>section{padding:12px 14px;border-top:1px solid var(--line)}
+.desk>section:first-child{border-top:0}
+.replay{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.replay input[type=range]{flex:1 1 260px;accent-color:var(--amber);padding:0;min-width:0}
+.replay .asof{font-size:15px;min-width:92px}
+.liverow{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.liverow input{width:120px}
+.livebox{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line2);border-radius:3px;padding:10px 12px;background:var(--bg);font-size:12.5px;margin-top:10px}
+.livebox .head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.livebox .st{font-family:var(--cond);font-weight:700;font-size:16px;letter-spacing:.04em;padding:1px 8px;border-radius:2px}
+.st.cur{color:var(--bull);background:var(--bull-bg)} .st.age{color:var(--amber);background:var(--amber-bg)} .st.stale{color:var(--bear);background:var(--bear-bg)}
+.livebox .warn{color:var(--bear)}
+
+.verdict{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr);gap:14px 24px;align-items:start}
+.call .big{font-family:var(--cond);font-weight:700;font-size:40px;line-height:1;letter-spacing:.01em}
+.call .score{font-size:13px;color:var(--dim);margin-top:4px}
+.call .bar{height:6px;background:var(--line);border-radius:3px;position:relative;margin-top:10px;overflow:hidden}
+.call .bar i{position:absolute;top:0;bottom:0;left:50%}
+.call .bar:after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--dim)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.fact{border:1px solid var(--line);border-radius:3px;padding:8px 10px;background:var(--bg);min-width:0}
+.fact .v{font-size:16px;font-weight:600;margin-top:2px}
+.fact .s{color:var(--dim);font-size:11.5px;margin-top:2px}
+.chip{display:inline-block;padding:1px 7px;border-radius:2px;font-family:var(--cond);font-weight:600;font-size:12px;letter-spacing:.03em}
+.chip.bull{background:var(--bull-bg)} .chip.bear{background:var(--bear-bg)} .chip.two{background:var(--amber-bg)}
+
+.chartbox{overflow-x:auto}
+.chartbox svg{display:block;width:100%;min-width:640px;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;color:var(--dim);font-size:11.5px;margin-top:6px}
+.legend span:before{content:"";display:inline-block;width:14px;height:0;border-top:2px solid currentColor;vertical-align:middle;margin-right:6px}
+.legend .l-ema{color:var(--ema)} .legend .l-or{color:var(--amber)} .legend .l-prev{color:var(--dim)} .legend .l-mm{color:var(--mm)}
+.legend .l-ema:before{border-top-style:solid} .legend .l-prev:before{border-top-style:dashed} .legend .l-mm:before{border-top-style:dotted}
+
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.col h3{font-size:15px;margin-bottom:8px;display:flex;gap:8px;align-items:baseline}
+.col h3 .lbl{font-size:10.5px}
+ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+ul.items li{display:grid;grid-template-columns:14px 1fr;gap:6px;font-size:12.5px;line-height:1.5}
+ul.items li .mk{font-size:10px;padding-top:3px;color:var(--faint)}
+ul.items li.t1 .mk{color:var(--bull)} ul.items li.t-1 .mk{color:var(--bear)}
+.src{color:var(--faint);font-size:11px;white-space:nowrap}
+
+.two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{font-family:var(--cond);text-transform:uppercase;letter-spacing:.06em;font-size:10.5px;color:var(--dim);font-weight:600;text-align:left;padding:4px 6px;border-bottom:1px solid var(--line2)}
+td{padding:4px 6px;border-bottom:1px solid var(--line)}
+td.r,th.r{text-align:right}
+tr.now td{background:var(--amber-bg);color:var(--amber);font-weight:600}
+.tblwrap{overflow-x:auto}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 14px;font-size:12px}
+.kv div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted var(--line);padding:2px 0}
+.kv span:first-child{color:var(--dim)}
+.outcome{border:1px solid var(--line2);border-radius:3px;padding:10px 12px;background:var(--bg);font-size:12.5px}
+.outcome b.ok{color:var(--bull)} .outcome b.no{color:var(--bear)}
+details{font-size:12px}
+details summary{cursor:pointer;color:var(--dim);font-family:var(--cond);text-transform:uppercase;letter-spacing:.06em}
+.log{max-height:220px;overflow:auto;background:var(--bg);border:1px solid var(--line);padding:8px;font-size:11.5px;color:var(--dim);margin-top:8px;white-space:pre-wrap}
+.note{color:var(--dim);font-size:11.5px;max-width:110ch}
+.empty{padding:40px 14px;color:var(--dim);text-align:center}
+
+@media (max-width:980px){.cols{grid-template-columns:1fr}.verdict{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}}
+@media (max-width:640px){.tiles{grid-template-columns:1fr}.controls{margin-left:0}.call .big{font-size:32px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1><b>BROOKS</b> SESSION READ</h1>
+      <div class="sub">What today's price action so far implies for the rest of the session · SPY · TLT · GLD · 5-minute bars</div>
+    </div>
+    <div class="controls">
+      <label class="lbl" for="key">Polygon key</label>
+      <input id="key" type="password" autocomplete="off" placeholder="paste API key">
+      <label class="lbl" for="hist">History</label>
+      <select id="hist"><option value="90">90 days</option><option value="150" selected>150 days</option><option value="240">240 days</option></select>
+      <button id="scan" class="primary">Scan</button>
+      <button id="demo">Demo data</button>
+      <label class="chk"><input id="auto" type="checkbox"> auto-refresh 5 min</label>
+    </div>
+    <div class="status" id="status"></div>
+  </header>
+  <div id="banner" hidden></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="desk" id="desk"><div class="empty">Paste your Polygon key and press Scan, or load demo data.</div></div>
+  <details>
+    <summary>How this reads the tape · scan log</summary>
+    <div class="note" style="margin-top:8px">
+      Every 5-minute bar of the regular session up to the as-of time is classified (trend bar, doji, strength, close location) against the 20-bar EMA and the 20-day average daily range (ADR).
+      The engine tracks the <b>always-in</b> direction (a flip needs a spike, meaning two consecutive trend bars or one large trend bar breaking recent bars, and a follow-through bar without an opposite close; a slower flip happens after 4 closes on the wrong side of a turning EMA),
+      scores the current leg on the signs of strength in <i>Trends</i> ch.19, scores each day type (trend from the open, small pullback trend, spike and channel, trending trading range, trading range, reversal, trend resumption, stairs),
+      and maps the time of day to Brooks's three periods. The bias score (−100 to +100) combines always-in, leg strength, day type, EMA position, location in the day's range, gap behavior and the daily chart, then gets damped for trading-range conditions and exhaustion.
+      Brooks's probabilities (50/55/60/70%) are his rules of thumb. The <b>engine history</b> figures come from replaying this same engine every 30 minutes across the loaded sessions for each ETF and checking what happened after each call.
+      Volume is shown as relative volume for this time of day; Brooks treats it as secondary, so it only nudges exhaustion and context.
+      Market data is 15 minutes delayed on Polygon's Starter plan, so a live scan reads bars up to about 15 minutes old. The bar still forming is always dropped.
+      The optional <b>live price</b> box compares a price you type from a real-time quote with the last delayed bar. CURRENT means price is within 10% of ADR of the last bar. AGING means 10–25%, or the score at the live price falls into the two-sided band. STALE means 25% or more, or price crossed the opening range, EMA, yesterday's high/low/close or the start of the channel against the bias. Only location and EMA position are re-scored at the live price. A new scan clears the box.
+    </div>
+    <div class="log" id="log"></div>
+  </details>
+</div>
+
+<script>
+/* ===== Brooks price-action engine (pure functions, no DOM) ===== */
+const PA = (() => {
+  const RTH_START = 570, RTH_END = 960; // 9:30 .. 16:00 ET in minutes
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN;
+  const sum = a => a.reduce((s, x) => s + x, 0);
+  function median(a) { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+  function quant(sorted, q) { if (!sorted.length) return NaN; const p = (sorted.length - 1) * q, lo = Math.floor(p), hi = Math.ceil(p); return sorted[lo] + (sorted[hi] - sorted[lo]) * (p - lo); }
+  const fmtMin = m => { const h = Math.floor(m / 60), mm = m % 60; return `${h}:${String(mm).padStart(2, '0')}`; };
+
+  /* ---------- time helpers (America/New_York) ---------- */
+  const ET_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  function etParts(ms) {
+    const p = {}; for (const x of ET_FMT.formatToParts(new Date(ms))) p[x.type] = x.value;
+    let hh = +p.hour; if (hh === 24) hh = 0;
+    return { date: `${p.year}-${p.month}-${p.day}`, min: hh * 60 + +p.minute };
+  }
+  const offCache = new Map();
+  function etFast(ms) {
+    const key = Math.floor(ms / 864e5);
+    let off = offCache.get(key);
+    if (off === undefined) {
+      const p = etParts(ms); const d = new Date(ms);
+      const utcMin = d.getUTCHours() * 60 + d.getUTCMinutes();
+      off = p.min - utcMin; if (off > 720) off -= 1440; if (off < -720) off += 1440;
+      offCache.set(key, off);
+    }
+    const local = new Date(ms + off * 60000);
+    const date = local.toISOString().slice(0, 10);
+    return { date, min: local.getUTCHours() * 60 + local.getUTCMinutes() };
+  }
+
+  /* ---------- session building ---------- */
+  function buildSessions(raw) {
+    const map = new Map();
+    for (const r of raw) {
+      const { date, min } = etFast(r.t);
+      if (min < RTH_START || min >= RTH_END) continue;
+      if (!map.has(date)) map.set(date, []);
+      map.get(date).push({ t: r.t, o: r.o, h: r.h, l: r.l, c: r.c, v: r.v || 0, min, slot: (min - RTH_START) / 5 });
+    }
+    const out = [];
+    for (const [date, bars] of [...map.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1)) {
+      bars.sort((a, b) => a.t - b.t);
+      if (bars.length >= 6) out.push({ date, bars });
+    }
+    return out;
+  }
+
+  function prep(ticker, raw5, rawDaily) {
+    const sessions = buildSessions(raw5);
+    const A = 2 / 21; let ema = null;
+    for (const s of sessions) for (const b of s.bars) { ema = ema == null ? b.c : ema + A * (b.c - ema); b.ema = ema; }
+    sessions.forEach((s, i) => {
+      const B = s.bars;
+      s.open = B[0].o; s.close = B[B.length - 1].c;
+      s.high = Math.max(...B.map(b => b.h)); s.low = Math.min(...B.map(b => b.l)); s.range = s.high - s.low;
+      const prior = sessions.slice(Math.max(0, i - 20), i).filter(p => p.bars.length >= 60);
+      s.adrN = prior.length;
+      s.adr = prior.length ? mean(prior.map(p => p.range)) : s.range;
+      const p5 = sessions.slice(Math.max(0, i - 5), i);
+      const rs = p5.length ? p5.flatMap(p => p.bars.map(b => b.h - b.l)) : B.map(b => b.h - b.l);
+      s.refBar = median(rs) || s.adr / 15;
+      s.prevClose = i > 0 ? sessions[i - 1].close : s.open;
+      s.gap = (s.open - s.prevClose) / (s.adr || 1);
+      // cumulative volume per slot
+      s.cum = new Array(78).fill(null); let cv = 0, lastSlot = -1;
+      for (const b of B) { cv += b.v; for (let q = lastSlot + 1; q <= b.slot && q < 78; q++) s.cum[q] = cv; lastSlot = b.slot; }
+      s.barVol = new Array(78).fill(null); for (const b of B) if (b.slot < 78) s.barVol[b.slot] = b.v;
+      // average profile from prior 20 sessions
+      const pv = sessions.slice(Math.max(0, i - 20), i);
+      s.avgCum = new Array(78).fill(null); s.avgBarVol = new Array(78).fill(null);
+      for (let q = 0; q < 78; q++) {
+        const c = pv.map(p => p.cum[q]).filter(x => x != null); if (c.length) s.avgCum[q] = mean(c);
+        const bv = pv.map(p => p.barVol[q]).filter(x => x != null); if (bv.length) s.avgBarVol[q] = mean(bv);
+      }
+      const gaps = sessions.slice(Math.max(0, i - 5), i).map(p => Math.abs(p.gap || 0));
+      s.largestGap5 = gaps.length ? Math.max(...gaps) : 0;
+    });
+    // range-extension stats: final range / range so far, per slot (complete sessions only, excludes newest session)
+    const extBySlot = Array.from({ length: 78 }, () => []);
+    const fracBySlot = Array.from({ length: 78 }, () => ({ hiDone: 0, loDone: 0, n: 0 }));
+    sessions.slice(0, -1).forEach(s => {
+      if (s.bars.length < 70) return;
+      let hi = -Infinity, lo = Infinity;
+      for (const b of s.bars) {
+        hi = Math.max(hi, b.h); lo = Math.min(lo, b.l);
+        const r = hi - lo; if (r > 0 && b.slot < 78) extBySlot[b.slot].push(s.range / r);
+        if (b.slot < 78) { const f = fracBySlot[b.slot]; f.n++; if (hi >= s.high) f.hiDone++; if (lo <= s.low) f.loDone++; }
+      }
+    });
+    extBySlot.forEach(a => a.sort((x, y) => x - y));
+    // daily bars
+    const daily = (rawDaily || []).map(r => ({ date: etFast(r.t + 12 * 3600e3).date, o: r.o, h: r.h, l: r.l, c: r.c, v: r.v })).sort((a, b) => a.date < b.date ? -1 : 1);
+    return { ticker, sessions, extBySlot, fracBySlot, daily };
+  }
+
+  function dailyContext(T, date) {
+    const d = T.daily.filter(x => x.date < date);
+    if (d.length < 10) return { trend: 0, text: 'Not enough daily history', bull: 0, n: 0 };
+    const A = 2 / 21; let e = d[0].c; for (const x of d) e = e + A * (x.c - e);
+    const last = d.slice(-20); const bull = last.filter(x => x.c > x.o).length;
+    const nearHi = last.filter(x => (x.h - x.l) > 0 && (x.c - x.l) / (x.h - x.l) >= 0.67).length;
+    const nearLo = last.filter(x => (x.h - x.l) > 0 && (x.c - x.l) / (x.h - x.l) <= 0.33).length;
+    const lc = d[d.length - 1].c; const above = lc > e;
+    const ret20 = (lc - last[0].o) / last[0].o;
+    const trend = clamp(0.4 * (above ? 1 : -1) + 0.3 * ((bull / last.length) * 2 - 1) + 0.3 * clamp(ret20 / 0.04, -1, 1), -1, 1);
+    let text;
+    if (trend > 0.45) text = `Daily chart in a bull trend: ${bull}/20 bull bodies, close above daily 20 EMA`;
+    else if (trend < -0.45) text = `Daily chart in a bear trend: ${20 - bull}/20 bear bodies, close below daily 20 EMA`;
+    else text = `Daily chart two-sided: ${bull}/20 bull bodies, ${above ? 'above' : 'below'} daily 20 EMA`;
+    return { trend, text, bull, nearHi, nearLo, n: last.length, ema20: e, above, ret20 };
+  }
+
+  /* ---------- bar classification ---------- */
+  function classify(b, ref) {
+    const rng = Math.max(b.h - b.l, 1e-9), body = Math.abs(b.c - b.o), br = body / rng, cp = (b.c - b.l) / rng;
+    const dirn = b.c > b.o ? 1 : b.c < b.o ? -1 : 0;
+    const tb = br >= 0.5 ? dirn : 0;
+    const strong = (br >= 0.6 && ((dirn === 1 && cp >= 0.75) || (dirn === -1 && cp <= 0.25)) && rng >= 0.8 * ref) ? dirn : 0;
+    return { rng, body, br, cp, dirn, tb, strong, doji: br < 0.3, big: rng >= 1.8 * ref };
+  }
+
+  /* ---------- always-in ---------- */
+  function runAI(bars, cls, ref, initDir, initKind) {
+    let dir = initDir; const flips = [{ i: -1, dir, kind: initKind }]; const traps = [];
+    let pending = null, opp = 0; const dirArr = [];
+    for (let i = 0; i < bars.length; i++) {
+      const b = bars[i], c = cls[i]; let flipped = false;
+      if (pending) {
+        const failed = pending.dir === 1 ? b.c < b.o : b.c > b.o;
+        if (!failed) { dir = pending.dir; flips.push({ i: pending.i, dir, kind: 'spike', confirmedAt: i }); flipped = true; opp = 0; }
+        else traps.push({ i: pending.i, dir: pending.dir, failedAt: i });
+        pending = null;
+      }
+      const lb = Math.max(0, i - 6);
+      const recHi = i > 0 ? Math.max(...bars.slice(lb, i).map(x => x.h)) : -Infinity;
+      const recLo = i > 0 ? Math.min(...bars.slice(lb, i).map(x => x.l)) : Infinity;
+      const twoBull = i >= 1 && c.tb === 1 && cls[i - 1].tb === 1 && (b.c - bars[i - 1].l) >= 1.5 * ref;
+      const twoBear = i >= 1 && c.tb === -1 && cls[i - 1].tb === -1 && (bars[i - 1].h - b.c) >= 1.5 * ref;
+      const bullSpike = (twoBull || (c.strong === 1 && c.rng >= 1.8 * ref)) && b.c > (i >= 2 ? Math.max(...bars.slice(lb, Math.max(lb + 1, i - 1)).map(x => x.h)) : recHi);
+      const bearSpike = (twoBear || (c.strong === -1 && c.rng >= 1.8 * ref)) && b.c < (i >= 2 ? Math.min(...bars.slice(lb, Math.max(lb + 1, i - 1)).map(x => x.l)) : recLo);
+      if (!flipped) {
+        if (bullSpike && dir !== 1) pending = { dir: 1, i };
+        else if (bearSpike && dir !== -1) pending = { dir: -1, i };
+      }
+      // drift flip: 4 consecutive closes on the wrong side of the EMA with the EMA turning
+      if (!flipped && !pending) {
+        const wrong = dir === 1 ? b.c < b.ema : b.c > b.ema; opp = wrong ? opp + 1 : 0;
+        if (opp >= 4 && i >= 4) {
+          const slope = b.ema - bars[i - 3].ema;
+          if ((dir === 1 && slope < 0) || (dir === -1 && slope > 0)) { dir = -dir; flips.push({ i: i - 3, dir, kind: 'drift', confirmedAt: i }); opp = 0; }
+        }
+      }
+      dirArr.push(dir);
+    }
+    return { dir, flips, traps, pending, dirArr };
+  }
+
+  /* ---------- leg strength (Trends ch. 19) ---------- */
+  function legStats(bars, cls, from, to, dir, ADR) {
+    const n = to - from + 1;
+    if (n < 1) return { n: 0, strength: 0, maxPB: 0, maxPBpx: 0, withTB: 0, ctTB: 0, emaGapNow: 0, emaGapMax: 0, maxOpp: 0, overlap: 0, microGaps: 0, eff: 0, net: 0, ctSpikesFailed: 0 };
+    let withTB = 0, ctTB = 0, run = dir === 1 ? -Infinity : Infinity, maxPB = 0, gapRun = 0, gapMax = 0, oppRun = 0, oppMax = 0, ov = [], micro = 0, path = 0, ctSpikes = 0;
+    for (let j = from; j <= to; j++) {
+      const b = bars[j], c = cls[j];
+      if (c.tb === dir) withTB++; else if (c.tb === -dir) ctTB++;
+      if (dir === 1) { run = Math.max(run, b.h); maxPB = Math.max(maxPB, run - b.l); } else { run = Math.min(run, b.l); maxPB = Math.max(maxPB, b.h - run); }
+      const gapBar = dir === 1 ? b.l > b.ema : b.h < b.ema; gapRun = gapBar ? gapRun + 1 : 0; gapMax = Math.max(gapMax, gapRun);
+      const opp = dir === 1 ? b.c < b.ema : b.c > b.ema; oppRun = opp ? oppRun + 1 : 0; oppMax = Math.max(oppMax, oppRun);
+      if (j > from) {
+        const p = bars[j - 1];
+        const top = Math.max(b.o, b.c), bot = Math.min(b.o, b.c), pt = Math.max(p.o, p.c), pb = Math.min(p.o, p.c);
+        const o = Math.max(0, Math.min(top, pt) - Math.max(bot, pb)); const ab = Math.max((top - bot + pt - pb) / 2, 1e-9);
+        ov.push(clamp(o / ab)); path += Math.abs(b.c - p.c);
+        if (j < to && c.tb === dir) { const nx = bars[j + 1]; if (dir === 1 ? nx.l > p.h : nx.h < p.l) micro++; }
+        if (cls[j].tb === -dir && cls[j - 1].tb === -dir) ctSpikes++;
+      }
+    }
+    const net = dir * (bars[to].c - bars[from].o);
+    const eff = path > 0 ? clamp(Math.abs(bars[to].c - bars[from].c) / path) : 0;
+    const overlap = ov.length ? mean(ov) : 0.5;
+    const pbA = maxPB / (ADR || 1);
+    let strength =
+      0.22 * clamp((withTB / n) / 0.6) +
+      0.18 * (1 - clamp(pbA / 0.35)) +
+      0.15 * clamp(gapMax / 20) +
+      0.15 * eff +
+      0.10 * (1 - overlap) +
+      0.10 * (oppMax < 2 ? 1 : oppMax < 3 ? 0.5 : 0) +
+      0.10 * clamp(net / (ADR || 1) / 0.6);
+    strength *= clamp(n / 6);
+    if (net <= 0) strength *= 0.3;
+    return { n, strength: clamp(strength), maxPB: pbA, maxPBpx: maxPB, withTB: withTB / n, ctTB: ctTB / n, emaGapNow: gapRun, emaGapMax: gapMax, maxOpp: oppMax, overlap, microGaps: micro, eff, net: net / (ADR || 1), ctSpikes };
+  }
+
+  function trStats(bars, cls, from, to) {
+    const W = to - from + 1;
+    if (W < 3) return { tr: 0.5, doji: 0, ovl: 0, crosses: 0, eff: 0, W };
+    let dj = 0, ovl = [], crosses = 0, path = 0;
+    for (let j = from; j <= to; j++) {
+      if (cls[j].doji) dj++;
+      if (j > from) {
+        const a = bars[j], p = bars[j - 1];
+        const o = Math.max(0, Math.min(a.h, p.h) - Math.max(a.l, p.l)); ovl.push(clamp(o / Math.max(Math.min(a.h - a.l, p.h - p.l), 1e-9)));
+        if ((a.c > a.ema) !== (p.c > p.ema)) crosses++;
+        path += Math.abs(a.c - p.c);
+      }
+    }
+    const eff = path > 0 ? Math.abs(bars[to].c - bars[from].c) / path : 0;
+    const dojiPct = dj / W, ov = mean(ovl);
+    const tr = clamp(0.25 * clamp(dojiPct / 0.45) + 0.3 * clamp((ov - 0.35) / 0.45) + 0.2 * clamp(crosses / Math.max(2, W / 5)) + 0.25 * (1 - clamp(eff / 0.45)));
+    return { tr, doji: dojiPct, ovl: ov, crosses, eff, W };
+  }
+
+  function pivots(bars, k, s = 2) {
+    const H = [], L = [];
+    for (let i = s; i <= k - s; i++) {
+      let ph = true, pl = true;
+      for (let d = 1; d <= s; d++) {
+        if (!(bars[i].h > bars[i - d].h && bars[i].h >= bars[i + d].h)) ph = false;
+        if (!(bars[i].l < bars[i - d].l && bars[i].l <= bars[i + d].l)) pl = false;
+      }
+      if (ph) H.push(i); if (pl) L.push(i);
+    }
+    return { H, L };
+  }
+
+  function findSpikes(bars, cls, ref, k) {
+    const out = []; let j = 0;
+    while (j <= k) {
+      const d = cls[j].tb; if (!d) { j++; continue; }
+      let e = j; while (e + 1 <= k && cls[e + 1].tb === d) e++;
+      const seg = bars.slice(j, e + 1);
+      const hi = Math.max(...seg.map(b => b.h)), lo = Math.min(...seg.map(b => b.l));
+      const height = hi - lo, L = e - j + 1;
+      if ((L >= 2 && height >= 1.5 * ref) || (L === 1 && cls[j].strong && cls[j].rng >= 2 * ref))
+        out.push({ from: j, to: e, dir: d, height, start: d === 1 ? lo : hi, end: d === 1 ? hi : lo, len: L });
+      j = e + 1;
+    }
+    return out;
+  }
+
+  function pullbackCount(bars, dir, from, k) {
+    if (k - from < 1) return { count: 0, depthPx: 0, atExtreme: true };
+    let ext = from;
+    for (let j = from; j <= k; j++) if (dir === 1 ? bars[j].h >= bars[ext].h : bars[j].l <= bars[ext].l) ext = j;
+    if (ext === k) return { count: 0, depthPx: 0, atExtreme: true, ext };
+    let count = 0, inMove = true, extreme2 = dir === 1 ? Infinity : -Infinity, touchedEma = false;
+    for (let j = ext + 1; j <= k; j++) {
+      const b = bars[j], p = bars[j - 1];
+      if (dir === 1) {
+        extreme2 = Math.min(extreme2, b.l); if (b.l <= b.ema) touchedEma = true;
+        if (b.h > p.h && inMove) { count++; inMove = false; }
+        if (b.l < p.l) inMove = true;
+      } else {
+        extreme2 = Math.max(extreme2, b.h); if (b.h >= b.ema) touchedEma = true;
+        if (b.l < p.l && inMove) { count++; inMove = false; }
+        if (b.h > p.h) inMove = true;
+      }
+    }
+    const depthPx = dir === 1 ? bars[ext].h - extreme2 : extreme2 - bars[ext].l;
+    return { count, depthPx, atExtreme: false, ext, touchedEma, barsSince: k - ext };
+  }
+
+  /* ---------- main analysis ---------- */
+  function analyze(T, si, k, opts = {}) {
+    const S = T.sessions[si], P = si > 0 ? T.sessions[si - 1] : null;
+    k = Math.min(k, S.bars.length - 1);
+    const bars = S.bars.slice(0, k + 1), n = bars.length;
+    const ADR = S.adr || (S.range || 1), ref = S.refBar || ADR / 15;
+    const cls = bars.map(b => classify(b, ref));
+    const last = bars[k], price = last.c, endMin = last.min + 5;
+    const u = x => x / ADR; // price -> ADR units
+    const px = v => v.toFixed(2);
+
+    // yesterday context + inherited always-in
+    let init = { dir: price >= (P ? P.close : price) ? 1 : -1, kind: 'default' }, prevAI = null;
+    if (P) {
+      const pc = P.bars.map(b => classify(b, P.refBar || ref));
+      const tail = P.bars.slice(-12);
+      const d0 = tail[tail.length - 1].c >= tail[0].o ? 1 : -1;
+      prevAI = runAI(P.bars, pc, P.refBar || ref, d0, 'seed');
+      init = { dir: prevAI.dir, kind: 'yesterday' };
+    }
+    const ai = runAI(bars, cls, ref, init.dir, init.kind);
+    const lastFlip = ai.flips[ai.flips.length - 1];
+    const legFrom = Math.max(0, lastFlip.i);
+
+    // day stats
+    let hi = -Infinity, lo = Infinity, hiIdx = 0, loIdx = 0;
+    bars.forEach((b, i) => { if (b.h > hi) { hi = b.h; hiIdx = i; } if (b.l < lo) { lo = b.l; loIdx = i; } });
+    const open = bars[0].o, range = hi - lo, ext = u(range);
+    const closeLoc = range > 0 ? (price - lo) / range : 0.5, openLoc = range > 0 ? (open - lo) / range : 0.5;
+    const gap = S.gap, gapLarge = Math.abs(gap) >= 0.5 || (Math.abs(gap) >= 0.3 && Math.abs(gap) >= S.largestGap5);
+    const prev = P ? { h: P.high, l: P.low, c: P.close } : null;
+    const openVsPrev = prev ? (open > prev.h ? 'above' : open < prev.l ? 'below' : 'inside') : 'n/a';
+
+    // opening range = first hour (12 bars)
+    const orN = Math.min(12, n), orBars = bars.slice(0, orN);
+    const orHi = Math.max(...orBars.map(b => b.h)), orLo = Math.min(...orBars.map(b => b.l)), orSize = u(orHi - orLo);
+    const orComplete = n >= 12;
+    const orCls = !orComplete ? 'forming' : orSize <= 0.3 ? 'small' : orSize <= 0.6 ? 'medium' : 'large';
+    const orBreaks = [];
+    if (orComplete) {
+      let side = 0;
+      for (let j = 12; j <= k; j++) {
+        const s = bars[j].c > orHi ? 1 : bars[j].c < orLo ? -1 : 0;
+        if (s !== 0 && s !== side) orBreaks.push({ i: j, dir: s });
+        side = s;
+      }
+    }
+    const orSide = price > orHi ? 1 : price < orLo ? -1 : 0;
+
+    // first hour move (open to first-hour extreme)
+    const fhUp = orHi - open, fhDn = open - orLo;
+    const fhDir = fhUp >= fhDn ? 1 : -1, fhMove = u(Math.max(fhUp, fhDn));
+
+    // legs and ranges
+    const leg = legStats(bars, cls, legFrom, k, ai.dir, ADR);
+    const recentFrom = Math.max(0, k - 23);
+    const trRecent = trStats(bars, cls, recentFrom, k);
+    const trDay = trStats(bars, cls, 0, k);
+    let ttr = null;
+    if (n >= 9) {
+      const w = bars.slice(Math.max(0, k - 9), k + 1);
+      const span = Math.max(...w.map(b => b.h)) - Math.min(...w.map(b => b.l));
+      const avgR = mean(w.map(b => b.h - b.l));
+      const tw = trStats(bars, cls, Math.max(0, k - 9), k);
+      if (span <= 3 * avgR && u(span) <= 0.25 && tw.ovl >= 0.55) ttr = { bars: w.length, hi: Math.max(...w.map(b => b.h)), lo: Math.min(...w.map(b => b.l)), span };
+    }
+    const spikes = findSpikes(bars, cls, ref, k);
+    const pv = pivots(bars, k);
+    const pb = pullbackCount(bars, ai.dir, legFrom, k);
+
+    // wedge / three pushes in the AI direction
+    let wedge = null;
+    {
+      const P_ = ai.dir === 1 ? pv.H.filter(i => i >= legFrom) : pv.L.filter(i => i >= legFrom);
+      if (P_.length >= 3) {
+        const [a, b, c] = P_.slice(-3); const val = i => ai.dir === 1 ? bars[i].h : bars[i].l;
+        const p1 = ai.dir * (val(b) - val(a)), p2 = ai.dir * (val(c) - val(b));
+        if (p1 > 0 && p2 > 0 && k - c <= 8) wedge = { idx: [a, b, c], shrinking: p2 <= p1 };
+      }
+    }
+
+    // climax / exhaustion: two big with-trend bars late after a long leg
+    let climax = null;
+    if (k >= 2) {
+      const c1 = cls[k], c0 = cls[k - 1];
+      const bigPair = c1.tb === ai.dir && c0.tb === ai.dir && (c1.rng + c0.rng) >= 3.2 * ref;
+      if (bigPair && leg.n >= 18 && leg.net >= 0.6) climax = { kind: 'late large trend bars', i: k };
+    }
+
+    // volume (secondary per Brooks)
+    const slot = Math.min(77, last.slot);
+    const cumNow = S.cum[slot], avgCum = S.avgCum[slot];
+    const rvol = cumNow != null && avgCum ? cumNow / avgCum : null;
+    const lastVolRatio = S.avgBarVol[slot] ? last.v / S.avgBarVol[slot] : null;
+    let volSpike = null;
+    for (let j = Math.max(0, k - 2); j <= k; j++) { const r = S.avgBarVol[bars[j].slot] ? bars[j].v / S.avgBarVol[bars[j].slot] : 0; if (r >= 2.5) volSpike = { i: j, ratio: r }; }
+    const volClimax = volSpike && leg.n >= 15 && leg.net >= 0.7;
+
+    // phase of day
+    const m = endMin;
+    const phase = m <= 600 ? { key: 'open', label: 'Opening bars (first 30 min)' }
+      : m <= 660 ? { key: 'firsthour', label: 'Opening range (first 90 min)' }
+      : m <= 690 ? { key: 'lateopen', label: 'End of opening period (around 11:30 reversal window)' }
+      : m <= 870 ? { key: 'middle', label: 'Middle third (two-sided, trading-range prone)' }
+      : m < 930 ? { key: 'final', label: 'Final third (2:30 ET move into the close)' }
+      : { key: 'close', label: 'Last 30 minutes' };
+
+    const daily = dailyContext(T, S.date);
+
+    /* ---------- day-type scoring ---------- */
+    const types = [];
+    const dirWord = d => d === 1 ? 'bull' : 'bear';
+    // Trend from the open / small pullback
+    {
+      const d = loIdx <= hiIdx ? 1 : -1;
+      const exIdx = d === 1 ? loIdx : hiIdx;
+      const openNear = u(d === 1 ? open - lo : hi - open);
+      const loc = d === 1 ? closeLoc : 1 - closeLoc;
+      if (exIdx <= 4 && n >= 6) {
+        const dl = legStats(bars, cls, exIdx, k, d, ADR);
+        let sc = 0.25 + 0.2 * (1 - clamp(openNear / 0.15)) + 0.25 * clamp((loc - 0.4) / 0.5) + 0.3 * dl.strength;
+        if (ext < 0.35) sc *= 0.7;
+        types.push({ key: 'tfo', dir: d, score: clamp(sc), label: `Trend from the open (${dirWord(d)})`, leg: dl });
+        if (n >= 18 && dl.maxPB <= 0.3 && loc >= 0.7) {
+          const sp = clamp(0.5 * sc + 0.5 * (1 - dl.maxPB / 0.3) + 0.1);
+          types.push({ key: 'spt', dir: d, score: sp, label: `Small pullback trend (${dirWord(d)})`, leg: dl });
+        }
+      }
+    }
+    // Spike and channel
+    {
+      const early = spikes.filter(s => s.from <= 18 && u(s.height) >= 0.2).sort((a, b) => b.height - a.height)[0];
+      if (early && k > early.to + 2) {
+        const d = early.dir;
+        const loc = d === 1 ? closeLoc : 1 - closeLoc;
+        const retained = d === 1 ? (price - early.start) / early.height : (early.start - price) / early.height;
+        const after = legStats(bars, cls, early.to + 1, k, d, ADR);
+        let sc = 0.3 * clamp(u(early.height) / 0.4) + 0.2 * (ai.dir === d ? 1 : 0) + 0.2 * clamp((loc - 0.4) / 0.5) + 0.2 * clamp(retained / 1.2) + 0.1 * clamp(after.net / 0.3);
+        // channel start = extreme of pullback after spike
+        let cs = early.to + 1, csVal = d === 1 ? Infinity : -Infinity;
+        for (let j = early.to + 1; j <= k; j++) { if (d === 1 ? bars[j].h > early.end : bars[j].l < early.end) break; if (d === 1 ? bars[j].l < csVal : bars[j].h > csVal) { csVal = d === 1 ? bars[j].l : bars[j].h; cs = j; } }
+        if (!isFinite(csVal)) csVal = early.end;
+        types.push({ key: 'snc', dir: d, score: clamp(sc), label: `Spike and channel (${dirWord(d)})`, spike: early, channelStart: csVal, channelStartIdx: cs });
+      }
+    }
+    // Trending trading range
+    if (orComplete && orBreaks.length) {
+      const b0 = orBreaks[orBreaks.length - 1];
+      const post = trStats(bars, cls, b0.i, k);
+      let sc = 0.3 * (orCls === 'medium' ? 1 : orCls === 'small' ? 0.5 : 0.3) + 0.25 * (orSide === b0.dir ? 1 : 0.4) + 0.25 * post.tr + 0.2 * (ext >= 0.6 && ext <= 1.4 ? 1 : 0.4);
+      types.push({ key: 'ttr', dir: b0.dir, score: clamp(sc), label: `Trending trading range (${dirWord(b0.dir)})`, breakIdx: b0.i });
+    }
+    // Trading range day
+    {
+      const failed = orBreaks.length >= 2 || (orComplete && orBreaks.length === 0);
+      let sc = 0.4 * trDay.tr + 0.2 * (ext < 0.8 ? 1 : ext < 1 ? 0.5 : 0) + 0.2 * (failed ? 1 : orSide === 0 ? 0.6 : 0) + 0.2 * clamp(trDay.crosses / 8);
+      if (n < 12) sc *= 0.8;
+      types.push({ key: 'trd', dir: 0, score: clamp(sc), label: 'Trading range day' });
+    }
+    // Reversal day
+    {
+      const firstIdx = Math.min(hiIdx, loIdx), secondIdx = Math.max(hiIdx, loIdx);
+      const firstDir = firstIdx === hiIdx ? 1 : -1; // first extreme was a high -> first move was up
+      const firstMove = u(firstDir === 1 ? hi - open : open - lo);
+      const nowDir = -firstDir;
+      const beyondOpen = u(nowDir * (price - open));
+      if (secondIdx - firstIdx >= 12 && firstMove >= 0.3 && k - secondIdx <= 14 && beyondOpen >= 0.1) {
+        const sc = clamp(0.3 * clamp(firstMove / 0.5) + 0.3 * clamp(beyondOpen / 0.4) + 0.2 * (ai.dir === nowDir ? 1 : 0) + 0.2 * clamp((nowDir === 1 ? closeLoc : 1 - closeLoc - 0) / 0.8));
+        types.push({ key: 'rev', dir: nowDir, score: sc, label: `Reversal day (now ${dirWord(nowDir)})`, firstIdx, secondIdx });
+      }
+    }
+    // Trend resumption
+    if (orComplete && fhMove >= 0.35 && k >= 30) {
+      const d = fhDir; const fhEx = d === 1 ? orHi : orLo;
+      const post = bars.slice(12, k + 1);
+      const postHi = Math.max(...post.map(b => b.h)), postLo = Math.min(...post.map(b => b.l));
+      const retr = d === 1 ? (orHi - postLo) / Math.max(orHi - open, 1e-9) : (postHi - orLo) / Math.max(open - orLo, 1e-9);
+      const ptr = trStats(bars, cls, 12, k);
+      const resuming = d === 1 ? price > orHi : price < orLo;
+      if (retr <= 0.75) {
+        const sc = clamp(0.3 * clamp(fhMove / 0.5) + 0.3 * ptr.tr + 0.2 * (1 - clamp(retr / 0.75)) + 0.2 * (m >= 750 ? 1 : 0.4) + (resuming ? 0.05 : 0));
+        types.push({ key: 'res', dir: d, score: sc, label: `Trend resumption (${dirWord(d)})`, leg1: d === 1 ? orHi - open : open - orLo, fhEx, resuming });
+      }
+    }
+    // Stairs
+    {
+      const d = ai.dir; const P_ = d === 1 ? pv.H : pv.L;
+      if (P_.length >= 3 && ext >= 0.7) {
+        let steps = 0, incs = [];
+        for (let i = 1; i < P_.length; i++) { const dv = d * ((d === 1 ? bars[P_[i]].h : bars[P_[i]].l) - (d === 1 ? bars[P_[i - 1]].h : bars[P_[i - 1]].l)); if (dv > 0) { steps++; incs.push(dv); } }
+        if (steps >= 2) {
+          const shrinking = incs.length >= 2 && incs[incs.length - 1] < incs[incs.length - 2];
+          const sc = clamp(0.35 * clamp(steps / 3) + 0.3 * clamp(trDay.tr / 0.5) + 0.35 * clamp(d * (price - open) / ADR / 0.6));
+          types.push({ key: 'stairs', dir: d, score: sc * 0.85, label: `Stairs / broad channel (${dirWord(d)})`, shrinking });
+        }
+      }
+    }
+    types.sort((a, b) => b.score - a.score);
+    let dayType = types[0];
+    if (n < 6) dayType = { key: 'early', dir: 0, score: 0, label: 'Too early to classify' };
+    else if (!dayType || dayType.score < 0.42) dayType = { key: 'unclear', dir: 0, score: dayType ? dayType.score : 0, label: 'Still forming / mixed' };
+    const alts = types.filter(t => t !== dayType).slice(0, 2);
+
+    /* ---------- bias score ---------- */
+    const aiConf = lastFlip.kind === 'spike' ? 1 : lastFlip.kind === 'drift' ? 0.7 : 0.45;
+    const closesAbove = bars.slice(Math.max(0, k - 5)).filter(b => b.c > b.ema).length / Math.min(6, n);
+    let s_ai = 30 * ai.dir * aiConf;
+    let s_trend = 25 * ai.dir * leg.strength;
+    const s_ema = 10 * (closesAbove * 2 - 1);
+    const s_loc = 10 * (closeLoc * 2 - 1) * (1 - trRecent.tr);
+    let s_gap = 0;
+    if (gapLarge) { const held = Math.sign(price - S.prevClose) === Math.sign(gap); s_gap = (held ? 8 : -5) * Math.sign(gap); }
+    const s_daily = 5 * daily.trend * (m >= 870 ? 2 : 1);
+    let s_type = 0;
+    if (dayType.dir) s_type = 12 * dayType.dir * dayType.score;
+    if (ai.pending) s_ai += 8 * ai.pending.dir;
+    let damp = 1 - 0.45 * trRecent.tr; if (ttr) damp *= 0.75;
+    if (dayType.key === 'trd') damp *= 0.7;
+    let exhaust = 1; if (climax) exhaust *= 0.7; if (wedge) exhaust *= 0.8; if (volClimax) exhaust *= 0.85;
+    let score = (s_ai + s_trend * exhaust + s_type) * damp + s_ema + s_loc + s_gap + s_daily;
+    score = Math.round(clamp(score, -100, 100));
+    const mag = Math.abs(score);
+    const bucket = mag >= 60 ? 'strong' : mag >= 35 ? 'clear' : mag >= 15 ? 'lean' : 'two';
+    const side = score > 0 ? 'BULL' : 'BEAR';
+    const biasLabel = bucket === 'two' ? 'TWO-SIDED' : bucket === 'lean' ? `LEAN ${side}` : bucket === 'clear' ? side : `STRONG ${side}`;
+    const brooksP = bucket === 'strong' ? 70 : bucket === 'clear' ? 60 : bucket === 'lean' ? 55 : 50;
+
+    /* ---------- projection ---------- */
+    const extArr = T.extBySlot[slot] || [];
+    const medR = quant(extArr, 0.5), p75R = quant(extArr, 0.75);
+    const projRange = isFinite(medR) ? range * medR : Math.max(range, ADR);
+    const projRange75 = isFinite(p75R) ? range * p75R : Math.max(range, ADR * 1.2);
+    const extra = Math.max(0, projRange - range), extra75 = Math.max(0, projRange75 - range);
+    const upShare = clamp(0.5 + score / 140, 0.12, 0.88);
+    const fr = T.fracBySlot[slot];
+    const proj = {
+      medRatio: medR, extra, extra75, upShare,
+      high: hi + extra * upShare, low: lo - extra * (1 - upShare),
+      high75: hi + extra75 * upShare, low75: lo - extra75 * (1 - upShare),
+      adrLeft: Math.max(0, ADR - range), adrHigh: lo + ADR, adrLow: hi - ADR,
+      pHiDone: fr && fr.n ? fr.hiDone / fr.n : null, pLoDone: fr && fr.n ? fr.loDone / fr.n : null, nHist: extArr.length,
+    };
+
+    /* ---------- levels / magnets ---------- */
+    const levels = [];
+    const L = (price, label, kind) => { if (isFinite(price)) levels.push({ price, label, kind }); };
+    L(hi, 'Day high', 'day'); L(lo, 'Day low', 'day'); L(open, "Today's open", 'day');
+    L(last.ema, '20-bar EMA', 'ema');
+    if (prev) { L(prev.h, "Yesterday's high", 'prev'); L(prev.l, "Yesterday's low", 'prev'); L(prev.c, "Yesterday's close", 'prev'); }
+    if (orComplete) {
+      L(orHi, 'Opening range high', 'or'); L(orLo, 'Opening range low', 'or');
+      L(orHi + (orHi - orLo), 'OR measured move up', 'mm'); L(orLo - (orHi - orLo), 'OR measured move down', 'mm');
+    }
+    const bigSpike = spikes.filter(s => s.dir === ai.dir).sort((a, b) => b.height - a.height)[0];
+    if (bigSpike && u(bigSpike.height) >= 0.15) L(bigSpike.end + bigSpike.dir * bigSpike.height, `Spike MM (${fmtMin(bars[bigSpike.from].min)})`, 'mm');
+    const snc = types.find(t => t.key === 'snc');
+    if (snc && dayType.key === 'snc') L(snc.channelStart, 'Start of channel (correction target)', 'struct');
+    const res = types.find(t => t.key === 'res');
+    if (res && dayType.key === 'res') L(res.fhEx + res.dir * res.leg1, 'Leg 2 = leg 1 target', 'mm');
+    L(proj.adrHigh, 'Low + avg daily range', 'adr'); L(proj.adrLow, 'High − avg daily range', 'adr');
+    levels.forEach(l => { l.dist = l.price - price; l.distA = u(l.dist); });
+    levels.sort((a, b) => b.price - a.price);
+
+    /* ---------- narrative ---------- */
+    const reads = [], expect = [], plan = [], traps = [];
+    const R = (txt, src, tone = 0) => reads.push({ txt, src, tone });
+    const E = (txt, src, tone = 0) => expect.push({ txt, src, tone });
+    const aiWord = ai.dir === 1 ? 'long' : 'short';
+    const sinceTxt = lastFlip.i < 0 ? (lastFlip.kind === 'yesterday' ? "carried over from yesterday's close" : 'from the open') : `since the ${fmtMin(bars[lastFlip.i].min)} bar (${lastFlip.kind === 'spike' ? 'spike with follow-through' : 'closes drifting across the EMA'})`;
+
+    if (!opts.lite) {
+      // context
+      if (prev) {
+        const gtxt = `Gap ${gap >= 0 ? 'up' : 'down'} ${Math.abs(gap * 100).toFixed(0)}% of ADR, opening ${openVsPrev === 'inside' ? "inside yesterday's range" : openVsPrev + " yesterday's " + (openVsPrev === 'above' ? 'high' : 'low')}`;
+        R(gtxt + (gapLarge ? '. That counts as a large gap, which raises the odds of a trend day in either direction.' : '.'), 'Reversals ch.20', gapLarge ? Math.sign(gap) : 0);
+      }
+      if (prevAI) R(`Yesterday closed always-in ${prevAI.dir === 1 ? 'long' : 'short'}, which was today's starting bias.`, 'Reversals ch.15, 18');
+      const fb = cls[0];
+      if (fb.tb) R(`First bar was a ${fb.strong ? 'strong ' : ''}${fb.tb === 1 ? 'bull' : 'bear'} trend bar${fb.strong ? '. A strong first bar has about a 30% chance of being the high or low of the day' : ''}.`, 'Reversals ch.19', fb.tb);
+      else if (fb.doji) R('First bar was a doji, a one-bar trading range that slightly raises the odds of a trading range day.', 'Reversals ch.19');
+
+      R(`Always-in ${aiWord.toUpperCase()} ${sinceTxt}.`, 'Reversals ch.15', ai.dir);
+      if (ai.pending) R(`Possible flip to always-in ${ai.pending.dir === 1 ? 'long' : 'short'} on the latest bar. The next bar must not close ${ai.pending.dir === 1 ? 'bear' : 'bull'} to confirm it.`, 'Reversals ch.15', ai.pending.dir);
+      const recentTraps = ai.traps.filter(t => k - t.failedAt <= 12);
+      if (recentTraps.length) { const t = recentTraps[recentTraps.length - 1]; R(`The ${fmtMin(bars[t.i].min)} ${t.dir === 1 ? 'bull' : 'bear'} spike got no follow-through (an opposite close on the next bar). That is a failed breakout, and those traders are trapped.`, 'Reversals ch.15', -t.dir); }
+
+      if (orComplete) {
+        const oc = { small: 'small (≤30% of ADR): breakout mode', medium: 'about a third to a half of ADR', large: 'large (over 60% of ADR)' }[orCls];
+        R(`Opening range ${px(orLo)}–${px(orHi)} = ${(orSize * 100).toFixed(0)}% of ADR, ${oc}.` + (orBreaks.length ? ` ${orBreaks.length} breakout${orBreaks.length > 1 ? 's' : ''} so far; price is ${orSide === 1 ? 'above' : orSide === -1 ? 'below' : 'back inside'} it.` : ' No breakout yet.'), 'Reversals ch.19', orSide);
+      } else R(`Opening range still forming: ${px(orLo)}–${px(orHi)} (${(orSize * 100).toFixed(0)}% of ADR so far).`, 'Reversals ch.19');
+
+      R(`Day range so far ${px(range)} = ${(ext * 100).toFixed(0)}% of the ${px(ADR)} average daily range. Price sits in the ${closeLoc >= 0.67 ? 'top' : closeLoc <= 0.33 ? 'bottom' : 'middle'} third of the day.`, 'Trends ch.22');
+
+      if (leg.n >= 4) {
+        const sig = [];
+        if (leg.withTB >= 0.5) sig.push(`${(leg.withTB * 100).toFixed(0)}% with-trend trend bars`);
+        if (leg.maxPB <= 0.25) sig.push(`largest pullback only ${(leg.maxPB * 100).toFixed(0)}% of ADR`);
+        if (leg.emaGapMax >= 10) sig.push(`${leg.emaGapMax} consecutive bars away from the EMA`);
+        if (leg.maxOpp < 2) sig.push('never two closes on the wrong side of the EMA');
+        if (leg.microGaps >= 2) sig.push(`${leg.microGaps} micro measuring gaps`);
+        const weak = [];
+        if (leg.overlap >= 0.55) weak.push('heavy bar overlap');
+        if (leg.ctTB >= 0.3) weak.push('many opposite trend bars');
+        if (leg.maxOpp >= 3) weak.push(`${leg.maxOpp} consecutive closes on the wrong side of the EMA`);
+        R(`Current ${ai.dir === 1 ? 'bull' : 'bear'} leg strength ${(leg.strength * 100).toFixed(0)}/100 over ${leg.n} bars` + (sig.length ? `. Signs of strength: ${sig.join(', ')}` : '') + (weak.length ? `. Two-sided signs: ${weak.join(', ')}` : '') + '.', 'Trends ch.19', ai.dir * (leg.strength >= 0.5 ? 1 : 0));
+      }
+      if (ttr) R(`Tight trading range: the last ${ttr.bars} bars sit inside ${px(ttr.lo)}–${px(ttr.hi)}. Breakouts from here usually fail within a bar or two.`, 'Bar by Bar ch.5', 0);
+      else if (trRecent.tr >= 0.6) R(`The last ${trRecent.W} bars are two-sided: ${(trRecent.doji * 100).toFixed(0)}% dojis, ${trRecent.crosses} EMA crosses, heavy overlap.`, 'Reversals ch.11', 0);
+      if (wedge) R(`Three pushes ${ai.dir === 1 ? 'up' : 'down'} (wedge)${wedge.shrinking ? ' with shrinking pushes' : ''}. A wedge usually brings at least a two-legged, roughly 10-bar correction.`, 'Reversals ch.5', -ai.dir);
+      if (climax) R('Two large with-trend bars came late in a long leg. That is more likely an exhaustion climax than a new leg.', 'Trends ch.23', -ai.dir);
+      if (pb && !pb.atExtreme && pb.count > 0) {
+        const lab = ai.dir === 1 ? `High ${pb.count}` : `Low ${pb.count}`;
+        R(`Current pullback: ${lab} (${pb.count >= 2 ? 'second-entry' : 'first-entry'} setup), ${(u(pb.depthPx) * 100).toFixed(0)}% of ADR deep${pb.touchedEma ? ', tested the EMA' : ''}.`, 'Trends ch.10', ai.dir);
+      }
+      if (rvol != null) R(`Relative volume ${rvol.toFixed(2)}× the 20-day average for this time of day${lastVolRatio != null ? `; last bar ${lastVolRatio.toFixed(1)}×` : ''}. Brooks treats volume as secondary; heavy volume fits trend days and big gaps.`, 'Bar by Bar ch.1', 0);
+      if (volClimax) R(`Volume spike (${volSpike.ratio.toFixed(1)}× normal) after an extended leg. Brooks notes these often come near the end of a move.`, 'Bar by Bar ch.1', -ai.dir);
+      R(daily.text + '.', 'Reversals ch.11', daily.trend > 0.45 ? 1 : daily.trend < -0.45 ? -1 : 0);
+
+      /* ----- expectations ----- */
+      const tdir = dayType.dir;
+      const firstExDone = (hiIdx <= 18 && u(hi - price) >= 0.3) ? 'high' : (loIdx <= 18 && u(price - lo) >= 0.3) ? 'low' : null;
+      if (m <= 690) {
+        E('The high or low of the day forms in the first hour or two on about 90% of days, and within the first 5 bars on about 50%.', 'Reversals ch.19');
+        if (firstExDone) E(`The day's ${firstExDone} (${px(firstExDone === 'high' ? hi : lo)}) is probably in. Once one extreme forms, the market works toward the other, often into the close.`, 'Reversals ch.19', firstExDone === 'high' ? -1 : 1);
+      }
+      if (proj.pHiDone != null && n >= 6) E(`In the loaded history, the day's high was already in by this time on ${(proj.pHiDone * 100).toFixed(0)}% of sessions and the low on ${(proj.pLoDone * 100).toFixed(0)}%.`, 'History');
+      if (orCls === 'small' && !orBreaks.length) E('Small opening range: the market is in breakout mode. Enter on the breakout either way. A couple of times a month this becomes a trend from the open with small pullbacks.', 'Reversals ch.19');
+      if (orCls === 'medium') E(`Medium opening range: expect the day to grow to about an average range. About two-thirds of these become trend days (usually trending trading range days), breaking out about a measured move of the opening range (${px(orHi + (orHi - orLo))} / ${px(orLo - (orHi - orLo))}) and later testing back toward the breakout point.`, 'Reversals ch.19; Trends ch.22');
+      if (orCls === 'large') E('Large opening move: usually a spike and channel trend day, but sometimes a climactic reversal after a small final flag.', 'Reversals ch.19');
+
+      switch (dayType.key) {
+        case 'spt':
+          E(`Small pullback trend: the strongest day type. With-trend swing setups work 70%+ of the time even though they look weak.`, 'Trends ch.23', tdir);
+          if (m < 900) E(`About two-thirds of these days have a larger pullback after 2:00 ET, about 1.5–2× the biggest pullback so far (≈${px(1.75 * dayType.leg.maxPBpx)}), followed by a resumption into the close.`, 'Trends ch.23', 0);
+          E('Trends this strong often follow through in the first hour or two of tomorrow.', 'Trends ch.23', tdir); break;
+        case 'tfo':
+          E(`Trend from the open: the open is near the day's ${tdir === 1 ? 'low' : 'high'}, and these days often close near the opposite extreme with a trend into the close.`, 'Trends ch.19, 23', tdir);
+          E('Even the best patterns fail about 40% of the time. Without a pause by the 3rd or 4th bar of a spike, odds of a reversal rise.', 'Trends ch.23'); break;
+        case 'snc':
+          E(`Spike and channel: expect the ${dirWord(tdir)} channel to keep going (wall of worry) toward the measured move. With-trend breakouts of the channel usually fail within 5 bars.`, 'Trends ch.21', tdir);
+          E(`When the channel finally breaks, the usual target is a correction to the start of the channel near ${px(types.find(t => t.key === 'snc').channelStart)}, then a bounce of at least 25%, often a double ${tdir === 1 ? 'bottom' : 'top'}.`, 'Trends ch.21', -tdir); break;
+        case 'ttr':
+          E(`Trending trading range: after the breakout, expect a second range about a measured move away, then a test back into the earlier range. Trades in both directions work; scalp more, swing less.`, 'Trends ch.22', tdir);
+          E('Most reversal days begin as trending trading range days. A strong move back through the earlier range can turn this into a reversal day.', 'Trends ch.22, 24', 0); break;
+        case 'trd':
+          E('Trading range day: buy low, sell high, and scalp. About 80% of breakout attempts fail. The middle of the range acts as a magnet.', 'Trends ch.17; Reversals ch.15', 0);
+          E('Strong spikes near the range low are often sell vacuums, and near the high buy vacuums. Fade them rather than chase.', 'Reversals ch.15', 0); break;
+        case 'rev':
+          E(`Reversal day: the market now trends ${tdir === 1 ? 'up' : 'down'} into the close. Restrict trades to the new direction.`, 'Trends ch.24', tdir);
+          if (m >= 840) E('A strong reversal in the last couple of hours usually follows through tomorrow and often for several days.', 'Trends ch.24', tdir);
+          E('The early strength shows the other side was willing to be aggressive. Do not ignore a strong correction later.', 'Reversals ch.19', 0); break;
+        case 'res':
+          E(`Trend resumption: the ${dirWord(tdir)} trend of the first hour usually resumes in the final hour or two, with leg 2 about equal to leg 1 (≈${px(types.find(t => t.key === 'res').fhEx + tdir * types.find(t => t.key === 'res').leg1)}).`, 'Trends ch.25', tdir);
+          E(`Watch for a 1–2 bar fake breakout the other way between 2:00 and 3:00 ET. It is usually a trap before the real breakout.`, 'Trends ch.25', tdir); break;
+        case 'stairs':
+          E(`Stairs: every breakout to a new ${tdir === 1 ? 'high' : 'low'} tends to get a pullback beyond the breakout point. Trade both sides but swing the with-trend side.`, 'Trends ch.26', tdir);
+          if (dayType.shrinking) E('Breakouts are getting smaller (shrinking stairs). Momentum is waning, and that often leads to a two-legged reversal.', 'Trends ch.26', -tdir); break;
+        case 'early': E('Every day starts as a potential trend from the open. Two consecutive strong trend bars in the first hour make traders look for scalps in that direction.', 'Reversals ch.15, 19'); break;
+        default: E('No day type dominates yet. Treat it as a trading range until a breakout with follow-through appears.', 'Reversals ch.15');
+      }
+
+      if (phase.key === 'lateopen' || phase.key === 'middle') E('Middle third: two-sided trading, tight ranges, and reversals are common, and stop entries work poorly. The market often reverses around 11:30 ET and then trends for the middle of the day.', 'Reversals ch.11');
+      if (phase.key === 'middle' && m >= 810) E('Around 2:30 ET the market often makes a move that carries into the close, either resuming the morning trend or reversing it.', 'Reversals ch.11');
+      if (phase.key === 'final' || phase.key === 'close') {
+        E(daily.trend > 0.45 ? 'Daily chart is in a bull trend, so the market usually tries to rally in the final 30–60 minutes.' : daily.trend < -0.45 ? 'Daily chart is in a bear trend, so the market often sells off into the close.' : 'Daily chart is two-sided, so there is no strong close-of-day lean from the higher time frame.', 'Reversals ch.11', daily.trend > 0.45 ? 1 : daily.trend < -0.45 ? -1 : 0);
+        E('Final 30 minutes: risk-manager covering can produce a relentless trend with no pullback. If it starts, enter on a bar close with the stop beyond that bar.', 'Reversals ch.11');
+      }
+      if (leg.emaGapMax >= 20 && leg.emaGapNow < leg.emaGapMax) E('After 20+ bars away from the EMA, the first test of the EMA is usually met by with-trend traders. That first moving-average gap bar often leads to a final leg and then a deeper pullback.', 'Trends ch.19', ai.dir);
+      if (ext >= 1.0) E(`The day has already reached the average range (${(ext * 100).toFixed(0)}%). Further extension is less likely unless this is a strong trend day.`, 'Trends ch.22', 0);
+      else E(`Average-range budget left: ${px(proj.adrLeft)} (${((1 - ext) * 100).toFixed(0)}% of ADR).`, 'Trends ch.22', 0);
+      if (prev && Math.abs(u(price - prev.h)) <= 0.15) E("Price is testing yesterday's high, a key magnet and breakout point. Look for a breakout with follow-through or a failed breakout.", 'Reversals ch.18', 0);
+      if (prev && Math.abs(u(price - prev.l)) <= 0.15) E("Price is testing yesterday's low, a key magnet and breakout point. Look for a breakout with follow-through or a failed breakout.", 'Reversals ch.18', 0);
+
+      /* ----- plan & traps ----- */
+      if (bucket === 'strong') {
+        plan.push(`Trade only ${ai.dir === 1 ? 'long' : 'short'}. In a strong trend you can enter at any time; setups only reduce risk. Swing most of each with-trend entry.`);
+        plan.push(`Place entries where countertrend traders' stops sit, for example above the high of a ${ai.dir === 1 ? 'bear' : 'bull'} reversal bar.`);
+        traps.push(`On strong trend days the best-looking reversal bars and biggest trend bars are often countertrend. They trap traders, and about 80% of reversal attempts fail.`);
+        traps.push(`Do not wait for a perfect pullback. Signal bars look weak in the strongest trends, which forces traders to chase.`);
+      } else if (bucket === 'clear') {
+        plan.push(`Favor ${ai.dir === 1 ? 'longs' : 'shorts'}: ${ai.dir === 1 ? 'buy High 1/High 2 pullbacks and EMA tests' : 'sell Low 1/Low 2 rallies and EMA tests'}. Take countertrend trades only after a strong opposite spike flips always-in.`);
+        traps.push('A single countertrend bar is not a reversal. Wait for a second consecutive trend bar before believing a flip.');
+      } else if (bucket === 'lean') {
+        plan.push(`Slight ${score > 0 ? 'bull' : 'bear'} edge. Prefer with-bias setups near support or resistance and scalp them; switch direction only on a clear spike with follow-through.`);
+      } else {
+        plan.push('Two-sided: buy low and sell high near the range extremes, scalp, and do not enter breakouts on stops in the middle of the range.');
+        traps.push('The market races to the top and bottom of a range, luring traders into buying high on stops and selling low.');
+      }
+      if (ttr) { plan.push('Inside a tight range, most traders should wait for the breakout or the failed breakout, then enter on the breakout pullback.'); traps.push('A tight trading range has no predictive value until it breaks. Do not guess.'); }
+      if (phase.key === 'middle') traps.push('Middle of the day and middle of the range is where traders give back morning profits. Be selective.');
+      if (climax || wedge) traps.push(`Signs of exhaustion: avoid buying ${ai.dir === 1 ? 'high' : 'low'} in the ${ai.dir === 1 ? 'up' : 'down'} direction. Expect a two-legged pullback before the trend resumes.`);
+    }
+
+    return {
+      ticker: T.ticker, date: S.date, k, n, nTotal: S.bars.length, endMin, time: fmtMin(endMin), price, ADR, ref, open, hi, lo, hiIdx, loIdx, ext, closeLoc, openLoc,
+      gap, gapLarge, prev, openVsPrev, or: { hi: orHi, lo: orLo, size: orSize, cls: orCls, complete: orComplete, breaks: orBreaks, side: orSide },
+      ai: { dir: ai.dir, flips: ai.flips, traps: ai.traps, pending: ai.pending, since: lastFlip, conf: aiConf }, leg, trRecent, trDay, ttr, spikes, wedge, climax,
+      volume: { rvol, lastVolRatio, volSpike, volClimax }, phase, daily, dayType, alts, types,
+      bias: { score, bucket, label: biasLabel, brooksP, parts: { s_ai, s_trend, s_ema, s_loc, s_gap, s_daily, s_type, damp, exhaust } },
+      proj, levels, reads, expect, plan, traps, pullback: pb, bars,
+    };
+  }
+
+  /* ---------- outcome of a call (for replay & calibration) ---------- */
+  function outcome(T, si, k, X) {
+    const S = T.sessions[si]; const b = S.bars; if (k >= b.length - 1) return null;
+    const p = b[k].c; let touch = 0;
+    for (let j = k + 1; j < b.length; j++) {
+      const up = b[j].h >= p + X, dn = b[j].l <= p - X;
+      if (up && dn) { touch = 0; break; } if (up) { touch = 1; break; } if (dn) { touch = -1; break; }
+    }
+    const fut = b.slice(k + 1);
+    return { price: p, close: S.close, closeMove: (S.close - p) / S.adr, touch, futHi: Math.max(...fut.map(x => x.h)), futLo: Math.min(...fut.map(x => x.l)) };
+  }
+
+  function calibrate(T, skipLast = true) {
+    const samples = [];
+    const end = T.sessions.length - (skipLast ? 1 : 0);
+    for (let si = 1; si < end; si++) {
+      const S = T.sessions[si]; if (S.adrN < 10 || S.bars.length < 70) continue;
+      for (let k = 5; k <= S.bars.length - 4; k += 6) {
+        const r = analyze(T, si, k, { lite: true });
+        const o = outcome(T, si, k, 0.2 * S.adr); if (!o) continue;
+        samples.push({ si, k, min: r.endMin, score: r.bias.score, bucket: r.bias.bucket, type: r.dayType.key, closeMove: o.closeMove, touch: o.touch });
+      }
+    }
+    return samples;
+  }
+
+  function calibStats(samples, filt) {
+    const s = samples.filter(filt);
+    const dirS = s.filter(x => x.bucket !== 'two');
+    const closeHit = dirS.filter(x => Math.abs(x.closeMove) > 0.02);
+    const ch = closeHit.filter(x => Math.sign(x.closeMove) === Math.sign(x.score)).length;
+    const tt = dirS.filter(x => x.touch !== 0); const th = tt.filter(x => x.touch === Math.sign(x.score)).length;
+    const two = s.filter(x => x.bucket === 'two');
+    const flat = two.filter(x => Math.abs(x.closeMove) < 0.25).length;
+    return { n: s.length, closeN: closeHit.length, closeRate: closeHit.length ? ch / closeHit.length : null, touchN: tt.length, touchRate: tt.length ? th / tt.length : null, twoN: two.length, flatRate: two.length ? flat / two.length : null };
+  }
+
+  return { prep, analyze, outcome, calibrate, calibStats, etParts, fmtMin, buildSessions, clamp, mean, median };
+})();
+
+
+</script>
+<script>
+/* Synthetic demo data generator (clearly labeled demo; not market data) */
+const DEMO = (() => {
+  function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  function gauss(r) { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  // build trading days back from a reference date (weekdays only)
+  function days(endDate, count) {
+    const out = []; const d = new Date(endDate + 'T12:00:00Z');
+    while (out.length < count) { const wd = d.getUTCDay(); if (wd !== 0 && wd !== 6) out.unshift(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() - 1); }
+    return out;
+  }
+  function etToMs(date, min) {
+    // approximate ET offset: EDT (UTC-4) Mar-Nov, EST otherwise
+    const mo = +date.slice(5, 7); const off = (mo >= 4 && mo <= 10) ? 4 : 5;
+    const [y, m, dd] = date.split('-').map(Number);
+    return Date.UTC(y, m - 1, dd, Math.floor(min / 60) + off, min % 60);
+  }
+  function make(ticker, endDate, opts = {}) {
+    const base = { SPY: 580, TLT: 88, GLD: 245 }[ticker] || 100;
+    const vol = { SPY: 0.0011, TLT: 0.0009, GLD: 0.0010 }[ticker] || 0.001;
+    const seed = [...ticker].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) + (opts.seed || 0);
+    const r = rng(seed);
+    const D = days(endDate, opts.days || 70);
+    const raw = [], daily = []; let p = base;
+    D.forEach((date, di) => {
+      const isLast = di === D.length - 1;
+      const kind = isLast ? (opts.lastKind || 'trend') : ['trend', 'range', 'range', 'rev', 'range', 'trend'][Math.floor(r() * 6)];
+      const dirn = r() < 0.5 ? -1 : 1;
+      p *= 1 + gauss(r) * vol * 3; // overnight gap
+      const dO = p; let dh = p, dl = p, dv = 0;
+      const nBars = isLast && opts.lastBars ? opts.lastBars : 78;
+      let mid = p;
+      for (let s = 0; s < nBars; s++) {
+        const min = 570 + s * 5;
+        let drift = 0;
+        if (kind === 'trend') drift = dirn * vol * 0.35;
+        if (kind === 'rev') drift = (s < 30 ? dirn : -dirn) * vol * 0.4;
+        if (kind === 'range') drift = (mid - p) / p * 0.08;
+        const o = p, c = o * (1 + drift + gauss(r) * vol);
+        const h = Math.max(o, c) * (1 + Math.abs(gauss(r)) * vol * 0.5), l = Math.min(o, c) * (1 - Math.abs(gauss(r)) * vol * 0.5);
+        const v = Math.round((s < 6 || s > 70 ? 2.2 : 1) * (2e5 + r() * 2e5) * (ticker === 'SPY' ? 5 : 1));
+        raw.push({ t: etToMs(date, min), o, h, l, c, v });
+        p = c; dh = Math.max(dh, h); dl = Math.min(dl, l); dv += v;
+      }
+      daily.push({ t: etToMs(date, 0) + 4 * 3600e3, o: dO, h: dh, l: dl, c: p, v: dv });
+    });
+    return { raw, daily };
+  }
+  return { make };
+})();
+
+
+</script>
+<script>
+/* ===================== UI ===================== */
+const TICKERS = ['SPY', 'TLT', 'GLD'];
+const API = 'https://api.polygon.io';
+const $ = id => document.getElementById(id);
+const state = { data: {}, sel: 'SPY', demo: false, busy: false, showFuture: true, timer: null };
+const fmt = (v, d = 2) => (v == null || !isFinite(v)) ? '—' : v.toFixed(d);
+const pct = v => (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(0) + '%';
+const sgnCls = v => v > 0 ? 'bull' : v < 0 ? 'bear' : 'two';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { } }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+function log(msg) { const el = $('log'); const t = new Date().toLocaleTimeString(); el.textContent += `[${t}] ${msg}\n`; el.scrollTop = el.scrollHeight; }
+function setStatus(html) { $('status').innerHTML = html; }
+
+/* ---------- data ---------- */
+async function robustFetch(url, tries = 5) {
+  let lastErr;
+  for (let a = 0; a < tries; a++) {
+    try {
+      const res = await fetch(url);
+      if (res.status === 429 || res.status >= 500) { lastErr = new Error('HTTP ' + res.status); await sleep(700 * 2 ** a); continue; }
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(j.error || j.message || ('HTTP ' + res.status)), { fatal: true });
+      return j;
+    } catch (e) { lastErr = e; if (e.fatal) throw e; await sleep(700 * 2 ** a); }
+  }
+  throw lastErr;
+}
+async function aggs(t, mult, span, from, to, key) {
+  let url = `${API}/v2/aggs/ticker/${t}/range/${mult}/${span}/${from}/${to}?adjusted=true&sort=asc&limit=50000&apiKey=${encodeURIComponent(key)}`;
+  const out = []; let pages = 0;
+  while (url && pages < 25) {
+    const j = await robustFetch(url);
+    if (j.status === 'ERROR' || j.status === 'NOT_AUTHORIZED') throw new Error(j.error || j.message || j.status);
+    if (j.results) out.push(...j.results);
+    pages++;
+    url = j.next_url ? j.next_url + (j.next_url.includes('?') ? '&' : '?') + 'apiKey=' + encodeURIComponent(key) : null;
+  }
+  const seen = new Set(); const dedup = out.filter(r => !seen.has(r.t) && seen.add(r.t)).sort((a, b) => a.t - b.t);
+  log(`${t} ${mult}/${span}: ${dedup.length} bars in ${pages} page${pages > 1 ? 's' : ''}`);
+  return dedup;
+}
+function isoMinus(date, days) { const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - days); return d.toISOString().slice(0, 10); }
+
+function liveInfo() { const p = PA.etParts(Date.now()); return { date: p.date, min: p.min, inRTH: p.min >= 570 && p.min < 960 }; }
+
+function finishTicker(tk, raw5, daily, isDemo) {
+  const now = liveInfo();
+  // drop the bar that is still forming during a live session
+  let dropped = false;
+  if (!isDemo && raw5.length) {
+    const lastBar = raw5[raw5.length - 1]; const p = PA.etParts(lastBar.t);
+    if (p.date === now.date && now.inRTH && p.min >= 570) { raw5 = raw5.slice(0, -1); dropped = true; }
+  }
+  const T = PA.prep(tk, raw5, daily);
+  if (!T.sessions.length) throw new Error(`${tk}: no regular-session bars returned`);
+  const si = T.sessions.length - 1, S = T.sessions[si];
+  const live = !isDemo && S.date === now.date && now.inRTH;
+  const D = { T, si, k: S.bars.length - 1, live, dropped, calib: null, latestSi: si };
+  state.data[tk] = D;
+  log(`${tk}: ${T.sessions.length} sessions, current ${S.date} (${S.bars.length} bars${live ? ', live' : ''}${dropped ? ', forming bar dropped' : ''}), ADR ${fmt(S.adr)}`);
+  return D;
+}
+
+async function runCalib(tk) {
+  const D = state.data[tk]; if (!D) return;
+  await sleep(10);
+  const t0 = performance.now();
+  D.calib = PA.calibrate(D.T, true);
+  log(`${tk}: engine history ${D.calib.length} calls replayed in ${Math.round(performance.now() - t0)} ms`);
+}
+
+async function scan() {
+  const key = $('key').value.trim();
+  if (!key) { setStatus('<span class="err">Paste a Polygon API key first, or press Demo data.</span>'); $('key').focus(); return; }
+  if (state.busy) return; state.busy = true; $('scan').disabled = true;
+  store('bsr_key', key);
+  state.demo = false; $('banner').hidden = true;
+  const hist = +$('hist').value; store('bsr_hist', String(hist));
+  const today = liveInfo().date; const from5 = isoMinus(today, hist), fromD = isoMinus(today, 120);
+  setStatus('Fetching 5-minute and daily bars…');
+  const errs = [];
+  await Promise.all(TICKERS.map(async tk => {
+    try {
+      const [raw5, daily] = await Promise.all([aggs(tk, 5, 'minute', from5, today, key), aggs(tk, 1, 'day', fromD, today, key)]);
+      finishTicker(tk, raw5, daily, false);
+    } catch (e) { errs.push(`${tk}: ${e.message}`); log(`${tk} ERROR ${e.message}`); }
+  }));
+  render();
+  for (const tk of TICKERS) if (state.data[tk] && !state.data[tk].calib) { await runCalib(tk); render(); }
+  state.busy = false; $('scan').disabled = false;
+  const D = state.data[state.sel] || Object.values(state.data)[0];
+  const now = liveInfo();
+  let s = errs.length ? `<span class="err">${esc(errs.join(' · '))}</span>` : '';
+  if (D) {
+    const S = D.T.sessions[D.latestSi]; const lastMin = S.bars[S.bars.length - 1].min + 5;
+    s += `<span>Session ${S.date} · last complete bar ends ${PA.fmtMin(lastMin)} ET</span>`;
+    s += D.live ? `<span>Live: now ${PA.fmtMin(now.min)} ET · data lag ${Math.max(0, now.min - lastMin)} min</span>` : `<span>Market closed: showing the most recent full session. Use the slider to replay any time of day.</span>`;
+  }
+  setStatus(s);
+}
+
+function demo() {
+  state.demo = true;
+  const b = $('banner'); b.hidden = false; b.className = 'banner';
+  b.textContent = 'DEMO DATA: synthetic bars generated in the browser to show how the read works. These are not market prices. Paste your Polygon key and press Scan for real data.';
+  const now = new Date(); const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12));
+  while ([0, 6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() - 1);
+  const end = d.toISOString().slice(0, 10);
+  const kinds = { SPY: 'trend', TLT: 'range', GLD: 'rev' };
+  for (const tk of TICKERS) { const g = DEMO.make(tk, end, { lastKind: kinds[tk], days: 90 }); finishTicker(tk, g.raw, g.daily, true); }
+  for (const tk of TICKERS) state.data[tk].calib = PA.calibrate(state.data[tk].T, true);
+  setStatus('<span>Demo session loaded. Drag the slider to see how the read changes through the day.</span>');
+  render();
+}
+
+/* ---------- rendering ---------- */
+function current(tk) {
+  const D = state.data[tk]; if (!D) return null;
+  const r = PA.analyze(D.T, D.si, D.k);
+  return { D, r };
+}
+
+function lookup(D, r) {
+  if (!D.calib || !D.calib.length) return null;
+  const b = r.bias.bucket, sg = Math.sign(r.bias.score);
+  const match = x => x.bucket === b && (b === 'two' || Math.sign(x.score) === sg);
+  let st = PA.calibStats(D.calib, x => match(x) && Math.abs(x.min - r.endMin) <= 60); let scope = `within ±60 min of ${r.time}`;
+  if (st.n < 12) { st = PA.calibStats(D.calib, match); scope = 'all times of day'; }
+  return { ...st, scope };
+}
+
+function renderTiles() {
+  $('tiles').innerHTML = TICKERS.map(tk => {
+    const c = current(tk);
+    if (!c) return `<button class="tile" data-tk="${tk}" aria-pressed="${state.sel === tk}"><span class="tk">${tk}</span><span class="px">—</span><span class="bias two">no data</span><span class="meta"><span>not scanned</span></span></button>`;
+    const { r, D } = c; const cl = r.bias.bucket === 'two' ? 'two' : sgnCls(r.bias.score);
+    const lc = liveCheck(D, r); const lcChip = lc && lc.label ? ` <span class="st ${lc.status}" style="font-size:11px;font-family:var(--cond);font-weight:700;padding:0 5px;border-radius:2px">${lc.label}</span>` : '';
+    const chg = r.prev ? (r.price - r.prev.c) / r.prev.c * 100 : 0;
+    return `<button class="tile" data-tk="${tk}" aria-pressed="${state.sel === tk}">
+      <span class="tk">${tk}</span><span class="px num">${fmt(r.price)} <span class="${sgnCls(chg)}" style="font-size:12px">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span></span>
+      <span class="bias ${cl}">${r.bias.label} <span class="num">${r.bias.score > 0 ? '+' : ''}${r.bias.score}</span></span>
+      <span class="meta"><span>${esc(r.dayType.label)}</span><span>AI ${r.ai.dir === 1 ? 'long' : 'short'} · ${pct(r.ext)} ADR · ${r.time} ET${lcChip}</span></span>
+    </button>`;
+  }).join('');
+  document.querySelectorAll('.tile').forEach(b => b.onclick = () => { state.sel = b.dataset.tk; render(); });
+}
+
+function chartSVG(D, r, lc) {
+  const S = D.T.sessions[D.si], all = S.bars, k = r.k, showF = state.showFuture && k < all.length - 1;
+  const W = 1000, H = 400, ml = 8, mr = 175, mt = 14, mb = 26, pw = W - ml - mr, ph = H - mt - mb;
+  const vis = showF ? all : all.slice(0, k + 1);
+  let yHi = Math.max(...vis.map(b => b.h)), yLo = Math.min(...vis.map(b => b.l));
+  const pad = 0.55 * r.ADR;
+  const lv = r.levels.filter(l => l.price <= yHi + pad && l.price >= yLo - pad && l.kind !== 'day');
+  lv.forEach(l => { yHi = Math.max(yHi, l.price); yLo = Math.min(yLo, l.price); });
+  const span = (yHi - yLo) || 1; yHi += span * 0.03; yLo -= span * 0.03;
+  const X = slot => ml + (slot + 0.5) * (pw / 78), Y = p => mt + (yHi - p) / (yHi - yLo) * ph, bw = Math.max(2, pw / 78 * 0.62);
+  let g = '';
+  // grid & time axis
+  for (let h = 10; h <= 16; h++) { const s = (h * 60 - 570) / 5; const x = ml + s * (pw / 78); g += `<line x1="${x}" x2="${x}" y1="${mt}" y2="${mt + ph}" stroke="var(--line)" stroke-width="1"/><text x="${x}" y="${H - 8}" fill="var(--dim)" font-size="11" text-anchor="middle" font-family="var(--mono)">${h > 12 ? h - 12 : h}:00</text>`; }
+  const step = niceStep(span / 6); for (let p = Math.ceil(yLo / step) * step; p <= yHi; p += step) { const y = Y(p); g += `<line x1="${ml}" x2="${ml + pw}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/><text x="${ml + 4}" y="${y - 3}" fill="var(--faint)" font-size="10" font-family="var(--mono)">${fmt(p)}</text>`; }
+  // opening range band
+  if (r.or) { g += `<rect x="${X(0) - bw}" y="${Y(r.or.hi)}" width="${X(Math.min(11, k)) - X(0) + 2 * bw}" height="${Math.max(1, Y(r.or.lo) - Y(r.or.hi))}" fill="var(--amber)" fill-opacity=".07" stroke="var(--amber)" stroke-opacity=".5" stroke-dasharray="3 3"/>`; }
+  // as-of divider
+  if (showF) { const x = X(all[k].slot) + bw; g += `<rect x="${x}" y="${mt}" width="${ml + pw - x}" height="${ph}" fill="var(--bg)" fill-opacity=".45"/><line x1="${x}" x2="${x}" y1="${mt}" y2="${mt + ph}" stroke="var(--amber)" stroke-width="1"/><text x="${x + 4}" y="${mt + 11}" fill="var(--amber)" font-size="10" font-family="var(--cond)">AS OF ${r.time} · rest of day (actual)</text>`; }
+  // level lines + labels with collision avoidance
+  const styles = { ema: ['var(--ema)', ''], prev: ['var(--dim)', '5 4'], or: ['var(--amber)', '3 3'], mm: ['var(--mm)', '1 3'], adr: ['var(--faint)', '1 3'], struct: ['var(--bear)', '6 3'] };
+  const labs = lv.filter(l => l.kind !== 'ema').map(l => ({ ...l, y: Y(l.price) })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labs.length; i++) if (labs[i].y - labs[i - 1].y < 12) labs[i].ly = (labs[i - 1].ly || labs[i - 1].y) + 12;
+  labs.forEach(l => { l.ly = Math.max(l.ly || l.y, l.y); });
+  labs.forEach(l => {
+    const [col, dash] = styles[l.kind] || ['var(--dim)', '']; const y = l.y;
+    g += `<line x1="${ml}" x2="${ml + pw}" y1="${y}" y2="${y}" stroke="${col}" stroke-width="1" stroke-dasharray="${dash}" opacity=".85"/>`;
+    g += `<text x="${ml + pw + 6}" y="${Math.min(mt + ph, l.ly) + 3.5}" fill="${col}" font-size="10" font-family="var(--mono)">${fmt(l.price)} ${esc(l.label.replace("Yesterday's", 'Y').replace('Opening range', 'OR').replace('measured move', 'MM').replace('avg daily range', 'ADR'))}</text>`;
+  });
+  // EMA path
+  const emaPts = vis.map(b => `${X(b.slot).toFixed(1)},${Y(b.ema).toFixed(1)}`).join(' ');
+  g += `<polyline points="${emaPts}" fill="none" stroke="var(--ema)" stroke-width="1.6"/>`;
+  // candles
+  vis.forEach((b, i) => {
+    const fut = i > k; const up = b.c >= b.o; const col = up ? 'var(--bull)' : 'var(--bear)'; const x = X(b.slot);
+    const top = Y(Math.max(b.o, b.c)), bot = Y(Math.min(b.o, b.c));
+    g += `<g opacity="${fut ? 0.32 : 1}"><line x1="${x}" x2="${x}" y1="${Y(b.h)}" y2="${Y(b.l)}" stroke="${col}" stroke-width="1"/><rect x="${x - bw / 2}" y="${top}" width="${bw}" height="${Math.max(1, bot - top)}" fill="${up ? 'var(--bg)' : col}" stroke="${col}" stroke-width="1"/></g>`;
+  });
+  // always-in flips
+  r.ai.flips.filter(f => f.i >= 0).forEach(f => {
+    const b = all[f.i]; const x = X(b.slot);
+    if (f.dir === 1) { const y = Y(b.l) + 8; g += `<path d="M${x} ${y} l-5 8 h10z" fill="var(--bull)"/><text x="${x}" y="${y + 18}" fill="var(--bull)" font-size="9" text-anchor="middle" font-family="var(--cond)">AI LONG</text>`; }
+    else { const y = Y(b.h) - 8; g += `<path d="M${x} ${y} l-5 -8 h10z" fill="var(--bear)"/><text x="${x}" y="${y - 11}" fill="var(--bear)" font-size="9" text-anchor="middle" font-family="var(--cond)">AI SHORT</text>`; }
+  });
+  // current price marker
+  const yp = Y(r.price); g += `<line x1="${ml}" x2="${ml + pw}" y1="${yp}" y2="${yp}" stroke="var(--fg)" stroke-width=".6" stroke-dasharray="1 2"/><rect x="${ml + pw - 64}" y="${yp - 8}" width="62" height="16" fill="var(--fg)"/><text x="${ml + pw - 60}" y="${yp + 4}" fill="var(--bg)" font-size="11" font-weight="600" font-family="var(--mono)">${fmt(r.price)}</text>`;
+  if (lc && lc.v != null && !lc.inactive && !lc.invalid && lc.v <= yHi && lc.v >= yLo) { const yl = Y(lc.v); g += `<line x1="${ml}" x2="${ml + pw}" y1="${yl}" y2="${yl}" stroke="var(--amber)" stroke-width="1.2" stroke-dasharray="6 3"/><rect x="${ml + pw - 64}" y="${yl - 8}" width="62" height="16" fill="var(--amber)"/><text x="${ml + pw - 60}" y="${yl + 4}" fill="var(--bg)" font-size="11" font-weight="600" font-family="var(--mono)">${fmt(lc.v)}</text><text x="${ml + pw - 68}" y="${yl + 4}" fill="var(--amber)" font-size="9" text-anchor="end" font-family="var(--cond)">LIVE</text>`; }
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${r.ticker} 5-minute chart for ${r.date} as of ${r.time} ET">${g}</svg>`;
+}
+function niceStep(x) { const p = 10 ** Math.floor(Math.log10(x)); const m = x / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+
+function biasOf(score) {
+  const mag = Math.abs(score), side = score > 0 ? 'BULL' : 'BEAR';
+  const bucket = mag >= 60 ? 'strong' : mag >= 35 ? 'clear' : mag >= 15 ? 'lean' : 'two';
+  return { bucket, label: bucket === 'two' ? 'TWO-SIDED' : bucket === 'lean' ? `LEAN ${side}` : bucket === 'clear' ? side : `STRONG ${side}` };
+}
+function parsePx(s) { const v = parseFloat(String(s || '').replace(/[$,\s]/g, '')); return isFinite(v) && v > 0 ? v : null; }
+
+/* Optional live price check: compares a price typed from a real-time quote with the (possibly delayed) last bar */
+function liveCheck(D, r) {
+  const v = D.livePx; if (v == null) return null;
+  const S = D.T.sessions[D.si];
+  if (!(D.si === D.latestSi && D.k === S.bars.length - 1)) return { inactive: true, why: 'The live price only applies at the latest bar. Press Latest bar to use it.' };
+  const move = v - r.price, moveA = move / r.ADR;
+  if (Math.abs(moveA) > 1.5) return { invalid: true, why: `${fmt(v)} is ${(Math.abs(moveA) * 100).toFixed(0)}% of ADR away from the last bar (${fmt(r.price)}). Check that the price was typed for ${r.ticker}. It is being ignored.` };
+  const sg = r.bias.bucket === 'two' ? 0 : Math.sign(r.bias.score), mdir = Math.sign(move);
+  const crossed = r.levels.filter(l => l.kind !== 'day' && (l.price - r.price) * (l.price - v) < 0);
+  const against = crossed.filter(l => ['or', 'ema', 'prev', 'struct'].includes(l.kind) && sg !== 0 && mdir === -sg);
+  const reached = crossed.filter(l => ['mm', 'adr'].includes(l.kind));
+  const hi2 = Math.max(r.hi, v), lo2 = Math.min(r.lo, v), rng2 = hi2 - lo2;
+  const loc2 = rng2 > 0 ? (v - lo2) / rng2 : 0.5, ext2 = rng2 / r.ADR;
+  const p = r.bias.parts, last5 = r.bars.slice(-5), lastEma = r.bars[r.bars.length - 1].ema;
+  const s_loc2 = 10 * (loc2 * 2 - 1) * (1 - r.trRecent.tr);
+  const s_ema2 = 10 * (((last5.filter(b => b.c > b.ema).length + (v > lastEma ? 1 : 0)) / (last5.length + 1)) * 2 - 1);
+  const score2 = Math.round(Math.max(-100, Math.min(100, r.bias.score - p.s_loc - p.s_ema + s_loc2 + s_ema2)));
+  const b2 = biasOf(score2);
+  let status = 'cur', reasons = [];
+  if (Math.abs(moveA) >= 0.25) { status = 'stale'; reasons.push(`price has moved ${(Math.abs(moveA) * 100).toFixed(0)}% of ADR since the last bar`); }
+  if (against.length) { status = 'stale'; reasons.push(`price crossed ${against.map(l => l.label).join(', ')} against the bias`); }
+  if (status === 'cur' && Math.abs(moveA) >= 0.10) status = 'age';
+  if (status !== 'stale' && b2.bucket !== r.bias.bucket && biasOf(r.bias.score).bucket !== 'two' && b2.bucket === 'two') { status = 'age'; reasons.push('at the live price the score drops into the two-sided band'); }
+  const label = { cur: 'CURRENT', age: 'AGING', stale: 'STALE' }[status];
+  const advice = status === 'cur' ? 'The read stands. Price is within 10% of ADR of the last bar.'
+    : status === 'age' ? 'Direction is probably intact. Use the live location and distances below rather than the delayed ones.'
+    : `Treat the read as stale: ${reasons.join('; ')}. Rescan, and check the latest bars on a real-time chart before acting.`;
+  return { v, move, moveA, crossed, against, reached, newHi: v > r.hi, newLo: v < r.lo, loc2, ext2, adrLeft2: Math.max(0, r.ADR - rng2), score2, b2, status, label, advice, reasons };
+}
+
+function items(arr, mapFn) { return `<ul class="items">${arr.map(mapFn).join('')}</ul>`; }
+const mark = t => t > 0 ? '▲' : t < 0 ? '▼' : '◆';
+
+function renderDesk() {
+  const c = current(state.sel);
+  if (!c) { $('desk').innerHTML = `<div class="empty">${state.data && Object.keys(state.data).length ? 'No data for ' + state.sel : 'Paste your Polygon key and press Scan, or load demo data.'}</div>`; return; }
+  const { D, r } = c; const S = D.T.sessions[D.si];
+  const lc = liveCheck(D, r); const lcOn = lc && !lc.inactive && !lc.invalid;
+  const cl = r.bias.bucket === 'two' ? 'two' : sgnCls(r.bias.score);
+  const hist = lookup(D, r);
+  const sessOpts = D.T.sessions.map((s, i) => ({ s, i })).slice(-40).reverse().map(({ s, i }) => `<option value="${i}" ${i === D.si ? 'selected' : ''}>${s.date}${i === D.latestSi ? (D.live ? ' (live)' : ' (latest)') : ''}</option>`).join('');
+  const fill = Math.abs(r.bias.score) / 2;
+  const barStyle = r.bias.score >= 0 ? `left:50%;width:${fill}%;background:var(--bull)` : `left:${50 - fill}%;width:${fill}%;background:var(--bear)`;
+  const histTxt = hist ? (r.bias.bucket === 'two'
+      ? `<div class="v num">${pct(hist.flatRate)}</div><div class="s">closed within ±25% ADR of the scan price · n=${hist.twoN} · ${hist.scope}</div>`
+      : `<div class="v num">${pct(hist.closeRate)} <span style="font-size:12px;color:var(--dim)">close</span> · ${pct(hist.touchRate)} <span style="font-size:12px;color:var(--dim)">±0.2 ADR</span></div><div class="s">closed in bias direction (n=${hist.closeN}) · hit +0.2 ADR before −0.2 ADR (n=${hist.touchN}) · ${hist.scope}</div>`)
+    : `<div class="v">…</div><div class="s">replaying history</div>`;
+  const out = r.k < S.bars.length - 1 ? PA.outcome(D.T, D.si, r.k, 0.2 * r.ADR) : null;
+  let outHTML = '';
+  if (out) {
+    const sg = Math.sign(r.bias.score);
+    const right = r.bias.bucket === 'two' ? Math.abs(out.closeMove) < 0.25 : Math.sign(out.closeMove) === sg;
+    const hit = r.levels.filter(l => ['mm', 'prev', 'adr', 'or', 'struct'].includes(l.kind) && ((l.price > r.price && out.futHi >= l.price) || (l.price < r.price && out.futLo <= l.price)));
+    outHTML = `<section><div class="outcome"><div class="lbl" style="margin-bottom:4px">Replay: what actually happened after ${r.time}</div>
+      Closed at <b class="num">${fmt(out.close)}</b> (${out.close >= r.price ? '+' : ''}${fmt(out.close - r.price)}, ${(out.closeMove * 100).toFixed(0)}% of ADR) · high after ${fmt(out.futHi)} · low after ${fmt(out.futLo)} ·
+      first ±0.2 ADR move: <b>${out.touch === 1 ? 'up' : out.touch === -1 ? 'down' : 'neither / same bar'}</b> ·
+      call by the close: <b class="${right ? 'ok' : 'no'}">${right ? 'RIGHT' : 'WRONG'}</b>
+      ${hit.length ? `<div style="margin-top:4px;color:var(--dim)">Levels reached: ${hit.map(l => esc(l.label) + ' ' + fmt(l.price)).join(' · ')}</div>` : ''}</div></section>`;
+  }
+  const typeChips = [r.dayType, ...r.alts].map((t, i) => `<span class="chip ${t.dir ? sgnCls(t.dir) : 'two'}" style="${i ? 'opacity:.7' : ''}">${esc(t.label)} ${t.score ? (t.score * 100).toFixed(0) : ''}</span>`).join(' ');
+  const P = r.proj;
+  const levelRows = (() => {
+    const base = lcOn ? lc.v : r.price;
+    const rows = r.levels.map(l => ({ ...l, dist: l.price - base, distA: (l.price - base) / r.ADR }));
+    rows.push({ price: base, label: lcOn ? 'Live price' : 'Last price', kind: 'now', dist: 0, distA: 0 });
+    if (lcOn) rows.push({ price: r.price, label: `Last bar close (${r.time})`, kind: 'bar', dist: r.price - base, distA: (r.price - base) / r.ADR });
+    rows.sort((a, b) => b.price - a.price);
+    return rows.map(l => `<tr class="${l.kind === 'now' ? 'now' : ''}"><td>${esc(l.label)}</td><td class="r num">${fmt(l.price)}</td><td class="r num ${l.kind === 'now' ? '' : sgnCls(l.dist)}">${l.kind === 'now' ? '' : (l.dist >= 0 ? '+' : '') + fmt(l.dist)}</td><td class="r num">${l.kind === 'now' ? '' : (l.distA * 100).toFixed(0) + '%'}</td></tr>`).join('');
+  })();
+  const calibRows = (() => {
+    if (!D.calib) return '<tr><td colspan="5">Replaying…</td></tr>';
+    const defs = [['strong', 1, 'Strong bull ≥ +60'], ['clear', 1, 'Bull +35…+59'], ['lean', 1, 'Lean bull +15…+34'], ['two', 0, 'Two-sided −14…+14'], ['lean', -1, 'Lean bear −15…−34'], ['clear', -1, 'Bear −35…−59'], ['strong', -1, 'Strong bear ≤ −60']];
+    return defs.map(([b, sg, lab]) => {
+      const st = PA.calibStats(D.calib, x => x.bucket === b && (b === 'two' || Math.sign(x.score) === sg));
+      const cur = r.bias.bucket === b && (b === 'two' || Math.sign(r.bias.score) === sg);
+      return `<tr class="${cur ? 'now' : ''}"><td>${lab}</td><td class="r num">${st.n}</td><td class="r num">${b === 'two' ? '—' : pct(st.closeRate)}</td><td class="r num">${b === 'two' ? '—' : pct(st.touchRate)}</td><td class="r num">${b === 'two' ? pct(st.flatRate) : '—'}</td></tr>`;
+    }).join('');
+  })();
+  const pb = r.pullback;
+  const kv = [
+    ['ADR (20d)', fmt(r.ADR)], ['Range so far', fmt(r.hi - r.lo)], ['Range used', pct(r.ext)], ['Gap', `${(r.gap * 100).toFixed(0)}% ADR${r.gapLarge ? ' (large)' : ''}`],
+    ['Opening range', `${pct(r.or.size)} · ${r.or.cls}`], ['OR breakouts', r.or.breaks.length], ['Leg strength', (r.leg.strength * 100).toFixed(0) + '/100'], ['Leg bars', r.leg.n],
+    ['Largest pullback', pct(r.leg.maxPB) + ' ADR'], ['EMA gap bars (max)', r.leg.emaGapMax], ['With-trend bars', pct(r.leg.withTB)], ['Bar overlap', pct(r.leg.overlap)],
+    ['TR-ness last 2h', (r.trRecent.tr * 100).toFixed(0) + '/100'], ['EMA crosses today', r.trDay.crosses], ['Dojis last 2h', pct(r.trRecent.doji)], ['Tight range now', r.ttr ? 'yes' : 'no'],
+    ['Rel. volume', r.volume.rvol ? r.volume.rvol.toFixed(2) + '×' : '—'], ['Last bar vol', r.volume.lastVolRatio ? r.volume.lastVolRatio.toFixed(1) + '×' : '—'], ['Pullback count', pb && !pb.atExtreme ? (r.ai.dir === 1 ? 'H' : 'L') + pb.count : 'at extreme'], ['Daily trend', (r.daily.trend * 100).toFixed(0)],
+  ].map(([a, b]) => `<div><span>${a}</span><span class="num">${b}</span></div>`).join('');
+  const parts = r.bias.parts;
+  const partsTxt = `always-in ${fmt(parts.s_ai, 0)} · leg ${fmt(parts.s_trend * parts.exhaust, 0)} · day type ${fmt(parts.s_type, 0)} → ×${fmt(parts.damp, 2)} range damping · EMA ${fmt(parts.s_ema, 0)} · location ${fmt(parts.s_loc, 0)} · gap ${fmt(parts.s_gap, 0)} · daily ${fmt(parts.s_daily, 0)}`;
+
+  $('desk').innerHTML = `
+  <section class="replay">
+    <label class="lbl" for="sess">Session</label><select id="sess">${sessOpts}</select>
+    <label class="lbl" for="slider">As of</label>
+    <input id="slider" type="range" min="1" max="${S.bars.length - 1}" value="${D.k}" step="1">
+    <span class="asof num">${r.time} ET</span>
+    <button id="latest">Latest bar</button>
+    <label class="chk"><input id="fut" type="checkbox" ${state.showFuture ? 'checked' : ''}> show rest of day</label>
+  </section>
+  <section>
+    <div class="liverow">
+      <label class="lbl" for="livepx">Live price (optional)</label>
+      <input id="livepx" inputmode="decimal" autocomplete="off" placeholder="e.g. ${fmt(r.price)}" value="${D.livePx != null ? D.livePx : ''}">
+      <button id="liveapply">Check</button>
+      ${D.livePx != null ? '<button id="liveclr">Clear</button>' : ''}
+      <span class="note">${D.livePx == null ? `Type the current ${r.ticker} price from your broker to test whether this ${r.time} ET read is still current. Leave it empty to use the read as is.` : ''}</span>
+    </div>
+    ${lc ? (lc.inactive || lc.invalid ? `<div class="livebox"><span class="${lc.invalid ? 'warn' : 'note'}">${esc(lc.why)}</span></div>` : `
+    <div class="livebox">
+      <div class="head"><span class="st ${lc.status}">${lc.label}</span>
+        <span class="num">Live ${fmt(lc.v)} vs last bar ${fmt(r.price)} at ${r.time} ET: <b class="${sgnCls(lc.move)}">${lc.move >= 0 ? '+' : ''}${fmt(lc.move)}</b> (${lc.moveA >= 0 ? '+' : ''}${(lc.moveA * 100).toFixed(0)}% of ADR)</span></div>
+      <div>${esc(lc.advice)}</div>
+      <div class="num">Score at the live price: <b class="${lc.b2.bucket === 'two' ? 'two' : sgnCls(lc.score2)}">${lc.b2.label} ${lc.score2 > 0 ? '+' : ''}${lc.score2}</b> (delayed read ${r.bias.score > 0 ? '+' : ''}${r.bias.score}). Only location and EMA position are re-scored; always-in, leg strength and day type still come from completed bars.</div>
+      <div class="num">Live location: ${lc.loc2 >= 0.67 ? 'top' : lc.loc2 <= 0.33 ? 'bottom' : 'middle'} third of the day · range used ${pct(lc.ext2)} of ADR · ADR budget left ${fmt(lc.adrLeft2)}${lc.newHi ? ' · <b class="bull">new high of day since the last bar</b>' : ''}${lc.newLo ? ' · <b class="bear">new low of day since the last bar</b>' : ''}</div>
+      ${lc.crossed.length ? `<div>Crossed since the last bar: ${lc.crossed.map(l => `<span class="${lc.against.includes(l) ? 'warn' : ''}">${esc(l.label)} ${fmt(l.price)}</span>`).join(' · ')}${lc.reached.length ? ' (targets reached)' : ''}</div>` : ''}
+    </div>`) : ''}
+  </section>
+  <section class="verdict">
+    <div class="call">
+      <div class="lbl">${r.ticker} · rest-of-session bias</div>
+      <div class="big ${cl}">${r.bias.label}</div>
+      <div class="score num">score ${r.bias.score > 0 ? '+' : ''}${r.bias.score} / 100 · always-in <b class="${sgnCls(r.ai.dir)}">${r.ai.dir === 1 ? 'LONG' : 'SHORT'}</b>${r.ai.pending ? ' · flip pending' : ''}</div>
+      <div class="bar"><i style="${barStyle}"></i></div>
+      <div style="margin-top:10px">${typeChips}</div>
+      <div class="note" style="margin-top:8px">${esc(r.phase.label)}</div>
+    </div>
+    <div class="facts">
+      <div class="fact"><div class="lbl">Brooks rule of thumb</div><div class="v num">${r.bias.brooksP}%</div><div class="s">${r.bias.bucket === 'two' ? 'trading range: no directional edge' : r.bias.bucket === 'strong' ? 'strong trend: with-trend swings work 70%+' : 'clear always-in: at least 60% for an equal-size move'}</div></div>
+      <div class="fact"><div class="lbl">Engine history · ${r.ticker}</div>${histTxt}</div>
+      <div class="fact"><div class="lbl">Projected rest-of-day range</div><div class="v num">${fmt(P.low)} – ${fmt(P.high)}</div><div class="s">median extension +${fmt(P.extra)} (75th pct +${fmt(P.extra75)}: ${fmt(P.low75)}–${fmt(P.high75)}), ${Math.round(P.upShare * 100)}% allotted upside by bias</div></div>
+      <div class="fact"><div class="lbl">Average-range budget</div><div class="v num">${fmt(P.adrLeft)} left</div><div class="s">low+ADR ${fmt(P.adrHigh)} · high−ADR ${fmt(P.adrLow)}</div></div>
+    </div>
+  </section>
+  <section>
+    <div class="chartbox">${chartSVG(D, r, lc)}</div>
+    <div class="legend"><span class="l-ema">20 EMA</span><span class="l-or">Opening range (1st hour)</span><span class="l-prev">Yesterday H/L/C</span><span class="l-mm">Measured-move / ADR targets</span></div>
+  </section>
+  ${outHTML}
+  <section class="cols">
+    <div class="col"><h3>What price action says <span class="lbl">bar by bar</span></h3>${items(r.reads, x => `<li class="t${x.tone}"><span class="mk">${mark(x.tone)}</span><span>${esc(x.txt)} <span class="src">${esc(x.src)}</span></span></li>`)}</div>
+    <div class="col"><h3>Expect for the rest of the session</h3>${items(r.expect, x => `<li class="t${x.tone}"><span class="mk">${mark(x.tone)}</span><span>${esc(x.txt)} <span class="src">${esc(x.src)}</span></span></li>`)}</div>
+    <div class="col"><h3>Game plan</h3>${items(r.plan, x => `<li><span class="mk">→</span><span>${esc(x)}</span></li>`)}
+      ${r.traps.length ? `<h3 style="margin-top:14px">Traps to avoid</h3>${items(r.traps, x => `<li class="t-1"><span class="mk">!</span><span>${esc(x)}</span></li>`)}` : ''}</div>
+  </section>
+  <section class="two-col">
+    <div><h3 style="font-size:15px;margin-bottom:6px">Magnets and targets</h3><div class="tblwrap"><table><thead><tr><th>Level</th><th class="r">Price</th><th class="r">From ${lcOn ? 'live' : 'last'}</th><th class="r">% ADR</th></tr></thead><tbody>${levelRows}</tbody></table></div></div>
+    <div><h3 style="font-size:15px;margin-bottom:6px">Engine history for ${r.ticker} <span class="lbl">${D.calib ? D.calib.length + ' replayed calls' : ''}</span></h3>
+      <div class="tblwrap"><table><thead><tr><th>Bias bucket</th><th class="r">n</th><th class="r">Close in dir.</th><th class="r">+0.2 ADR first</th><th class="r">Close ±¼ ADR</th></tr></thead><tbody>${calibRows}</tbody></table></div>
+      <p class="note">The engine was replayed every 30 minutes on each loaded session, using only bars up to that time. "Close in dir." asks whether the session closed on the bias side of the scan price. "+0.2 ADR first" asks whether price moved 0.2 ADR in the bias direction before 0.2 ADR against it (Brooks's equidistant-move test). Results near 50% mean the bucket has no edge for this ETF.</p>
+    </div>
+  </section>
+  <section>
+    <h3 style="font-size:15px;margin-bottom:8px">Measurements</h3>
+    <div class="kv">${kv}</div>
+    <p class="note" style="margin-top:8px">Score parts: ${partsTxt}</p>
+  </section>`;
+
+  $('slider').oninput = e => { D.k = +e.target.value; renderTiles(); renderDesk(); const s = $('slider'); if (s) s.focus(); };
+  $('latest').onclick = () => { D.si = D.latestSi; D.k = D.T.sessions[D.si].bars.length - 1; render(); };
+  $('sess').onchange = e => { D.si = +e.target.value; D.k = D.T.sessions[D.si].bars.length - 1; render(); };
+  $('fut').onchange = e => { state.showFuture = e.target.checked; renderDesk(); };
+  const applyLive = () => { const raw = $('livepx').value.trim(); D.livePx = raw ? parsePx(raw) : null; if (raw && D.livePx == null) { D.livePx = null; } render(); const el = $('livepx'); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } };
+  $('livepx').onkeydown = e => { if (e.key === 'Enter') applyLive(); };
+  $('livepx').onchange = applyLive;
+  $('liveapply').onclick = applyLive;
+  if ($('liveclr')) $('liveclr').onclick = () => { D.livePx = null; render(); };
+}
+
+function render() { renderTiles(); renderDesk(); }
+
+/* ---------- boot ---------- */
+(function boot() {
+  const k = load('bsr_key'); if (k) $('key').value = k;
+  const h = load('bsr_hist'); if (h) $('hist').value = h;
+  $('scan').onclick = scan; $('demo').onclick = demo;
+  $('key').addEventListener('keydown', e => { if (e.key === 'Enter') scan(); });
+  $('auto').onchange = e => {
+    clearInterval(state.timer); state.timer = null;
+    if (e.target.checked) state.timer = setInterval(() => { if (!state.demo && liveInfo().inRTH && !state.busy) { const keepSel = state.sel; scan().then(() => { state.sel = keepSel; }); } }, 300000);
+  };
+  if (k) scan(); else demo();
+})();
+</script>
+</body>
+</html>
