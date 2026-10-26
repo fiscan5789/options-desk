@@ -1,0 +1,1051 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Volume Price Read</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Oswald:wght@500;600;700&display=swap">
+<style>
+/* Layout: controls → three ticker tiles → desk: outlook + what to watch, price/volume/VAP chart, signals timeline, factors, expectations, levels, history */
+:root{
+  --bg:#0c0e12; --panel:#13161c; --panel2:#181c24; --line:#232833; --line2:#2e3440;
+  --fg:#dde2ea; --dim:#808a99; --faint:#566070;
+  --accent:#c48cf0; --accent-bg:rgba(196,140,240,.12);
+  --bull:#3cc48c; --bear:#ec6b5e; --warn:#e0b050;
+  --bull-bg:rgba(60,196,140,.12); --bear-bg:rgba(236,107,94,.12); --warn-bg:rgba(224,176,80,.12);
+  --norm:#7f9bb8;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --cond:'Oswald','Arial Narrow',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:13px/1.5 var(--mono);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--cond);font-weight:500;margin:0;text-wrap:balance;letter-spacing:.02em}
+.lbl{font-family:var(--cond);text-transform:uppercase;letter-spacing:.1em;font-size:11.5px;color:var(--dim)}
+.num{font-variant-numeric:tabular-nums}
+button,select,input{font:inherit;color:var(--fg);background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:6px 10px}
+button{cursor:pointer;font-family:var(--cond);font-weight:500;letter-spacing:.08em;text-transform:uppercase;font-size:12.5px}
+button:hover{border-color:var(--dim)}
+button.primary{background:var(--accent);color:#1a0d24;border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button:disabled{opacity:.5;cursor:default}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 20px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.brand h1{font-size:25px}
+.brand h1 b{color:var(--accent);font-weight:600}
+.brand .sub{color:var(--dim);font-size:12px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+.controls input[type=password]{width:230px;max-width:60vw}
+.chk{display:flex;gap:6px;align-items:center;color:var(--dim);font-size:12px}
+.status{font-size:12px;color:var(--dim);width:100%;display:flex;flex-wrap:wrap;gap:4px 14px}
+.status .err{color:var(--bear)}
+.banner{border:1px dashed var(--warn);color:var(--warn);background:var(--warn-bg);padding:6px 10px;font-size:12px;border-radius:3px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;cursor:pointer;display:grid;grid-template-columns:auto 1fr;gap:2px 12px;text-align:left;text-transform:none;letter-spacing:0;font-family:var(--mono);font-weight:400;font-size:13px}
+.tile[aria-pressed="true"]{border-color:var(--accent);background:var(--panel2)}
+.tile .tk{font-family:var(--cond);font-size:25px;font-weight:600;grid-row:span 2;align-self:center}
+.tile .px{justify-self:end;font-size:15px}
+.tile .bias{justify-self:end;font-family:var(--cond);font-weight:600;font-size:16px;letter-spacing:.04em}
+.tile .meta{grid-column:1/-1;color:var(--dim);font-size:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.bull{color:var(--bull)} .bear{color:var(--bear)} .two{color:var(--warn)}
+.desk{background:var(--panel);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column}
+.desk>section{padding:12px 14px;border-top:1px solid var(--line)}
+.desk>section:first-child{border-top:0}
+.replay,.liverow{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.replay input[type=range]{flex:1 1 260px;accent-color:var(--accent);padding:0;min-width:0}
+.replay .asof{font-size:15px;min-width:92px}
+.liverow input{width:120px}
+.livebox{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line2);border-radius:3px;padding:10px 12px;background:var(--bg);font-size:12.5px;margin-top:10px}
+.livebox .head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.st{font-family:var(--cond);font-weight:600;letter-spacing:.06em;padding:1px 8px;border-radius:2px}
+.livebox .st{font-size:16px}
+.st.cur{color:var(--bull);background:var(--bull-bg)} .st.age{color:var(--warn);background:var(--warn-bg)} .st.stale{color:var(--bear);background:var(--bear-bg)}
+.warn{color:var(--bear)}
+.verdict{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:14px 24px;align-items:start}
+.call .big{font-family:var(--cond);font-weight:600;font-size:44px;line-height:1.05;letter-spacing:.02em}
+.call .score{font-size:13px;color:var(--dim);margin-top:6px}
+.meter{height:6px;background:var(--line);border-radius:3px;position:relative;margin-top:10px;overflow:hidden}
+.meter i{position:absolute;top:0;bottom:0}
+.meter:after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--dim)}
+.phase{margin-top:10px;font-size:12.5px}
+.watch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.wc{border:1px solid var(--line2);border-radius:3px;padding:10px 12px;background:var(--bg);min-width:0}
+.wc h3{font-size:16px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.wc dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:8px 0 0;font-size:12.5px}
+.wc dt{color:var(--dim)} .wc dd{margin:0}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:10px}
+.fact{border:1px solid var(--line);border-radius:3px;padding:8px 10px;background:var(--bg);min-width:0}
+.fact .v{font-size:16px;font-weight:600;margin-top:2px}
+.fact .s{color:var(--dim);font-size:11.5px;margin-top:2px}
+.chartbox{overflow-x:auto}
+.chartbox svg{display:block;width:100%;min-width:660px;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;color:var(--dim);font-size:11.5px;margin-top:6px}
+.legend i{display:inline-block;width:14px;height:8px;vertical-align:middle;margin-right:6px}
+.cols{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+.col h3{font-size:17px;margin-bottom:8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{font-family:var(--cond);text-transform:uppercase;letter-spacing:.08em;font-size:11.5px;color:var(--dim);font-weight:500;text-align:left;padding:4px 6px;border-bottom:1px solid var(--line2)}
+td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+td.r,th.r{text-align:right}
+tr.now td{background:var(--accent-bg);color:var(--accent);font-weight:600}
+.tblwrap{overflow-x:auto}
+.dirc{font-weight:700;text-align:center;width:28px}
+.src{color:var(--faint);font-size:11px;white-space:nowrap}
+.barcell{width:70px}
+.hbar{height:6px;background:var(--line);position:relative;border-radius:2px}
+.hbar i{position:absolute;top:0;bottom:0}
+.hbar:after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--faint)}
+.vchip{display:inline-block;padding:0 6px;border-radius:2px;font-size:11.5px;border:1px solid var(--line2)}
+.v-low{color:var(--dim)} .v-average{color:var(--norm)} .v-high{color:var(--accent);border-color:var(--accent)} .v-very{color:#fff;background:var(--accent-bg);border-color:var(--accent)} .v-ultra{color:#1a0d24;background:var(--accent);border-color:var(--accent)}
+.stt{font-size:11.5px} .stt.confirmed{color:var(--bull)} .stt.failed{color:var(--bear)} .stt.pend{color:var(--warn)}
+ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+ul.items li{display:grid;grid-template-columns:14px 1fr;gap:6px;font-size:12.5px;line-height:1.5}
+ul.items li .mk{font-size:10px;padding-top:3px;color:var(--faint)}
+ul.items li.t1 .mk{color:var(--bull)} ul.items li.t-1 .mk{color:var(--bear)}
+.two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.outcome{border:1px solid var(--line2);border-radius:3px;padding:10px 12px;background:var(--bg);font-size:12.5px}
+.outcome b.ok{color:var(--bull)} .outcome b.no{color:var(--bear)}
+details{font-size:12px}
+details summary{cursor:pointer;color:var(--dim);font-family:var(--cond);text-transform:uppercase;letter-spacing:.08em;font-size:13px}
+.log{max-height:220px;overflow:auto;background:var(--bg);border:1px solid var(--line);padding:8px;font-size:11.5px;color:var(--dim);margin-top:8px;white-space:pre-wrap}
+.note{color:var(--dim);font-size:11.5px;max-width:110ch}
+.empty{padding:40px 14px;color:var(--dim);text-align:center}
+@media (max-width:980px){.cols,.verdict,.two-col{grid-template-columns:1fr}}
+@media (max-width:640px){.tiles,.watch{grid-template-columns:1fr}.controls{margin-left:0}.call .big{font-size:34px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1><b>VOLUME PRICE</b> READ</h1>
+      <div class="sub">Is the volume validating today's price action, or is there an anomaly? · SPY · TLT · GLD · 5-minute bars</div>
+    </div>
+    <div class="controls">
+      <label class="lbl" for="key">Polygon key</label>
+      <input id="key" type="password" autocomplete="off" placeholder="paste API key">
+      <label class="lbl" for="hist">History</label>
+      <select id="hist"><option value="90">90 days</option><option value="150" selected>150 days</option><option value="240">240 days</option></select>
+      <button id="scan" class="primary">Scan</button>
+      <button id="demo">Demo data</button>
+      <label class="chk"><input id="auto" type="checkbox"> auto-refresh 5 min</label>
+    </div>
+    <div class="status" id="status"></div>
+  </header>
+  <div id="banner" hidden></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="desk" id="desk"><div class="empty">Paste your Polygon key and press Scan, or load demo data.</div></div>
+  <details>
+    <summary>How this reads volume · scan log</summary>
+    <div class="note" style="margin-top:8px">
+      This follows Anna Coulling's three steps: <b>micro</b> (each candle against its volume), <b>macro</b> (the last few candles), and <b>global</b> (congestion, breakouts and the 15- and 30-minute charts).
+      Coulling judges each volume bar as low, average, high or ultra high against recent bars. Intraday ETF volume follows a strong time-of-day pattern (heavy at the open and close, light at midday), so each 5-minute bar is compared with the median volume for that same 5-minute slot over the prior 20 sessions. Low is under 0.7× normal, average 0.7–1.3×, high 1.3–2×, very high 2–3×, ultra high 3× or more. Spread (bar range) is judged the same way: narrow under 0.7×, wide 1.3× or more.
+      Effort vs. result (Wyckoff's third law): a wide candle should carry high volume, and a narrow candle low volume; the mismatches are the anomalies.
+      Signals read: shooting star, hammer, hanging man, long-legged doji (low volume = trap), wide and narrow candles with volume anomalies, stopping volume, topping out volume, selling climax at the top and buying climax at the bottom (Coulling's naming), and low-volume tests of supply and demand after congestion.
+      Congestion is defined by Coulling's isolated pivots (the middle candle of three makes a higher high and higher low, or a lower low and lower high). A breakout needs a clear close outside the zone; it is treated as validated at 1.3× normal volume or more and as a possible fake-out under 0.9×.
+      Every signal is checked against the bars that follow (confirmed, failed or awaiting), in line with her patience principle.
+      Volume at price is approximated by spreading each 5-minute bar's volume evenly across its range; true tick-level profiles will differ.
+      The engine history replays this same engine every 30 minutes on every loaded session using only bars up to that time. It checks whether the close went the outlook's way and whether price moved 0.2 ADR in that direction before 0.2 ADR against.
+      Coulling herself warns that VPA is an art and software cannot do it for you. Treat this tool as a structured second opinion, not a replacement for reading the chart.
+      Polygon's Starter plan is 15 minutes delayed. The bar still forming is always dropped.
+    </div>
+    <div class="log" id="log"></div>
+  </details>
+</div>
+<script>
+/* ===== Volume Price Analysis engine (Anna Coulling, A Complete Guide to Volume Price Analysis) ===== */
+const VP = (() => {
+  const RTH_START = 570, RTH_END = 960;
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN;
+  function median(a) { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+  function quant(s, q) { if (!s.length) return NaN; const p = (s.length - 1) * q, lo = Math.floor(p), hi = Math.ceil(p); return s[lo] + (s[hi] - s[lo]) * (p - lo); }
+  const fmtMin = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  const px = v => (v == null || !isFinite(v)) ? '—' : v.toFixed(2);
+  const pc = v => (v * 100).toFixed(0) + '%';
+  const fmtVol = v => v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : String(Math.round(v));
+
+  /* ---------- time ---------- */
+  const ET_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  function etParts(ms) { const p = {}; for (const x of ET_FMT.formatToParts(new Date(ms))) p[x.type] = x.value; let hh = +p.hour; if (hh === 24) hh = 0; return { date: `${p.year}-${p.month}-${p.day}`, min: hh * 60 + +p.minute }; }
+  const offCache = new Map();
+  function etFast(ms) {
+    const key = Math.floor(ms / 864e5); let off = offCache.get(key);
+    if (off === undefined) { const p = etParts(ms), d = new Date(ms); off = p.min - (d.getUTCHours() * 60 + d.getUTCMinutes()); if (off > 720) off -= 1440; if (off < -720) off += 1440; offCache.set(key, off); }
+    const local = new Date(ms + off * 60000);
+    return { date: local.toISOString().slice(0, 10), min: local.getUTCHours() * 60 + local.getUTCMinutes() };
+  }
+  function buildSessions(raw) {
+    const map = new Map();
+    for (const r of raw) {
+      const { date, min } = etFast(r.t); if (min < RTH_START || min >= RTH_END) continue;
+      if (!map.has(date)) map.set(date, []);
+      map.get(date).push({ t: r.t, o: r.o, h: r.h, l: r.l, c: r.c, v: r.v || 0, min, slot: Math.min(77, (min - RTH_START) / 5) });
+    }
+    const out = [];
+    for (const [date, bars] of [...map.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1)) { bars.sort((a, b) => a.t - b.t); if (bars.length >= 6) out.push({ date, bars }); }
+    return out;
+  }
+
+  function prep(ticker, raw5, rawDaily) {
+    const sessions = buildSessions(raw5);
+    sessions.forEach(s => { s.bySlot = []; for (const b of s.bars) s.bySlot[b.slot] = b; });
+    sessions.forEach((s, i) => {
+      const B = s.bars;
+      s.open = B[0].o; s.close = B[B.length - 1].c; s.high = Math.max(...B.map(b => b.h)); s.low = Math.min(...B.map(b => b.l)); s.range = s.high - s.low;
+      s.vol = B.reduce((a, b) => a + b.v, 0);
+      const prior = sessions.slice(Math.max(0, i - 20), i);
+      const full = prior.filter(p => p.bars.length >= 60);
+      s.adrN = full.length; s.adr = full.length ? mean(full.map(p => p.range)) : s.range;
+      s.prevClose = i > 0 ? sessions[i - 1].close : s.open;
+      // normal volume and range for each 5-minute slot (prior 20 sessions)
+      s.nVol = new Array(78).fill(null); s.nRng = new Array(78).fill(null);
+      for (let q = 0; q < 78; q++) {
+        const vs = [], rs = [];
+        for (const p of prior) { const b = p.bySlot[q]; if (b) { vs.push(b.v); rs.push(b.h - b.l); } }
+        if (vs.length >= 3) { s.nVol[q] = median(vs); s.nRng[q] = median(rs); }
+      }
+      // fallbacks for thin history
+      const allV = prior.flatMap(p => p.bars.map(b => b.v)), allR = prior.flatMap(p => p.bars.map(b => b.h - b.l));
+      const fV = allV.length ? median(allV) : median(B.map(b => b.v)), fR = allR.length ? median(allR) : median(B.map(b => b.h - b.l));
+      for (let q = 0; q < 78; q++) { if (s.nVol[q] == null) s.nVol[q] = fV || 1; if (s.nRng[q] == null) s.nRng[q] = fR || s.adr / 15; }
+      s.refBar = fR || s.adr / 15;
+      s.cum = []; let cv = 0; for (const b of B) { cv += b.v; s.cum[b.slot] = cv; }
+      s.nCum = []; let nc = 0; for (let q = 0; q < 78; q++) { nc += s.nVol[q]; s.nCum[q] = nc; }
+    });
+    const extBySlot = Array.from({ length: 78 }, () => []);
+    sessions.slice(0, -1).forEach(s => {
+      if (s.bars.length < 70) return; let hi = -Infinity, lo = Infinity;
+      for (const b of s.bars) { hi = Math.max(hi, b.h); lo = Math.min(lo, b.l); const r = hi - lo; if (r > 0) extBySlot[b.slot].push(s.range / r); }
+    });
+    extBySlot.forEach(a => a.sort((x, y) => x - y));
+    const daily = (rawDaily || []).map(r => ({ date: etFast(r.t + 12 * 3600e3).date, o: r.o, h: r.h, l: r.l, c: r.c, v: r.v })).sort((a, b) => a.date < b.date ? -1 : 1);
+    return { ticker, sessions, extBySlot, daily };
+  }
+
+  /* ---------- bar reading (Coulling ch.4, 6) ---------- */
+  const vClass = rv => rv < 0.7 ? 'low' : rv < 1.3 ? 'average' : rv < 2 ? 'high' : rv < 3 ? 'very high' : 'ultra high';
+  const vWeight = rv => rv < 0.7 ? 0.35 : rv < 1.3 ? 0.65 : rv < 2 ? 0.9 : 1;
+  function read(b, nV, nR) {
+    const rng = Math.max(b.h - b.l, 1e-9), body = Math.abs(b.c - b.o);
+    const up = (b.h - Math.max(b.o, b.c)) / rng, dn = (Math.min(b.o, b.c) - b.l) / rng, br = body / rng;
+    const rv = b.v / Math.max(1, nV), rs = rng / Math.max(1e-9, nR);
+    return { rng, body, br, up, dn, rv, rs, er: rv / Math.max(0.15, rs), dir: b.c > b.o ? 1 : b.c < b.o ? -1 : 0, cp: (b.c - b.l) / rng, vc: vClass(rv), sc: rs < 0.7 ? 'narrow-range' : rs < 1.3 ? 'average-range' : 'wide-range' };
+  }
+
+  /* Coulling's isolated pivots (ch.7): middle candle has a higher high AND higher low (pivot high), or lower low AND lower high (pivot low) */
+  function pivots(B, k) {
+    const out = [];
+    for (let i = 1; i < k; i++) {
+      const a = B[i - 1], b = B[i], c = B[i + 1];
+      if (b.h > a.h && b.h > c.h && b.l > a.l && b.l > c.l) out.push({ i, t: 'H', p: b.h });
+      else if (b.l < a.l && b.l < c.l && b.h < a.h && b.h < c.h) out.push({ i, t: 'L', p: b.l });
+    }
+    return out;
+  }
+
+  /* aggregate to 15 / 30 minutes */
+  function aggregate(B, mins, nVolArr) {
+    const out = [];
+    for (const b of B) {
+      const g = Math.floor((b.min - RTH_START) / mins);
+      let a = out[out.length - 1];
+      if (!a || a.g !== g) { a = { g, o: b.o, h: b.h, l: b.l, c: b.c, v: 0, nv: 0, n: 0, min: RTH_START + g * mins }; out.push(a); }
+      a.h = Math.max(a.h, b.h); a.l = Math.min(a.l, b.l); a.c = b.c; a.v += b.v; a.nv += nVolArr[b.slot]; a.n++;
+    }
+    return out;
+  }
+  function tfRead(bars, ADR) {
+    if (bars.length < 2) return { dir: 0, txt: 'Not enough bars yet', valid: null, last: null };
+    const n = bars.length, last = bars[n - 1];
+    const ref = mean(bars.map(b => b.h - b.l)) || 1;
+    const look = bars.slice(Math.max(0, n - 4));
+    const net = last.c - look[0].o;
+    const dir = Math.abs(net) < 0.12 * ADR ? 0 : Math.sign(net);
+    const rvs = look.map(b => b.v / Math.max(1, b.nv));
+    const withRv = look.filter(b => Math.sign(b.c - b.o) === dir).map(b => b.v / Math.max(1, b.nv));
+    const valid = dir === 0 ? null : withRv.length ? mean(withRv) >= 0.95 : false;
+    const lr = read(last, last.nv, ref);
+    let sig = '';
+    if (lr.up >= 0.5 && lr.br <= 0.35) sig = ` shooting star on ${lr.vc} volume`;
+    else if (lr.dn >= 0.5 && lr.br <= 0.35) sig = ` hammer on ${lr.vc} volume`;
+    else if (lr.br >= 0.6) sig = `${lr.dir > 0 ? 'n up' : ' down'} candle on ${lr.vc} volume`;
+    else sig = `${lr.sc[0] === 'a' ? 'n' : ''} ${lr.sc} candle on ${lr.vc} volume`;
+    return { dir, valid, txt: dir === 0 ? `Sideways; last bar a${sig}` : `${dir > 0 ? 'Rising' : 'Falling'} ${valid ? 'on supporting volume' : 'on weak volume'}; last bar a${sig}`, avgRv: mean(rvs), last: lr };
+  }
+
+  /* volume at price (ch.9): spread each bar's volume across its range */
+  function vap(bars, nb = 30) {
+    const hi = Math.max(...bars.map(b => b.h)), lo = Math.min(...bars.map(b => b.l)); const w = (hi - lo) / nb || 1e-6;
+    const bins = new Array(nb).fill(0), up = new Array(nb).fill(0);
+    for (const b of bars) {
+      const a = Math.max(0, Math.floor((b.l - lo) / w)), z = Math.min(nb - 1, Math.floor((b.h - lo) / w)); const share = b.v / (z - a + 1);
+      for (let j = a; j <= z; j++) { bins[j] += share; if (b.c >= b.o) up[j] += share; }
+    }
+    const mx = Math.max(...bins); const poc = bins.indexOf(mx);
+    const avg = mean(bins);
+    const hvn = [];
+    for (let j = 0; j < nb; j++) if (bins[j] >= 1.4 * avg && (j === 0 || bins[j] >= bins[j - 1]) && (j === nb - 1 || bins[j] >= bins[j + 1])) hvn.push({ price: lo + (j + 0.5) * w, vol: bins[j], upShare: up[j] / Math.max(1, bins[j]) });
+    // value area (70% of volume around POC)
+    const tot = bins.reduce((a, b) => a + b, 0); let vaL = poc, vaH = poc, acc = bins[poc];
+    while (acc < 0.7 * tot && (vaL > 0 || vaH < nb - 1)) { const l = vaL > 0 ? bins[vaL - 1] : -1, h = vaH < nb - 1 ? bins[vaH + 1] : -1; if (h >= l) { vaH++; acc += bins[vaH]; } else { vaL--; acc += bins[vaL]; } }
+    return { lo, hi, w, bins, up, poc: lo + (poc + 0.5) * w, hvn, vaLo: lo + vaL * w, vaHi: lo + (vaH + 1) * w, max: mx };
+  }
+
+  function dailyCtx(T, date) {
+    const d = T.daily.filter(x => x.date < date);
+    if (d.length < 25) return { trend: 0, text: 'Not enough daily history' };
+    const s20 = mean(d.slice(-20).map(x => x.c)), s50 = d.length >= 50 ? mean(d.slice(-50).map(x => x.c)) : null, lc = d[d.length - 1].c;
+    const v20 = mean(d.slice(-20).map(x => x.v)), last5 = d.slice(-5);
+    const upV = last5.filter(x => x.c > x.o).reduce((a, x) => a + x.v, 0), dnV = last5.filter(x => x.c < x.o).reduce((a, x) => a + x.v, 0);
+    let t = (lc > s20 ? 0.4 : -0.4) + (s50 ? (lc > s50 ? 0.35 : -0.35) : 0) + 0.25 * clamp((upV - dnV) / Math.max(1, upV + dnV) * 2, -1, 1);
+    return { trend: clamp(t, -1, 1), s20, s50, v20, text: `Daily close ${lc > s20 ? 'above' : 'below'} its 20-day average${s50 ? ` and ${lc > s50 ? 'above' : 'below'} the 50-day` : ''}; last 5 days ${upV > dnV ? 'more volume on up days' : 'more volume on down days'}` };
+  }
+
+  /* ---------- main ---------- */
+  function analyze(T, si, k, opts = {}) {
+    const S = T.sessions[si], P = si > 0 ? T.sessions[si - 1] : null;
+    k = Math.min(k, S.bars.length - 1);
+    const bars = S.bars.slice(0, k + 1), n = bars.length, last = bars[k], price = last.c;
+    const ADR = S.adr || S.range || 1, ref = S.refBar || ADR / 15, u = x => x / ADR;
+    const endMin = last.min + 5;
+    const R = bars.map(b => read(b, S.nVol[b.slot], S.nRng[b.slot]));
+    let hi = -Infinity, lo = Infinity, hiIdx = 0, loIdx = 0;
+    bars.forEach((b, i) => { if (b.h > hi) { hi = b.h; hiIdx = i; } if (b.l < lo) { lo = b.l; loIdx = i; } });
+    const open = bars[0].o, prev = P ? { h: P.high, l: P.low, c: P.close } : null;
+
+    // context window: last 18 bars of yesterday + today (pivots, congestion)
+    const pb = P ? P.bars.slice(-18) : [];
+    const W = pb.concat(bars), off = pb.length, wk = W.length - 1;
+    const WR = W.map((b, i) => i < off ? read(b, P.nVol[b.slot], P.nRng[b.slot]) : R[i - off]);
+    const piv = pivots(W, wk);
+
+    /* move context helper: net move over previous m bars before index j (in ADR) */
+    const priorMove = (j, m) => j - m < 0 ? u(W[j].c - W[0].o) : u(W[j].c - W[j - m].c);
+
+    /* ---------- micro: single-candle signals with confirmation (ch.4, 6) ---------- */
+    const sig = [];
+    const S0 = Math.max(off, wk - 11);
+    for (let j = S0; j <= wk; j++) {
+      const b = W[j], r = WR[j], pm = priorMove(j, 6), nearHi = b.h >= Math.max(...W.slice(Math.max(0, j - 8), j + 1).map(x => x.h)) - 0.05 * ADR, nearLo = b.l <= Math.min(...W.slice(Math.max(0, j - 8), j + 1).map(x => x.l)) + 0.05 * ADR;
+      const add = (name, dir, strength, txt, ref) => sig.push({ i: j, name, dir, strength, txt, ref, vc: r.vc, rv: r.rv, time: fmtMin(b.min) });
+      if (r.up >= 0.55 && r.br <= 0.35 && r.dn <= 0.2) add('Shooting star', -1, vWeight(r.rv), r.rv >= 1.3 ? 'weakness with heavy volume: professional selling into the rally' : r.rv < 0.7 ? 'weakness on low volume: probably only a pause' : 'weakness confirmed by average volume: a pullback is likely', 'ch.6');
+      else if (r.dn >= 0.55 && r.br <= 0.35 && r.up <= 0.2) {
+        if (pm >= 0.25 && nearHi && r.rv >= 1) add('Hanging man', -1, 0.6 * vWeight(r.rv), 'hammer shape after a rise on above-average volume: first sign of selling pressure, needs a shooting star to confirm', 'ch.6');
+        else add('Hammer', 1, vWeight(r.rv), r.rv >= 1.3 ? 'strength with heavy volume: buyers absorbing the selling' : r.rv < 0.7 ? 'strength on low volume: any bounce is likely minor' : 'strength on average volume: a scalp-sized reversal is possible', 'ch.6');
+      } else if (r.br <= 0.15 && r.up >= 0.3 && r.dn >= 0.3 && r.rs >= 1) {
+        if (r.rv < 0.8) add('Long-legged doji (low volume)', 0, 0.5, 'wide swings on little volume: an anomaly that usually means stop-hunting; stay out', 'ch.6');
+        else add('Long-legged doji', pm > 0.2 ? -1 : pm < -0.2 ? 1 : 0, 0.6 * vWeight(r.rv), `indecision on ${r.vc} volume${pm > 0.2 ? ' after a rise: possible top' : pm < -0.2 ? ' after a fall: possible bottom' : ''}`, 'ch.6');
+      }
+      if (r.rs >= 1.3 && r.br >= 0.6) {
+        if (r.rv >= 1.2) add(`Wide ${r.dir > 0 ? 'up' : 'down'} candle, high volume`, r.dir, 0.7, 'effort matches result: the move is genuine', 'ch.4');
+        else if (r.rv < 0.8) add(`Wide ${r.dir > 0 ? 'up' : 'down'} candle, low volume`, -r.dir * 0.7, 0.6, 'big result from little effort: an anomaly, possibly a trap move', 'ch.4');
+      }
+      if (r.rs <= 0.8 && r.rv >= 1.6) {
+        const d = pm > 0.15 ? -1 : pm < -0.15 ? 1 : r.dir > 0 ? -1 : r.dir < 0 ? 1 : 0;
+        add('Narrow candle, high volume', d, 0.8, d < 0 ? 'heavy effort, little result after a rise: sellers absorbing the buying' : d > 0 ? 'heavy effort, little result after a fall: buyers absorbing the selling (stopping volume)' : 'heavy effort, little result: a battle at this level', 'ch.4, 6');
+      }
+    }
+    // confirmation: Coulling's patience principle (ch.4 principle 2)
+    sig.forEach(s => {
+      const after = W.slice(s.i + 1, wk + 1); const b = W[s.i];
+      if (!after.length || s.dir === 0) { s.status = after.length ? 'noted' : 'awaiting next bar'; return; }
+      const conf = s.dir < 0 ? after.some(x => x.c < b.l + 0.25 * (b.h - b.l)) && !after.some(x => x.h > b.h + 0.1 * ref) : after.some(x => x.c > b.h - 0.25 * (b.h - b.l)) && !after.some(x => x.l < b.l - 0.1 * ref);
+      const fail = s.dir < 0 ? after.some(x => x.c > b.h) : after.some(x => x.c < b.l);
+      s.status = fail ? 'failed' : conf ? 'confirmed' : 'awaiting confirmation';
+    });
+
+    /* ---------- macro: multi-candle sequences (ch.5, 6) ---------- */
+    const seq = [];
+    const L = W.slice(Math.max(off, wk - 4)), LR = WR.slice(Math.max(off, wk - 4));
+    const pmSeq = priorMove(Math.max(0, wk - 4), 8);
+    const stopBars = LR.filter((r, j) => r.dn >= 0.35 && r.rv >= 1.3 && r.cp >= 0.5);
+    const topBars = LR.filter(r => r.up >= 0.35 && r.rv >= 1.3 && r.cp <= 0.5);
+    if (pmSeq <= -0.3 && stopBars.length >= 2) seq.push({ name: 'Stopping volume', dir: 1, strength: 1, txt: `${stopBars.length} of the last 5 bars after the fall show deep lower wicks on heavy volume: the brakes are being applied`, ref: 'ch.6' });
+    if (pmSeq >= 0.3 && topBars.length >= 2) seq.push({ name: 'Topping out volume', dir: -1, strength: 1, txt: `${topBars.length} of the last 5 bars after the rise show deep upper wicks on heavy volume: the rally is meeting selling`, ref: 'ch.6' });
+    const nearDayHi = W[wk].h >= hi - 0.12 * ADR || L.some(b => b.h >= hi - 0.05 * ADR), nearDayLo = L.some(b => b.l <= lo + 0.05 * ADR);
+    const climTop = LR.filter(r => r.rv >= 2 && r.up >= 0.4).length, climBot = LR.filter(r => r.rv >= 2 && r.dn >= 0.4).length;
+    if (climTop >= 2 && nearDayHi && pmSeq > 0) seq.push({ name: 'Selling climax (at the top)', dir: -1, strength: 1.2, txt: 'repeated surges with deep upper wicks on very high volume near the high: professional money selling into demand', ref: 'ch.5' });
+    if (climBot >= 2 && nearDayLo && pmSeq < 0) seq.push({ name: 'Buying climax (at the bottom)', dir: 1, strength: 1.2, txt: 'repeated drops with deep lower wicks on very high volume near the low: professional money buying the panic', ref: 'ch.5' });
+
+    /* ---------- trend and volume validation (ch.4, 8) ---------- */
+    const tp = piv.filter(p => p.i < wk);
+    const Hs = tp.filter(p => p.t === 'H'), Ls = tp.filter(p => p.t === 'L');
+    const lastP = tp[tp.length - 1];
+    let legDir = 0, legFrom = Math.max(off, wk - 12);
+    if (lastP) { legDir = lastP.t === 'L' ? (price > lastP.p ? 1 : -1) : (price < lastP.p ? -1 : 1); legFrom = Math.max(lastP.i, Math.max(0, wk - 30)); }
+    if (wk - legFrom < 3) { legFrom = Math.max(0, wk - 6); legDir = Math.sign(W[wk].c - W[legFrom].o) || legDir; }
+    const leg = W.slice(legFrom, wk + 1), legR = WR.slice(legFrom, wk + 1);
+    const legMove = u(W[wk].c - W[legFrom].c);
+    const withR = legR.filter((r, j) => r.dir === legDir).map(r => r.rv), counterR = legR.filter(r => r.dir === -legDir).map(r => r.rv);
+    const third = Math.max(1, Math.floor(withR.length / 3));
+    const early = mean(withR.slice(0, third)), late = mean(withR.slice(-third));
+    let legVol = 'n/a', legScore = 0;
+    if (withR.length >= 3 && Math.abs(legMove) >= 0.12) {
+      const avgW = mean(withR), avgC = counterR.length ? mean(counterR) : avgW * 0.7;
+      if (avgW >= 1 && late >= early * 0.85 && avgC <= avgW) { legVol = 'validated'; legScore = 1; }
+      else if (late < early * 0.75 || avgW < 0.8) { legVol = 'weakening'; legScore = -0.6; }
+      else if (avgC > avgW * 1.1) { legVol = 'counter-volume'; legScore = -0.4; }
+      else { legVol = 'mixed'; legScore = 0.3; }
+    }
+    let structure = 0;
+    if (Hs.length >= 2 && Ls.length >= 2) {
+      const hh = Hs[Hs.length - 1].p > Hs[Hs.length - 2].p, hl = Ls[Ls.length - 1].p > Ls[Ls.length - 2].p;
+      structure = hh && hl ? 1 : !hh && !hl ? -1 : 0;
+    }
+    // up/down volume balance over the last 12 bars
+    const r12 = WR.slice(Math.max(off, wk - 11));
+    const upV = r12.filter(r => r.dir > 0).reduce((a, r) => a + r.rv * r.br, 0), dnV = r12.filter(r => r.dir < 0).reduce((a, r) => a + r.rv * r.br, 0);
+    const balance = (upV - dnV) / Math.max(1e-9, upV + dnV);
+
+    /* ---------- congestion, breakouts and tests (ch.7, 11) ---------- */
+    const findCong = (e) => {
+      let best = null; const tol = 0.3 * ref;
+      for (let s = e - 5; s >= Math.max(0, e - 60); s--) {
+        const ps = piv.filter(p => p.i >= s && p.i <= e);
+        const ph = ps.filter(p => p.t === 'H'), pl = ps.filter(p => p.t === 'L');
+        if (!ph.length || !pl.length) continue;
+        const ceil = Math.max(...ph.map(p => p.p)), floor = Math.min(...pl.map(p => p.p));
+        if (ceil - floor > 0.5 * ADR || ceil <= floor) continue;
+        let ok = true; for (let j = s; j <= e; j++) if (W[j].c > ceil + tol || W[j].c < floor - tol) { ok = false; break; }
+        if (ok) best = { from: s, to: e, ceil, floor, n: e - s + 1, pivH: ph.length, pivL: pl.length };
+        else if (best) break;
+      }
+      return best;
+    };
+    let cong = null, brk = null;
+    const live = findCong(wk);
+    if (live && live.n >= 6) cong = { ...live, live: true };
+    else {
+      for (let e = wk - 1; e >= Math.max(5, wk - 10); e--) {
+        const c = findCong(e);
+        if (c && c.n >= 6) {
+          const after = W.slice(e + 1, wk + 1), afterR = WR.slice(e + 1, wk + 1);
+          const cw = 0.35 * ref;
+          const up = after.findIndex(b => b.c > c.ceil + cw), dn = after.findIndex(b => b.c < c.floor - cw);
+          const j = up >= 0 && (dn < 0 || up < dn) ? up : dn; if (j < 0) continue;
+          const d = j === up ? 1 : -1, bi = e + 1 + j;
+          const bR = WR.slice(bi, Math.min(wk, bi + 2) + 1);
+          const rvB = mean(bR.map(r => r.rv));
+          const back = W.slice(bi + 1, wk + 1).some(b => d === 1 ? b.c < c.ceil : b.c > c.floor);
+          const retest = W.slice(bi + 1, wk + 1).map((b, q) => ({ b, r: WR[bi + 1 + q] })).filter(x => d === 1 ? x.b.l <= c.ceil + 0.5 * ref : x.b.h >= c.floor - 0.5 * ref);
+          const retestLow = retest.length && mean(retest.map(x => x.r.rv)) < 0.9;
+          brk = { dir: d, i: bi, level: d === 1 ? c.ceil : c.floor, rv: rvB, valid: rvB >= 1.3, fake: rvB < 0.9, back, retest: retest.length > 0, retestLow, barsAgo: wk - bi };
+          cong = { ...c, live: false };
+          break;
+        }
+      }
+    }
+    // tests of supply / demand (ch.5): low-volume probes inside or just out of congestion
+    const tests = [];
+    for (let j = Math.max(off, wk - 8); j <= wk; j++) {
+      const b = W[j], r = WR[j];
+      const inZone = cong ? b.l <= cong.ceil + ref && b.h >= cong.floor - ref : true;
+      if (!inZone) continue;
+      if (r.dn >= 0.45 && r.br <= 0.35) {
+        if (r.rv <= 0.7) tests.push({ i: j, dir: 1, name: 'Test of supply (passed)', txt: 'price marked down and recovered on low volume: little selling left', time: fmtMin(b.min) });
+        else if (r.rv >= 1.3 && r.cp < 0.6) tests.push({ i: j, dir: -0.6, name: 'Test of supply (failed)', txt: 'the probe lower drew heavy volume: sellers are still there', time: fmtMin(b.min) });
+      }
+      if (r.up >= 0.45 && r.br <= 0.35) {
+        if (r.rv <= 0.7) tests.push({ i: j, dir: -1, name: 'Test of demand (passed)', txt: 'price marked up and fell back on low volume: little buying left', time: fmtMin(b.min) });
+        else if (r.rv >= 1.3 && r.cp > 0.4) tests.push({ i: j, dir: 0.6, name: 'Test of demand (failed)', txt: 'the probe higher drew heavy volume: buyers are still there', time: fmtMin(b.min) });
+      }
+    }
+    // Only treat tests as meaningful after a congestion phase or a climax/stopping sequence
+    const testsLive = (cong || seq.length) ? tests : [];
+
+    /* ---------- multiple time frames 5 / 15 / 30 (ch.4, 11) ---------- */
+    const a15 = aggregate(bars, 15, S.nVol), a30 = aggregate(bars, 30, S.nVol);
+    // include only completed aggregate bars
+    const doneUpTo = endMin;
+    const c15 = a15.filter(a => a.min + 15 <= doneUpTo), c30 = a30.filter(a => a.min + 30 <= doneUpTo);
+    const tf15 = tfRead(c15.length ? c15 : a15, ADR), tf30 = tfRead(c30.length ? c30 : a30, ADR);
+    const tf5 = Math.abs(legMove) < 0.12 ? { dir: 0, valid: null, txt: `No meaningful leg since the last pivot (${(Math.abs(legMove) * 100).toFixed(0)}% of ADR)` } : { dir: legDir, valid: legVol === 'validated', txt: `${legDir > 0 ? 'Rising' : 'Falling'} leg of ${(Math.abs(legMove) * 100).toFixed(0)}% of ADR since the last pivot, volume ${legVol}` };
+
+    /* ---------- day-level effort vs result ---------- */
+    const rvol = S.cum[last.slot] != null ? S.cum[last.slot] / Math.max(1, S.nCum[last.slot]) : null;
+    const dayMove = u(price - open), dayRange = u(hi - lo);
+    let dayER = 'normal';
+    if (Math.abs(dayMove) >= 0.4 && rvol != null && rvol < 0.8) dayER = 'anomaly-low';
+    else if (Math.abs(dayMove) >= 0.4 && rvol != null && rvol >= 1.2) dayER = 'validated';
+    else if (dayRange <= 0.45 && rvol != null && rvol >= 1.4) dayER = 'absorption';
+
+    // opening anomaly (ch.4: market makers testing the open)
+    let openNote = null;
+    if (n >= 1) {
+      const r0 = R[0]; const gap = P ? u(open - P.close) : 0;
+      if (r0.rs >= 1.2 && r0.rv < 0.9) openNote = { dir: -r0.dir * 0.6, txt: `The opening bar was a wide ${r0.dir > 0 ? 'up' : 'down'} candle on below-normal volume for the open. Coulling describes this as market makers testing interest; the move often gets marked back.` };
+      else if (Math.abs(gap) >= 0.25) openNote = { dir: Math.sign(gap) * (r0.rv >= 1.2 ? 1 : r0.rv < 0.9 ? -0.6 : 0.3), txt: `Gap ${gap > 0 ? 'up' : 'down'} of ${(Math.abs(gap) * 100).toFixed(0)}% of ADR on ${r0.vc} opening volume${r0.rv >= 1.2 ? ': the gap is validated' : r0.rv < 0.9 ? ': a gap on low volume is a possible trap move' : ''}.` };
+    }
+
+    /* ---------- VAP (ch.9) ---------- */
+    const todayProf = vap(bars.length >= 3 ? bars : W);
+
+    const daily = dailyCtx(T, S.date);
+
+    /* ---------- phase in Coulling's market cycle (ch.5) ---------- */
+    const sigNet = sig.filter(s => s.status !== 'failed').reduce((a, s) => a + s.dir * s.strength * (1 - (wk - s.i) / 14), 0);
+    const seqNet = seq.reduce((a, s) => a + s.dir * s.strength, 0) + testsLive.reduce((a, t) => a + t.dir * 0.6, 0);
+    let phase;
+    if (cong && cong.live) {
+      const before = cong.from > 6 ? u(W[cong.from].c - W[Math.max(0, cong.from - 12)].c) : u(W[cong.from].c - W[0].o);
+      const ev = sigNet + seqNet;
+      if (before <= -0.2 && ev > 0.4) phase = { key: 'accumulation', dir: 1, label: `Accumulation? Congestion ${px(cong.floor)}–${px(cong.ceil)} after a fall, with signs of buying` };
+      else if (before >= 0.2 && ev < -0.4) phase = { key: 'distribution', dir: -1, label: `Distribution? Congestion ${px(cong.floor)}–${px(cong.ceil)} after a rise, with signs of selling` };
+      else phase = { key: 'congestion', dir: 0, label: `Congestion ${px(cong.floor)}–${px(cong.ceil)} (${cong.n} bars)` };
+    } else if (brk && brk.barsAgo <= 10) {
+      phase = brk.back ? { key: 'failed', dir: -brk.dir, label: `Failed ${brk.dir === 1 ? 'upside' : 'downside'} breakout from congestion` }
+        : { key: 'breakout', dir: brk.dir, label: `${brk.dir === 1 ? 'Upside' : 'Downside'} breakout from congestion ${brk.valid ? 'on heavy volume' : brk.fake ? 'on light volume' : 'on average volume'}` };
+    } else if (seq.find(s => s.name.startsWith('Selling climax'))) phase = { key: 'climax-top', dir: -1, label: 'Selling climax at the top' };
+    else if (seq.find(s => s.name.startsWith('Buying climax'))) phase = { key: 'climax-bottom', dir: 1, label: 'Buying climax at the bottom' };
+    else if (legDir && Math.abs(legMove) >= 0.15) phase = { key: legDir > 0 ? 'markup' : 'markdown', dir: legDir, label: `${legDir > 0 ? 'Rising' : 'Falling'} trend, volume ${legVol === 'validated' ? 'validating it' : legVol === 'weakening' ? 'fading (an anomaly)' : legVol === 'counter-volume' ? 'heavier on the pullbacks (an anomaly)' : 'mixed'}` };
+    else phase = { key: 'quiet', dir: 0, label: 'No clear phase: small moves, waiting for volume' };
+    if (n < 4) phase = { key: 'early', dir: 0, label: 'Opening bars: volume picture still forming' };
+
+    /* ---------- factors and score ---------- */
+    const F = [];
+    const add = (key, name, val, max, reading, src) => F.push({ key, name, val: clamp(val, -1, 1) * max, max, dir: Math.sign(Math.round(clamp(val, -1, 1) * 10)), reading, src });
+    add('trend', 'Trend validated by volume?', legDir * (legVol === 'n/a' ? 0.2 : legScore), 18, `${tf5.txt}. ${legVol === 'validated' ? 'Rising effort with the move and lighter volume on pullbacks.' : legVol === 'weakening' ? 'Volume is falling as price extends: the classic sign of weakness.' : legVol === 'counter-volume' ? 'Pullback bars carry more volume than trend bars.' : ''}`, 'VPA ch.4, 8');
+    add('balance', 'Up vs. down volume (last hour)', balance * 1.4, 14, `${pc((upV) / Math.max(1e-9, upV + dnV))} of the body-weighted relative volume is on up candles`, 'VPA ch.4');
+    add('candles', 'Candle signals (last hour)', sigNet / 1.5, 20, sig.length ? sig.slice(-3).map(s => `${s.time} ${s.name} (${s.vc}, ${s.status})`).join('; ') : 'No premier candles or anomalies in the last hour', 'VPA ch.4, 6');
+    add('sequence', 'Climax, stopping, topping, tests', seqNet / 1.2, 16, (seq.map(s => s.name).concat(testsLive.map(t => `${t.time} ${t.name}`)).join('; ')) || 'None in the last 5–9 bars', 'VPA ch.5, 6');
+    let cVal = 0, cTxt = 'No congestion zone defined by pivots';
+    if (cong && cong.live) { cVal = (phase.dir || 0) * 0.5; cTxt = `In congestion ${px(cong.floor)}–${px(cong.ceil)} for ${cong.n} bars (${cong.pivH} pivot high${cong.pivH > 1 ? 's' : ''}, ${cong.pivL} pivot low${cong.pivL > 1 ? 's' : ''}). Waiting for a breakout on volume.`; }
+    else if (brk) {
+      if (brk.back) { cVal = -brk.dir; cTxt = `Breakout ${brk.dir === 1 ? 'above' : 'below'} ${px(brk.level)} ${brk.barsAgo} bars ago failed and price is back inside: a trap.`; }
+      else if (brk.valid) { cVal = brk.dir * (brk.retestLow ? 1 : 0.85); cTxt = `Breakout ${brk.dir === 1 ? 'above' : 'below'} ${px(brk.level)} on ${brk.rv.toFixed(1)}× normal volume: validated${brk.retestLow ? ', and the retest came on low volume' : ''}.`; }
+      else if (brk.fake) { cVal = -brk.dir * 0.7; cTxt = `Breakout ${brk.dir === 1 ? 'above' : 'below'} ${px(brk.level)} on only ${brk.rv.toFixed(1)}× normal volume: a classic fake-out risk.`; }
+      else { cVal = brk.dir * 0.4; cTxt = `Breakout ${brk.dir === 1 ? 'above' : 'below'} ${px(brk.level)} on average volume (${brk.rv.toFixed(1)}×): not yet validated.`; }
+    }
+    add('cong', 'Congestion and breakout', cVal, 14, cTxt, 'VPA ch.7, 11');
+    const mtf = (tf30.dir * (tf30.valid ? 1 : 0.5) * 0.6 + tf15.dir * (tf15.valid ? 1 : 0.5) * 0.4);
+    add('mtf', '15- and 30-minute charts', mtf, 10, `30-min: ${tf30.txt}. 15-min: ${tf15.txt}.`, 'VPA ch.4, 11');
+    add('daily', 'Daily context', daily.trend, 5, daily.text, 'VPA ch.10');
+    let dVal = 0, dTxt = `Today ${dayMove >= 0 ? '+' : ''}${(dayMove * 100).toFixed(0)}% of ADR from the open on ${rvol != null ? rvol.toFixed(2) + '×' : '—'} normal volume so far`;
+    if (dayER === 'anomaly-low') { dVal = -Math.sign(dayMove) * 0.8; dTxt += ': a large move on light volume, an anomaly'; }
+    else if (dayER === 'validated') { dVal = Math.sign(dayMove) * 0.8; dTxt += ': the day’s move is validated by volume'; }
+    else if (dayER === 'absorption') dTxt += ': heavy volume in a narrow range, absorption (a battle at this level)';
+    if (openNote) { dVal += openNote.dir * 0.4; }
+    add('day', 'Day effort vs. result', dVal, 8, dTxt + (openNote ? '. ' + openNote.txt : ''), 'VPA ch.4');
+    const vapDir = price > todayProf.vaHi ? 1 : price < todayProf.vaLo ? -1 : 0;
+    add('vap', 'Volume at price', vapDir * 0.6, 5, `Today's point of control ${px(todayProf.poc)}, value area ${px(todayProf.vaLo)}–${px(todayProf.vaHi)}; price is ${vapDir > 0 ? 'above' : vapDir < 0 ? 'below' : 'inside'} it`, 'VPA ch.9');
+
+    let raw = F.reduce((a, f) => a + f.val, 0);
+    if (phase.key === 'congestion' || phase.key === 'quiet') raw *= 0.75;
+    const score = Math.round(clamp(raw, -100, 100));
+    const sg = Math.sign(score), mag = Math.abs(score);
+    const bucket = mag >= 45 ? 'strong' : mag >= 25 ? 'clear' : mag >= 12 ? 'lean' : 'two';
+    const word = sg > 0 ? 'BULLISH' : 'BEARISH';
+    const label = bucket === 'two' ? (phase.key === 'congestion' ? 'IN CONGESTION' : 'NEUTRAL') : bucket === 'lean' ? `LEAN ${word}` : bucket === 'clear' ? word : `STRONG ${word}`;
+    const agree = F.filter(f => f.dir === sg && sg).length, against = F.filter(f => f.dir === -sg && sg).length;
+
+    /* ---------- levels ---------- */
+    const levels = [];
+    const addL = (p, label, kind) => { if (isFinite(p)) levels.push({ price: p, label, kind }); };
+    if (prev) { addL(prev.h, "Yesterday's high", 'prev'); addL(prev.l, "Yesterday's low", 'prev'); addL(prev.c, "Yesterday's close", 'prev'); }
+    addL(open, "Today's open", 'day'); addL(hi, 'Day high', 'day'); addL(lo, 'Day low', 'day');
+    if (cong) { addL(cong.ceil, `Congestion ceiling (${cong.n} bars)`, 'cong'); addL(cong.floor, `Congestion floor (${cong.n} bars)`, 'cong'); }
+    addL(todayProf.poc, 'Point of control (today)', 'poc'); addL(todayProf.vaHi, 'Value area high', 'va'); addL(todayProf.vaLo, 'Value area low', 'va');
+    todayProf.hvn.forEach(h => { if (Math.abs(h.price - todayProf.poc) > todayProf.w * 1.5) addL(h.price, 'High-volume node', 'hvn'); });
+    const lpH = Hs[Hs.length - 1], lpL = Ls[Ls.length - 1];
+    if (lpH) addL(lpH.p, `Last pivot high ${fmtMin(W[lpH.i].min)}`, 'pivot'); if (lpL) addL(lpL.p, `Last pivot low ${fmtMin(W[lpL.i].min)}`, 'pivot');
+    levels.forEach(l => { l.dist = l.price - price; l.distA = u(l.dist); });
+    levels.sort((a, b) => b.price - a.price);
+
+    /* ---------- what to watch: breakout triggers with required volume (ch.7) ---------- */
+    const nextSlot = Math.min(77, last.slot + 1);
+    const needVol = Math.round(1.3 * S.nVol[nextSlot]);
+    const upT = cong ? cong.ceil : lpH && lpH.p > price ? lpH.p : hi;
+    const dnT = cong ? cong.floor : lpL && lpL.p < price ? lpL.p : lo;
+    const watch = {
+      up: { price: upT, label: cong ? 'congestion ceiling' : lpH && lpH.p > price ? 'last pivot high' : 'day high', need: needVol },
+      dn: { price: dnT, label: cong ? 'congestion floor' : lpL && lpL.p < price ? 'last pivot low' : 'day low', need: needVol },
+      normal: S.nVol[nextSlot], nextTime: fmtMin(RTH_START + nextSlot * 5),
+    };
+
+    /* ---------- projection (statistical) ---------- */
+    const extArr = T.extBySlot[last.slot] || []; const medR = quant(extArr, 0.5);
+    const range = hi - lo, projRange = isFinite(medR) ? range * medR : Math.max(range, ADR), extra = Math.max(0, projRange - range), upShare = clamp(0.5 + score / 120, 0.12, 0.88);
+    const proj = { extra, high: hi + extra * upShare, low: lo - extra * (1 - upShare), adrLeft: Math.max(0, ADR - range), upShare };
+
+    /* ---------- narrative ---------- */
+    const expect = [];
+    const E = (txt, src, tone = 0) => expect.push({ txt, src, tone });
+    if (!opts.lite) {
+      switch (phase.key) {
+        case 'markup': case 'markdown': {
+          const d = phase.dir, w = d > 0 ? 'rising' : 'falling';
+          if (legVol === 'validated') E(`A ${w} market on rising volume is a valid move: professional money is joining in. Expect the trend to continue until an anomaly appears.`, 'VPA ch.4', d);
+          else if (legVol === 'weakening') E(`${d > 0 ? 'Rising prices on falling volume' : 'Falling prices on falling volume'} is an anomaly. The move is losing participation; expect a pause or a pullback before long.`, 'VPA ch.4, 6', -d);
+          else E(`The ${w} move has mixed volume. Treat it as unconfirmed and watch the next high-volume bar for its direction.`, 'VPA ch.4', 0);
+          E(`In a healthy ${d > 0 ? 'up' : 'down'}trend, pullbacks come on low or falling volume. A pullback on heavy volume would be the first warning.`, 'VPA ch.7, 8', 0);
+          break; }
+        case 'accumulation': E('This looks like accumulation: congestion after a fall with buying signals. Expect a low-volume test of supply, then a breakout higher on rising volume.', 'VPA ch.5', 1); break;
+        case 'distribution': E('This looks like distribution: congestion after a rise with selling signals. Expect a low-volume test of demand, then a break lower that moves fast ("up in stairs, down in elevators").', 'VPA ch.5', -1); break;
+        case 'congestion': E(`The market is in congestion between ${px(cong.floor)} and ${px(cong.ceil)}. Markets spend about 70% of their time sideways; this is where the next trend is being prepared. Wait for a clear close outside the zone on above-average volume.`, 'VPA ch.7, 8', 0); E(`Cause and effect: the longer the congestion lasts (${cong.n} bars, ${cong.n * 5} minutes so far), the bigger the move once it breaks.`, 'VPA ch.4, 7 (Wyckoff)', 0); break;
+        case 'breakout': E(`Breakout ${phase.dir > 0 ? 'up' : 'down'} from congestion. ${brk.valid ? 'It came on heavy volume, so it is validated; expect follow-through.' : brk.fake ? 'Volume was light, so this may be a fake-out designed to trap traders.' : 'Volume was only average; it needs rising volume on the next bars to be trusted.'} A retest of ${px(brk.level)} on low volume would confirm it.`, 'VPA ch.7, 11', brk.valid ? phase.dir : brk.fake ? -phase.dir : 0); break;
+        case 'failed': E(`The breakout failed and price is back in the old range. The traders who bought (or sold) the break are trapped; expect a move toward the other side of the congestion at ${px(brk.dir === 1 ? cong.floor : cong.ceil)}.`, 'VPA ch.7', phase.dir); break;
+        case 'climax-top': E('A selling climax marks the end of distribution. Once it completes, the market tends to fall fast. Wait for a low-volume test of demand before trusting the move lower.', 'VPA ch.5', -1); break;
+        case 'climax-bottom': E('A buying climax marks the end of accumulation. Once it completes, a rise usually follows. Wait for a low-volume test of supply before trusting the move higher.', 'VPA ch.5', 1); break;
+        case 'early': E('Too few bars to judge volume. Coulling notes the open is often where market makers test interest with wide moves on light volume.', 'VPA ch.4', 0); break;
+        default: E('Small moves on ordinary volume. The next bar with clearly high volume should reveal direction.', 'VPA ch.4', 0);
+      }
+      const recentConf = sig.filter(s => s.status === 'confirmed' && wk - s.i <= 6).slice(-1)[0];
+      const recentPend = sig.filter(s => s.status === 'awaiting confirmation' || s.status === 'awaiting next bar').slice(-1)[0];
+      if (recentConf) E(`The ${recentConf.time} ${recentConf.name.toLowerCase()} on ${recentConf.vc} volume has been confirmed by the following bars: ${recentConf.txt}.`, `VPA ${recentConf.ref}`, recentConf.dir);
+      if (recentPend && recentPend.dir) E(`The ${recentPend.time} ${recentPend.name.toLowerCase()} on ${recentPend.vc} volume needs confirmation. Coulling's patience rule: the market rarely turns on one candle, so wait for the next one or two.`, 'VPA ch.4', 0);
+      seq.forEach(s => E(`${s.name}: ${s.txt}.`, `VPA ${s.ref}`, s.dir));
+      testsLive.slice(-2).forEach(t => E(`${t.time} ${t.name}: ${t.txt}.`, 'VPA ch.5', t.dir));
+      if (tf30.dir && tf5.dir && tf30.dir !== tf5.dir) E(`The 5-minute move runs against the 30-minute chart. Coulling calls this counter-trend trading: higher risk and likely short-lived.`, 'VPA ch.8, 11', tf30.dir);
+      else if (tf30.dir && tf15.dir === tf30.dir && tf5.dir === tf30.dir) E('All three time frames (5, 15, 30 minutes) point the same way. The move has rippled through to the slower chart, so it has more potential to run.', 'VPA ch.4, 11', tf30.dir);
+      if (dayER === 'anomaly-low') E(`Today's ${dayMove > 0 ? 'rise' : 'fall'} has come on light volume overall. Without participation it is vulnerable to a reversal.`, 'VPA ch.4', -Math.sign(dayMove));
+      if (dayER === 'absorption') E('Heavy volume in a narrow day range means absorption. One side is soaking up the other; a breakout should follow when it is done.', 'VPA ch.4', 0);
+      const hvnNear = levels.filter(l => ['poc', 'hvn', 'va'].includes(l.kind) && Math.abs(l.distA) <= 0.2).sort((a, b) => Math.abs(a.dist) - Math.abs(b.dist))[0];
+      if (hvnNear) E(`${hvnNear.label} at ${px(hvnNear.price)} is close by. High-volume price levels act as support or resistance; it will take heavy volume to move through them.`, 'VPA ch.9', 0);
+      if (endMin >= 900) E('Late session: with less time left, a breakout now has less room to develop before the close.', 'VPA ch.4 (cause and effect)', 0);
+    }
+
+    return {
+      ticker: T.ticker, date: S.date, k, n, endMin, time: fmtMin(endMin), price, ADR, ref, open, hi, lo, prev, W, WR, off, wk, R,
+      piv, sig, seq, tests: testsLive, cong, brk, legDir, legVol, legMove, structure, balance, tf5, tf15, tf30, rvol, dayER, openNote,
+      prof: todayProf, daily, phase, factors: F, score, bucket, label, agree, against, levels, watch, proj, expect, bars, nVol: S.nVol,
+    };
+  }
+
+  function outcome(T, si, k) {
+    const S = T.sessions[si], b = S.bars; if (k >= b.length - 1) return null;
+    const p = b[k].c, X = 0.2 * S.adr; let touch = 0;
+    for (let j = k + 1; j < b.length; j++) { const up = b[j].h >= p + X, dn = b[j].l <= p - X; if (up && dn) break; if (up) { touch = 1; break; } if (dn) { touch = -1; break; } }
+    const fut = b.slice(k + 1);
+    return { price: p, close: S.close, closeMove: (S.close - p) / S.adr, touch, futHi: Math.max(...fut.map(x => x.h)), futLo: Math.min(...fut.map(x => x.l)) };
+  }
+  function calibrate(T) {
+    const out = [];
+    for (let si = 1; si < T.sessions.length - 1; si++) {
+      const S = T.sessions[si]; if (S.adrN < 10 || S.bars.length < 70) continue;
+      for (let k = 5; k <= S.bars.length - 4; k += 6) {
+        const r = analyze(T, si, k, { lite: true }); const o = outcome(T, si, k); if (!o) continue;
+        out.push({ min: r.endMin, score: r.score, bucket: r.bucket, phase: r.phase.key, closeMove: o.closeMove, touch: o.touch });
+      }
+    }
+    return out;
+  }
+  function stats(s) {
+    const d = s.filter(x => x.bucket !== 'two');
+    const cm = d.filter(x => Math.abs(x.closeMove) > 0.02); const ch = cm.filter(x => Math.sign(x.closeMove) === Math.sign(x.score)).length;
+    const tt = d.filter(x => x.touch !== 0); const th = tt.filter(x => x.touch === Math.sign(x.score)).length;
+    const two = s.filter(x => x.bucket === 'two'); const flat = two.filter(x => Math.abs(x.closeMove) < 0.25).length;
+    return { n: s.length, closeN: cm.length, closeRate: cm.length ? ch / cm.length : null, touchN: tt.length, touchRate: tt.length ? th / tt.length : null, twoN: two.length, flatRate: two.length ? flat / two.length : null };
+  }
+  return { prep, analyze, outcome, calibrate, stats, etParts, fmtMin, fmtVol, clamp };
+})();
+
+
+</script>
+<script>
+/* Synthetic demo data generator (clearly labeled demo; not market data) */
+const DEMO = (() => {
+  function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  function gauss(r) { let u = 0, v = 0; while (!u) u = r(); while (!v) v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  // build trading days back from a reference date (weekdays only)
+  function days(endDate, count) {
+    const out = []; const d = new Date(endDate + 'T12:00:00Z');
+    while (out.length < count) { const wd = d.getUTCDay(); if (wd !== 0 && wd !== 6) out.unshift(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() - 1); }
+    return out;
+  }
+  function etToMs(date, min) {
+    // approximate ET offset: EDT (UTC-4) Mar-Nov, EST otherwise
+    const mo = +date.slice(5, 7); const off = (mo >= 4 && mo <= 10) ? 4 : 5;
+    const [y, m, dd] = date.split('-').map(Number);
+    return Date.UTC(y, m - 1, dd, Math.floor(min / 60) + off, min % 60);
+  }
+  function make(ticker, endDate, opts = {}) {
+    const base = { SPY: 580, TLT: 88, GLD: 245 }[ticker] || 100;
+    const vol = { SPY: 0.0011, TLT: 0.0009, GLD: 0.0010 }[ticker] || 0.001;
+    const seed = [...ticker].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) + (opts.seed || 0);
+    const r = rng(seed);
+    const D = days(endDate, opts.days || 70);
+    const raw = [], daily = []; let p = base;
+    D.forEach((date, di) => {
+      const isLast = di === D.length - 1;
+      const kind = isLast ? (opts.lastKind || 'trend') : ['trend', 'range', 'range', 'rev', 'range', 'trend'][Math.floor(r() * 6)];
+      const dirn = r() < 0.5 ? -1 : 1;
+      p *= 1 + gauss(r) * vol * 3; // overnight gap
+      const dO = p; let dh = p, dl = p, dv = 0;
+      const nBars = isLast && opts.lastBars ? opts.lastBars : 78;
+      let mid = p;
+      for (let s = 0; s < nBars; s++) {
+        const min = 570 + s * 5;
+        let drift = 0;
+        if (kind === 'trend') drift = dirn * vol * 0.35;
+        if (kind === 'rev') drift = (s < 30 ? dirn : -dirn) * vol * 0.4;
+        if (kind === 'range') drift = (mid - p) / p * 0.08;
+        const o = p, c = o * (1 + drift + gauss(r) * vol);
+        const h = Math.max(o, c) * (1 + Math.abs(gauss(r)) * vol * 0.5), l = Math.min(o, c) * (1 - Math.abs(gauss(r)) * vol * 0.5);
+        const move = Math.abs(c - o) / (o * vol), wick = (h - l) / (o * vol);
+        const v = Math.round((s < 6 ? 2.4 : s > 70 ? 1.8 : 1) * (1.2e5 + r() * 0.8e5) * (0.5 + 0.55 * move + 0.25 * wick) * (r() < 0.04 ? 2.5 : 1) * (ticker === 'SPY' ? 5 : 1));
+        raw.push({ t: etToMs(date, min), o, h, l, c, v });
+        p = c; dh = Math.max(dh, h); dl = Math.min(dl, l); dv += v;
+      }
+      daily.push({ t: etToMs(date, 0) + 4 * 3600e3, o: dO, h: dh, l: dl, c: p, v: dv });
+    });
+    return { raw, daily };
+  }
+  return { make };
+})();
+
+
+</script>
+<script>
+const TICKERS = ['SPY', 'TLT', 'GLD'];
+const API = 'https://api.polygon.io';
+const $ = id => document.getElementById(id);
+const state = { data: {}, sel: 'SPY', demo: false, busy: false, showFuture: true, timer: null };
+const fmt = (v, d = 2) => (v == null || !isFinite(v)) ? '—' : v.toFixed(d);
+const pct = v => (v == null || !isFinite(v)) ? '—' : (v * 100).toFixed(0) + '%';
+const sgnCls = v => v > 0 ? 'bull' : v < 0 ? 'bear' : 'two';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const vcCls = vc => vc === 'low' ? 'v-low' : vc === 'average' ? 'v-average' : vc === 'high' ? 'v-high' : vc === 'very high' ? 'v-very' : 'v-ultra';
+function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { } }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function log(m) { const el = $('log'); el.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; el.scrollTop = el.scrollHeight; }
+function setStatus(h) { $('status').innerHTML = h; }
+
+/* ---------- data ---------- */
+async function robustFetch(url, tries = 5) {
+  let lastErr;
+  for (let a = 0; a < tries; a++) {
+    try {
+      const res = await fetch(url);
+      if (res.status === 429 || res.status >= 500) { lastErr = new Error('HTTP ' + res.status); await sleep(700 * 2 ** a); continue; }
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(j.error || j.message || ('HTTP ' + res.status)), { fatal: true });
+      return j;
+    } catch (e) { lastErr = e; if (e.fatal) throw e; await sleep(700 * 2 ** a); }
+  }
+  throw lastErr;
+}
+async function aggs(t, mult, span, from, to, key) {
+  let url = `${API}/v2/aggs/ticker/${t}/range/${mult}/${span}/${from}/${to}?adjusted=true&sort=asc&limit=50000&apiKey=${encodeURIComponent(key)}`;
+  const out = []; let pages = 0;
+  while (url && pages < 25) {
+    const j = await robustFetch(url);
+    if (j.status === 'ERROR' || j.status === 'NOT_AUTHORIZED') throw new Error(j.error || j.message || j.status);
+    if (j.results) out.push(...j.results); pages++;
+    url = j.next_url ? j.next_url + (j.next_url.includes('?') ? '&' : '?') + 'apiKey=' + encodeURIComponent(key) : null;
+  }
+  const seen = new Set(); const d = out.filter(r => !seen.has(r.t) && seen.add(r.t)).sort((a, b) => a.t - b.t);
+  log(`${t} ${mult}/${span}: ${d.length} bars in ${pages} page${pages > 1 ? 's' : ''}`); return d;
+}
+function isoMinus(date, days) { const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - days); return d.toISOString().slice(0, 10); }
+function liveInfo() { const p = VP.etParts(Date.now()); return { date: p.date, min: p.min, inRTH: p.min >= 570 && p.min < 960 }; }
+function finishTicker(tk, raw5, daily, isDemo) {
+  const now = liveInfo(); let dropped = false;
+  if (!isDemo && raw5.length) { const p = VP.etParts(raw5[raw5.length - 1].t); if (p.date === now.date && now.inRTH && p.min >= 570) { raw5 = raw5.slice(0, -1); dropped = true; } }
+  const T = VP.prep(tk, raw5, daily);
+  if (!T.sessions.length) throw new Error(`${tk}: no regular-session bars returned`);
+  const si = T.sessions.length - 1, S = T.sessions[si];
+  const live = !isDemo && S.date === now.date && now.inRTH;
+  state.data[tk] = { T, si, k: S.bars.length - 1, live, dropped, calib: null, latestSi: si, livePx: null };
+  log(`${tk}: ${T.sessions.length} sessions, current ${S.date} (${S.bars.length} bars${live ? ', live' : ''}${dropped ? ', forming bar dropped' : ''}), ADR ${fmt(S.adr)}`);
+}
+async function runCalib(tk) { const D = state.data[tk]; if (!D) return; await sleep(10); const t0 = performance.now(); D.calib = VP.calibrate(D.T); log(`${tk}: engine history ${D.calib.length} calls replayed in ${Math.round(performance.now() - t0)} ms`); }
+async function scan() {
+  const key = $('key').value.trim();
+  if (!key) { setStatus('<span class="err">Paste a Polygon API key first, or press Demo data.</span>'); $('key').focus(); return; }
+  if (state.busy) return; state.busy = true; $('scan').disabled = true;
+  store('vpr_key', key); state.demo = false; $('banner').hidden = true;
+  const hist = +$('hist').value; store('vpr_hist', String(hist));
+  const today = liveInfo().date;
+  setStatus('Fetching 5-minute and daily bars…');
+  const errs = [];
+  await Promise.all(TICKERS.map(async tk => {
+    try { const [r5, d] = await Promise.all([aggs(tk, 5, 'minute', isoMinus(today, hist), today, key), aggs(tk, 1, 'day', isoMinus(today, 200), today, key)]); finishTicker(tk, r5, d, false); }
+    catch (e) { errs.push(`${tk}: ${e.message}`); log(`${tk} ERROR ${e.message}`); }
+  }));
+  render();
+  for (const tk of TICKERS) if (state.data[tk] && !state.data[tk].calib) { await runCalib(tk); render(); }
+  state.busy = false; $('scan').disabled = false;
+  const D = state.data[state.sel] || Object.values(state.data)[0]; const now = liveInfo();
+  let s = errs.length ? `<span class="err">${esc(errs.join(' · '))}</span>` : '';
+  if (D) {
+    const S = D.T.sessions[D.latestSi]; const lm = S.bars[S.bars.length - 1].min + 5;
+    s += `<span>Session ${S.date} · last complete bar ends ${VP.fmtMin(lm)} ET</span>`;
+    s += D.live ? `<span>Live: now ${VP.fmtMin(now.min)} ET · data lag ${Math.max(0, now.min - lm)} min</span>` : '<span>Market closed: showing the most recent full session. Use the slider to replay any time of day.</span>';
+  }
+  setStatus(s);
+}
+function demo() {
+  state.demo = true;
+  const b = $('banner'); b.hidden = false; b.className = 'banner';
+  b.textContent = 'DEMO DATA: synthetic bars and volume generated in the browser to show how the read works. These are not market prices or real volume. Paste your Polygon key and press Scan for real data.';
+  const d = new Date(VP.etParts(Date.now()).date + 'T12:00:00Z');
+  while ([0, 6].includes(d.getUTCDay())) d.setUTCDate(d.getUTCDate() - 1);
+  const end = d.toISOString().slice(0, 10), kinds = { SPY: 'trend', TLT: 'range', GLD: 'rev' };
+  for (const tk of TICKERS) { const g = DEMO.make(tk, end, { lastKind: kinds[tk], days: 90 }); finishTicker(tk, g.raw, g.daily, true); }
+  for (const tk of TICKERS) state.data[tk].calib = VP.calibrate(state.data[tk].T);
+  setStatus('<span>Demo session loaded. Drag the slider to watch the read change through the day.</span>');
+  render();
+}
+
+/* ---------- helpers ---------- */
+function current(tk) { const D = state.data[tk]; if (!D) return null; return { D, r: VP.analyze(D.T, D.si, D.k) }; }
+function lookup(D, r) {
+  if (!D.calib || !D.calib.length) return null;
+  const b = r.bucket, sg = Math.sign(r.score); const m = x => x.bucket === b && (b === 'two' || Math.sign(x.score) === sg);
+  let st = VP.stats(D.calib.filter(x => m(x) && Math.abs(x.min - r.endMin) <= 60)), scope = `within ±60 min of ${r.time}`;
+  if (st.n < 12) { st = VP.stats(D.calib.filter(m)); scope = 'all times of day'; }
+  return { ...st, scope };
+}
+function parsePx(s) { const v = parseFloat(String(s || '').replace(/[$,\s]/g, '')); return isFinite(v) && v > 0 ? v : null; }
+function liveCheck(D, r) {
+  const v = D.livePx; if (v == null) return null;
+  const S = D.T.sessions[D.si];
+  if (!(D.si === D.latestSi && D.k === S.bars.length - 1)) return { inactive: true, why: 'The live price only applies at the latest bar. Press Latest bar to use it.' };
+  const move = v - r.price, moveA = move / r.ADR;
+  if (Math.abs(moveA) > 1.5) return { invalid: true, why: `${fmt(v)} is ${(Math.abs(moveA) * 100).toFixed(0)}% of ADR away from the last bar (${fmt(r.price)}). Check that the price was typed for ${r.ticker}. It is being ignored.` };
+  const sg = r.bucket === 'two' ? 0 : Math.sign(r.score), md = Math.sign(move);
+  const crossed = r.levels.filter(l => l.kind !== 'day' && (l.price - r.price) * (l.price - v) < 0);
+  const against = crossed.filter(l => ['prev', 'cong', 'poc', 'va', 'pivot'].includes(l.kind) && sg !== 0 && md === -sg);
+  const upHit = v > r.watch.up.price, dnHit = v < r.watch.dn.price;
+  const withHit = (sg > 0 && upHit) || (sg < 0 && dnHit), oppHit = (sg > 0 && dnHit) || (sg < 0 && upHit);
+  let status = 'cur', reasons = [];
+  if (Math.abs(moveA) >= 0.25) { status = 'stale'; reasons.push(`price moved ${(Math.abs(moveA) * 100).toFixed(0)}% of ADR since the last bar`); }
+  if (oppHit) { status = 'stale'; reasons.push(`price is through the ${sg > 0 ? 'downside' : 'upside'} level (${fmt(sg > 0 ? r.watch.dn.price : r.watch.up.price)}) against the outlook`); }
+  if (against.length) { status = 'stale'; reasons.push(`price crossed ${against.map(l => l.label).join(', ')} against the outlook`); }
+  if (status === 'cur' && (Math.abs(moveA) >= 0.10 || upHit || dnHit)) status = 'age';
+  const label = { cur: 'CURRENT', age: 'AGING', stale: 'STALE' }[status];
+  const brkTxt = upHit ? `above the ${r.watch.up.label} ${fmt(r.watch.up.price)}` : dnHit ? `below the ${r.watch.dn.label} ${fmt(r.watch.dn.price)}` : '';
+  const advice = status === 'cur' ? 'The read stands. Price is within 10% of ADR of the last bar and no watch level has been crossed.'
+    : status === 'age' ? (brkTxt ? `Price is ${brkTxt}. Coulling's test: is the move on volume? Check that the current 5-minute bar is trading at least ${VP.fmtVol(r.watch.up.need)} shares (1.3× normal) in your broker. Without volume, treat it as a possible fake-out.` : 'Direction is probably intact. Use the live distances below.')
+    : `Treat the read as stale: ${reasons.join('; ')}. Rescan, and check the latest bars and their volume on a real-time chart before acting.`;
+  return { v, move, moveA, crossed, against, upHit, dnHit, withHit, status, label, advice, newHi: v > r.hi, newLo: v < r.lo };
+}
+
+/* ---------- tiles ---------- */
+function renderTiles() {
+  $('tiles').innerHTML = TICKERS.map(tk => {
+    const c = current(tk);
+    if (!c) return `<button class="tile" data-tk="${tk}" aria-pressed="${state.sel === tk}"><span class="tk">${tk}</span><span class="px">—</span><span class="bias two">no data</span><span class="meta"><span>not scanned</span></span></button>`;
+    const { r, D } = c; const cl = r.bucket === 'two' ? 'two' : sgnCls(r.score);
+    const chg = r.prev ? (r.price - r.prev.c) / r.prev.c * 100 : 0; const lc = liveCheck(D, r);
+    const chip = lc && lc.label ? ` <span class="st ${lc.status}" style="font-size:12px">${lc.label}</span>` : '';
+    return `<button class="tile" data-tk="${tk}" aria-pressed="${state.sel === tk}">
+      <span class="tk">${tk}</span><span class="px num">${fmt(r.price)} <span class="${sgnCls(chg)}" style="font-size:12px">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span></span>
+      <span class="bias ${cl}">${r.label} <span class="num">${r.score > 0 ? '+' : ''}${r.score}</span></span>
+      <span class="meta"><span>${esc(r.phase.label)}</span><span>vol ${r.rvol ? r.rvol.toFixed(2) + '×' : '—'} · ${r.time} ET${chip}</span></span></button>`;
+  }).join('');
+  document.querySelectorAll('.tile').forEach(b => b.onclick = () => { state.sel = b.dataset.tk; render(); });
+}
+
+/* ---------- chart: price + VAP + volume ---------- */
+function niceStep(x) { const p = 10 ** Math.floor(Math.log10(x)); const m = x / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+function chartSVG(D, r, lc) {
+  const S = D.T.sessions[D.si], all = S.bars, k = r.k, showF = state.showFuture && k < all.length - 1;
+  const W = 1000, ml = 8, vapW = 90, mr = 150, mt = 14, ph = 320, gap = 24, vh = 110, pw = W - ml - mr - vapW;
+  const vTop = mt + ph + gap;
+  const vis = showF ? all : all.slice(0, k + 1);
+  let yHi = Math.max(...vis.map(b => b.h)), yLo = Math.min(...vis.map(b => b.l));
+  const pad = 0.3 * r.ADR;
+  r.levels.filter(l => ['cong', 'prev', 'poc'].includes(l.kind) && l.price <= yHi + pad && l.price >= yLo - pad).forEach(l => { yHi = Math.max(yHi, l.price); yLo = Math.min(yLo, l.price); });
+  const span = (yHi - yLo) || 1; yHi += span * .03; yLo -= span * .03;
+  const X = s => ml + (s + 0.5) * (pw / 78), Y = p => mt + (yHi - p) / (yHi - yLo) * ph, bw = Math.max(2, pw / 78 * 0.62);
+  let g = '';
+  for (let h = 10; h <= 16; h++) { const x = ml + ((h * 60 - 570) / 5) * (pw / 78); g += `<line x1="${x}" x2="${x}" y1="${mt}" y2="${vTop + vh}" stroke="var(--line)"/><text x="${x}" y="${mt + ph + 15}" fill="var(--dim)" font-size="11" text-anchor="middle" font-family="var(--mono)">${h > 12 ? h - 12 : h}:00</text>`; }
+  const step = niceStep(span / 6); for (let p = Math.ceil(yLo / step) * step; p <= yHi; p += step) { const y = Y(p); g += `<line x1="${ml}" x2="${ml + pw}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="2 4"/><text x="${ml + 4}" y="${y - 3}" fill="var(--faint)" font-size="10" font-family="var(--mono)">${fmt(p)}</text>`; }
+  // congestion box
+  if (r.cong) { const s0 = r.cong.from >= r.off ? r.W[r.cong.from].slot : 0, s1 = r.cong.to >= r.off ? r.W[r.cong.to].slot : 0; g += `<rect x="${X(s0) - bw}" y="${Y(r.cong.ceil)}" width="${Math.max(bw, X(s1) - X(s0) + 2 * bw)}" height="${Math.max(2, Y(r.cong.floor) - Y(r.cong.ceil))}" fill="var(--warn)" fill-opacity=".07" stroke="var(--warn)" stroke-dasharray="4 3" stroke-opacity=".8"/>`; }
+  // value area band
+  g += `<rect x="${ml}" y="${Y(Math.min(yHi, r.prof.vaHi))}" width="${pw}" height="${Math.max(1, Y(Math.max(yLo, r.prof.vaLo)) - Y(Math.min(yHi, r.prof.vaHi)))}" fill="var(--accent)" fill-opacity=".04"/>`;
+  // future shade
+  if (showF) { const x = X(all[k].slot) + bw; g += `<rect x="${x}" y="${mt}" width="${ml + pw - x}" height="${ph}" fill="var(--bg)" fill-opacity=".45"/><rect x="${x}" y="${vTop}" width="${ml + pw - x}" height="${vh}" fill="var(--bg)" fill-opacity=".45"/><line x1="${x}" x2="${x}" y1="${mt}" y2="${vTop + vh}" stroke="var(--accent)"/><text x="${x + 4}" y="${mt + 11}" fill="var(--accent)" font-size="11" font-family="var(--cond)" letter-spacing=".06em">AS OF ${r.time} · REST OF DAY (ACTUAL)</text>`; }
+  // candles
+  vis.forEach((b, i) => {
+    const up = b.c >= b.o, col = up ? 'var(--bull)' : 'var(--bear)', x = X(b.slot), top = Y(Math.max(b.o, b.c)), bot = Y(Math.min(b.o, b.c));
+    g += `<g opacity="${i > k ? 0.32 : 1}"><line x1="${x}" x2="${x}" y1="${Y(b.h)}" y2="${Y(b.l)}" stroke="${col}"/><rect x="${x - bw / 2}" y="${top}" width="${bw}" height="${Math.max(1, bot - top)}" fill="${up ? 'var(--bg)' : col}" stroke="${col}"/></g>`;
+  });
+  // pivots (today)
+  r.piv.filter(p => p.i >= r.off && p.i <= r.wk).forEach(p => { const b = r.W[p.i], x = X(b.slot); g += p.t === 'H' ? `<circle cx="${x}" cy="${Y(b.h) - 5}" r="2.3" fill="var(--warn)"/>` : `<circle cx="${x}" cy="${Y(b.l) + 5}" r="2.3" fill="var(--warn)"/>`; });
+  // signal markers
+  const abbr = n => n.startsWith('Shooting') ? 'SS' : n.startsWith('Hammer') ? 'H' : n.startsWith('Hanging') ? 'HM' : n.startsWith('Long-legged') ? 'D' : n.startsWith('Wide') ? 'W' : n.startsWith('Narrow') ? 'N' : '•';
+  const used = {};
+  r.sig.forEach(s => { const b = r.W[s.i]; if (s.i < r.off) return; const x = X(b.slot); const key = s.i; used[key] = (used[key] || 0) + 1; const above = s.dir <= 0; const y = above ? Y(b.h) - 12 - (used[key] - 1) * 10 : Y(b.l) + 18 + (used[key] - 1) * 10; const col = s.dir > 0 ? 'var(--bull)' : s.dir < 0 ? 'var(--bear)' : 'var(--warn)'; g += `<text x="${x}" y="${y}" fill="${col}" font-size="9.5" text-anchor="middle" font-family="var(--cond)" font-weight="600">${abbr(s.name)}</text>`; });
+  r.tests.forEach(t => { const b = r.W[t.i]; const x = X(b.slot); g += `<text x="${x}" y="${Y(b.l) + 28}" fill="var(--accent)" font-size="9.5" text-anchor="middle" font-family="var(--cond)" font-weight="600">T</text>`; });
+  // VAP histogram (right of plot)
+  const vx0 = ml + pw + 6, prof = r.prof;
+  prof.bins.forEach((v, j) => { const p0 = prof.lo + j * prof.w, p1 = p0 + prof.w; if (p1 < yLo || p0 > yHi) return; const y1 = Y(Math.min(yHi, p1)), y2 = Y(Math.max(yLo, p0)); const w = v / prof.max * (vapW - 10); const isPoc = Math.abs((p0 + p1) / 2 - prof.poc) < prof.w / 2; g += `<rect x="${vx0}" y="${y1 + 0.5}" width="${w}" height="${Math.max(1, y2 - y1 - 1)}" fill="var(--accent)" fill-opacity="${isPoc ? 0.85 : 0.35}"/>`; });
+  g += `<text x="${vx0}" y="${mt + 10}" fill="var(--dim)" font-size="10" font-family="var(--cond)" letter-spacing=".08em">VOLUME AT PRICE</text>`;
+  // level labels
+  const labs = []; const pushLab = (p, text, col, dash) => { if (p > yHi || p < yLo) return; labs.push({ y: Y(p), p, text, col, dash }); };
+  if (r.prev) { pushLab(r.prev.h, 'Y high', 'var(--dim)', '5 4'); pushLab(r.prev.l, 'Y low', 'var(--dim)', '5 4'); pushLab(r.prev.c, 'Y close', 'var(--dim)', '5 4'); }
+  pushLab(prof.poc, 'POC', 'var(--accent)', '2 3');
+  pushLab(r.watch.up.price, `▲ ${r.watch.up.label}`, 'var(--bull)', '6 3'); pushLab(r.watch.dn.price, `▼ ${r.watch.dn.label}`, 'var(--bear)', '6 3');
+  labs.sort((a, b) => a.y - b.y); for (let i = 1; i < labs.length; i++) if (labs[i].y - (labs[i - 1].ly ?? labs[i - 1].y) < 12) labs[i].ly = (labs[i - 1].ly ?? labs[i - 1].y) + 12;
+  labs.forEach(l => { g += `<line x1="${ml}" x2="${ml + pw}" y1="${l.y}" y2="${l.y}" stroke="${l.col}" stroke-dasharray="${l.dash}" opacity=".85"/><text x="${ml + pw + vapW + 4}" y="${Math.min(mt + ph, l.ly ?? l.y) + 3.5}" fill="${l.col}" font-size="10" font-family="var(--mono)">${fmt(l.p)} ${esc(l.text)}</text>`; });
+  const yp = Y(r.price); g += `<rect x="${ml + pw - 64}" y="${yp - 8}" width="62" height="16" fill="var(--fg)"/><text x="${ml + pw - 60}" y="${yp + 4}" fill="var(--bg)" font-size="11" font-weight="600" font-family="var(--mono)">${fmt(r.price)}</text>`;
+  if (lc && !lc.inactive && !lc.invalid && lc.v <= yHi && lc.v >= yLo) { const y = Y(lc.v); g += `<line x1="${ml}" x2="${ml + pw}" y1="${y}" y2="${y}" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="6 3"/><rect x="${ml + pw - 64}" y="${y - 8}" width="62" height="16" fill="var(--warn)"/><text x="${ml + pw - 60}" y="${y + 4}" fill="var(--bg)" font-size="11" font-weight="600" font-family="var(--mono)">${fmt(lc.v)}</text><text x="${ml + pw - 68}" y="${y + 4}" fill="var(--warn)" font-size="10" text-anchor="end" font-family="var(--cond)">LIVE</text>`; }
+  // volume pane: bars colored by direction, intensity by class; normal-volume line
+  const maxV = Math.max(...vis.map(b => b.v), ...vis.map(b => r.nVol[b.slot] * 1.2));
+  const VY = v => vTop + vh - v / maxV * vh;
+  g += `<rect x="${ml}" y="${vTop}" width="${pw}" height="${vh}" fill="none" stroke="var(--line2)"/>`;
+  vis.forEach((b, i) => {
+    const rv = b.v / Math.max(1, r.nVol[b.slot]); const op = rv < 0.7 ? 0.3 : rv < 1.3 ? 0.55 : rv < 2 ? 0.8 : 1;
+    const col = b.c >= b.o ? 'var(--bull)' : 'var(--bear)'; const x = X(b.slot);
+    g += `<rect x="${x - bw / 2}" y="${VY(b.v)}" width="${bw}" height="${Math.max(1, vTop + vh - VY(b.v))}" fill="${col}" fill-opacity="${i > k ? op * 0.35 : op}"${rv >= 3 && i <= k ? ' stroke="var(--accent)" stroke-width="1.2"' : ''}/>`;
+  });
+  const normPts = vis.map(b => `${X(b.slot).toFixed(1)},${VY(r.nVol[b.slot]).toFixed(1)}`).join(' ');
+  g += `<polyline points="${normPts}" fill="none" stroke="var(--norm)" stroke-width="1.3" stroke-dasharray="4 2"/>`;
+  g += `<text x="${ml + 4}" y="${vTop + 12}" fill="var(--dim)" font-size="10" font-family="var(--cond)" letter-spacing=".08em">VOLUME · DASHED LINE = NORMAL FOR THIS TIME OF DAY</text>`;
+  return `<svg viewBox="0 0 ${W} ${vTop + vh + 4}" role="img" aria-label="${r.ticker} 5-minute price and volume chart for ${r.date} as of ${r.time} ET with volume at price">${g}</svg>`;
+}
+
+/* ---------- desk ---------- */
+const mark = t => t > 0 ? '▲' : t < 0 ? '▼' : '◆';
+function renderDesk() {
+  const c = current(state.sel);
+  if (!c) { $('desk').innerHTML = `<div class="empty">Paste your Polygon key and press Scan, or load demo data.</div>`; return; }
+  const { D, r } = c; const S = D.T.sessions[D.si];
+  const lc = liveCheck(D, r), lcOn = lc && !lc.inactive && !lc.invalid;
+  const cl = r.bucket === 'two' ? 'two' : sgnCls(r.score);
+  const hist = lookup(D, r);
+  const sessOpts = D.T.sessions.map((s, i) => ({ s, i })).slice(-40).reverse().map(({ s, i }) => `<option value="${i}" ${i === D.si ? 'selected' : ''}>${s.date}${i === D.latestSi ? (D.live ? ' (live)' : ' (latest)') : ''}</option>`).join('');
+  const fill = Math.abs(r.score) / 2;
+  const mStyle = r.score >= 0 ? `left:50%;width:${fill}%;background:var(--bull)` : `left:${50 - fill}%;width:${fill}%;background:var(--bear)`;
+  const histFact = hist ? (r.bucket === 'two'
+    ? `<div class="v num">${pct(hist.flatRate)}</div><div class="s">closed within ±25% ADR of the scan price · n=${hist.twoN} · ${hist.scope}</div>`
+    : `<div class="v num">${pct(hist.closeRate)} <span style="font-size:12px;color:var(--dim)">close</span> · ${pct(hist.touchRate)} <span style="font-size:12px;color:var(--dim)">±0.2 ADR</span></div><div class="s">closed in the outlook's direction (n=${hist.closeN}) · moved 0.2 ADR its way first (n=${hist.touchN}) · ${hist.scope}</div>`)
+    : '<div class="v">…</div><div class="s">replaying history</div>';
+  const out = r.k < S.bars.length - 1 ? VP.outcome(D.T, D.si, r.k) : null;
+  let outHTML = '';
+  if (out) {
+    const sg = Math.sign(r.score), right = r.bucket === 'two' ? Math.abs(out.closeMove) < 0.25 : Math.sign(out.closeMove) === sg;
+    const upHit = out.futHi > r.watch.up.price, dnHit = out.futLo < r.watch.dn.price;
+    outHTML = `<section><div class="outcome"><div class="lbl" style="margin-bottom:4px">Replay: what actually happened after ${r.time}</div>
+      Closed at <b class="num">${fmt(out.close)}</b> (${out.close >= r.price ? '+' : ''}${fmt(out.close - r.price)}, ${(out.closeMove * 100).toFixed(0)}% of ADR) · high after ${fmt(out.futHi)} · low after ${fmt(out.futLo)} ·
+      first ±0.2 ADR move: <b>${out.touch === 1 ? 'up' : out.touch === -1 ? 'down' : 'neither'}</b> · outlook by the close: <b class="${right ? 'ok' : 'no'}">${right ? 'RIGHT' : 'WRONG'}</b>
+      <div style="margin-top:4px;color:var(--dim)">Upside level ${fmt(r.watch.up.price)} ${upHit ? 'was crossed' : 'was not reached'} · downside level ${fmt(r.watch.dn.price)} ${dnHit ? 'was crossed' : 'was not reached'}</div></div></section>`;
+  }
+  const factorRows = r.factors.map(f => {
+    const w = Math.abs(f.val) / f.max * 50; const bs = f.val >= 0 ? `left:50%;width:${w}%;background:var(--bull)` : `left:${50 - w}%;width:${w}%;background:var(--bear)`;
+    return `<tr><td class="dirc ${sgnCls(f.dir)}">${f.dir > 0 ? '▲' : f.dir < 0 ? '▼' : '·'}</td><td><b>${esc(f.name)}</b><br>${esc(f.reading)} <span class="src">${esc(f.src)}</span></td><td class="barcell"><div class="hbar"><i style="${bs}"></i></div></td><td class="r num">${f.val >= 0 ? '+' : ''}${f.val.toFixed(0)}<span style="color:var(--faint)">/${f.max}</span></td></tr>`;
+  }).join('');
+  // signals timeline: last 12 bars, with volume class and spread
+  const tl = [];
+  for (let j = Math.max(r.off, r.wk - 11); j <= r.wk; j++) {
+    const b = r.W[j], rr = r.WR[j];
+    const ss = r.sig.filter(s => s.i === j), ts = r.tests.filter(t => t.i === j);
+    const read = ss.length || ts.length ? ss.map(s => `<b class="${sgnCls(s.dir)}">${esc(s.name)}</b>: ${esc(s.txt)} <span class="stt ${s.status === 'confirmed' ? 'confirmed' : s.status === 'failed' ? 'failed' : 'pend'}">(${esc(s.status)})</span>`).concat(ts.map(t => `<b class="${sgnCls(t.dir)}">${esc(t.name)}</b>: ${esc(t.txt)}`)).join('<br>') : `<span style="color:var(--dim)">${rr.sc} ${rr.dir > 0 ? 'up' : rr.dir < 0 ? 'down' : 'flat'} candle: ${rr.rs >= 1.3 && rr.rv >= 1.2 || rr.rs < 0.7 && rr.rv < 0.8 ? 'volume validates price' : rr.rs >= 1.3 && rr.rv < 0.8 ? 'wide on low volume (anomaly)' : rr.rs <= 0.8 && rr.rv >= 1.6 ? 'narrow on high volume (anomaly)' : 'no anomaly'}</span>`;
+    tl.push(`<tr class="${j === r.wk ? 'now' : ''}"><td class="num">${VP.fmtMin(b.min)}</td><td class="num ${sgnCls(b.c - b.o)}">${fmt(b.c)}</td><td class="r num">${rr.rs.toFixed(1)}×</td><td><span class="vchip ${vcCls(rr.vc)} num">${rr.rv.toFixed(1)}× ${esc(rr.vc)}</span></td><td>${read}</td></tr>`);
+  }
+  const tlRows = tl.reverse().join('');
+  const mtfRows = [['5-minute (fast lane)', r.tf5], ['15-minute (primary)', r.tf15], ['30-minute (benchmark)', r.tf30]].map(([n, t]) => `<tr><td>${n}</td><td class="dirc ${sgnCls(t.dir)}">${t.dir > 0 ? '▲' : t.dir < 0 ? '▼' : '·'}</td><td>${esc(t.txt)}</td></tr>`).join('');
+  const base = lcOn ? lc.v : r.price;
+  const lvRows = (() => {
+    const rows = r.levels.filter(l => Math.abs((l.price - base) / r.ADR) <= 1.5).map(l => ({ ...l, dist: l.price - base }));
+    rows.push({ price: base, label: lcOn ? 'Live price' : 'Last price', kind: 'now', dist: 0 });
+    if (lcOn) rows.push({ price: r.price, label: `Last bar close (${r.time})`, kind: 'bar', dist: r.price - base });
+    rows.sort((a, b) => b.price - a.price);
+    return rows.map(l => `<tr class="${l.kind === 'now' ? 'now' : ''}"><td>${esc(l.label)}</td><td class="r num">${fmt(l.price)}</td><td class="r num ${l.kind === 'now' ? '' : sgnCls(l.dist)}">${l.kind === 'now' ? '' : (l.dist >= 0 ? '+' : '') + fmt(l.dist)}</td><td class="r num">${l.kind === 'now' ? '' : (l.dist / r.ADR * 100).toFixed(0) + '%'}</td></tr>`).join('');
+  })();
+  const calibRows = (() => {
+    if (!D.calib) return '<tr><td colspan="5">Replaying…</td></tr>';
+    const defs = [['strong', 1, 'Strong bullish ≥ +45'], ['clear', 1, 'Bullish +25…+44'], ['lean', 1, 'Lean bullish +12…+24'], ['two', 0, 'Neutral / congestion'], ['lean', -1, 'Lean bearish −12…−24'], ['clear', -1, 'Bearish −25…−44'], ['strong', -1, 'Strong bearish ≤ −45']];
+    return defs.map(([b, sg, lab]) => {
+      const st = VP.stats(D.calib.filter(x => x.bucket === b && (b === 'two' || Math.sign(x.score) === sg)));
+      const cur = r.bucket === b && (b === 'two' || Math.sign(r.score) === sg);
+      return `<tr class="${cur ? 'now' : ''}"><td>${lab}</td><td class="r num">${st.n}</td><td class="r num">${b === 'two' ? '—' : pct(st.closeRate)}</td><td class="r num">${b === 'two' ? '—' : pct(st.touchRate)}</td><td class="r num">${b === 'two' ? pct(st.flatRate) : '—'}</td></tr>`;
+    }).join('');
+  })();
+  const phaseRows = (() => {
+    if (!D.calib) return '';
+    const names = { markup: 'Rising trend', markdown: 'Falling trend', congestion: 'Congestion', accumulation: 'Accumulation?', distribution: 'Distribution?', breakout: 'Breakout', failed: 'Failed breakout', 'climax-top': 'Selling climax', 'climax-bottom': 'Buying climax', quiet: 'Quiet' };
+    return Object.keys(names).map(p => { const st = VP.stats(D.calib.filter(x => x.phase === p)); if (!st.n) return ''; return `<tr class="${r.phase.key === p ? 'now' : ''}"><td>Phase: ${names[p]}</td><td class="r num">${st.n}</td><td class="r num">${pct(st.closeRate)}</td><td class="r num">${pct(st.touchRate)}</td><td class="r num">${st.twoN ? pct(st.flatRate) : '—'}</td></tr>`; }).join('');
+  })();
+  const W = r.watch;
+  const watchCard = (d) => { const t = d > 0 ? W.up : W.dn; const dist = (t.price - r.price) / r.ADR * 100; return `<div class="wc"><h3><span class="${sgnCls(d)}">${d > 0 ? 'Upside' : 'Downside'}: close ${d > 0 ? 'above' : 'below'} ${fmt(t.price)}</span><span class="lbl">${esc(t.label)}</span></h3>
+    <dl class="num"><dt>Valid if</dt><dd>the breakout bar trades ≥ <b>${VP.fmtVol(t.need)}</b> shares (1.3× the normal ${VP.fmtVol(W.normal)} for the ${W.nextTime} bar) and the next bars keep volume up</dd>
+    <dt>Fake-out if</dt><dd>it breaks on under ${VP.fmtVol(Math.round(0.9 * W.normal))} shares, or closes back ${d > 0 ? 'below' : 'above'} ${fmt(t.price)}</dd>
+    <dt>Then expect</dt><dd>a retest of ${fmt(t.price)} on low volume, which confirms the move</dd>
+    <dt>Distance</dt><dd>${dist >= 0 ? '+' : ''}${dist.toFixed(0)}% of ADR from the last price</dd></dl></div>`; };
+  const liveHTML = `<section>
+    <div class="liverow"><label class="lbl" for="livepx">Live price (optional)</label>
+      <input id="livepx" inputmode="decimal" autocomplete="off" placeholder="e.g. ${fmt(r.price)}" value="${D.livePx != null ? D.livePx : ''}">
+      <button id="liveapply">Check</button>${D.livePx != null ? '<button id="liveclr">Clear</button>' : ''}
+      <span class="note">${D.livePx == null ? `Type the current ${r.ticker} price from your broker to test whether this ${r.time} ET read is still current. Leave it empty to use the read as is.` : ''}</span></div>
+    ${lc ? (lc.inactive || lc.invalid ? `<div class="livebox"><span class="${lc.invalid ? 'warn' : 'note'}">${esc(lc.why)}</span></div>` : `<div class="livebox">
+      <div class="head"><span class="st ${lc.status}">${lc.label}</span><span class="num">Live ${fmt(lc.v)} vs last bar ${fmt(r.price)} at ${r.time} ET: <b class="${sgnCls(lc.move)}">${lc.move >= 0 ? '+' : ''}${fmt(lc.move)}</b> (${lc.moveA >= 0 ? '+' : ''}${(lc.moveA * 100).toFixed(0)}% of ADR)</span></div>
+      <div>${esc(lc.advice)}</div>
+      <div class="num">Upside level ${fmt(r.watch.up.price)} ${lc.upHit ? '<b class="bull">crossed</b>' : 'not crossed'} · downside level ${fmt(r.watch.dn.price)} ${lc.dnHit ? '<b class="bear">crossed</b>' : 'not crossed'}${lc.newHi ? ' · <b class="bull">new high of day</b>' : ''}${lc.newLo ? ' · <b class="bear">new low of day</b>' : ''}</div>
+      ${lc.crossed.length ? `<div>Crossed since the last bar: ${lc.crossed.map(l => `<span class="${lc.against.includes(l) ? 'warn' : ''}">${esc(l.label)} ${fmt(l.price)}</span>`).join(' · ')}</div>` : ''}
+      <div class="note">The live check can only see price. Volume is the half of VPA it cannot see, so confirm the volume on your broker's chart.</div></div>`) : ''}
+  </section>`;
+
+  $('desk').innerHTML = `
+  <section class="replay"><label class="lbl" for="sess">Session</label><select id="sess">${sessOpts}</select>
+    <label class="lbl" for="slider">As of</label><input id="slider" type="range" min="1" max="${S.bars.length - 1}" value="${D.k}" step="1">
+    <span class="asof num">${r.time} ET</span><button id="latest">Latest bar</button>
+    <label class="chk"><input id="fut" type="checkbox" ${state.showFuture ? 'checked' : ''}> show rest of day</label></section>
+  ${liveHTML}
+  <section class="verdict">
+    <div class="call">
+      <div class="lbl">${r.ticker} · outlook for the rest of the session</div>
+      <div class="big ${cl}">${r.label}</div>
+      <div class="score num">score ${r.score > 0 ? '+' : ''}${r.score} / 100 · ${r.agree} factors for, ${r.against} against</div>
+      <div class="meter"><i style="${mStyle}"></i></div>
+      <div class="phase">${esc(r.phase.label)}</div>
+      <div class="note" style="margin-top:6px">Volume so far: ${r.rvol ? r.rvol.toFixed(2) + '× normal for this time of day' : '—'}</div>
+    </div>
+    <div>
+      <div class="lbl" style="margin-bottom:6px">What to watch: a close outside these levels, validated by volume</div>
+      <div class="watch">${watchCard(1)}${watchCard(-1)}</div>
+      <div class="facts">
+        <div class="fact"><div class="lbl">Engine history · ${r.ticker}</div>${histFact}</div>
+        <div class="fact"><div class="lbl">Projected rest-of-day range</div><div class="v num">${fmt(r.proj.low)} – ${fmt(r.proj.high)}</div><div class="s">median extension +${fmt(r.proj.extra)} from this ETF's history, ${Math.round(r.proj.upShare * 100)}% allotted upside by the score</div></div>
+        <div class="fact"><div class="lbl">Volume at price</div><div class="v num">POC ${fmt(r.prof.poc)}</div><div class="s">value area ${fmt(r.prof.vaLo)}–${fmt(r.prof.vaHi)}; heavy-volume prices act as support and resistance</div></div>
+      </div>
+    </div>
+  </section>
+  <section><div class="chartbox">${chartSVG(D, r, lc)}</div>
+    <div class="legend"><span><b class="bear">SS</b> shooting star</span><span><b class="bull">H</b> hammer</span><span><b class="bear">HM</b> hanging man</span><span><b class="two">D</b> long-legged doji</span><span><b>W</b> wide candle</span><span><b>N</b> narrow candle, high volume</span><span><b style="color:var(--accent)">T</b> test</span><span><i style="border:1px dashed var(--warn)"></i>Congestion (pivots shown as dots)</span><span><i style="background:var(--accent);opacity:.5"></i>Volume at price (bright = POC)</span><span>Volume bars: faint = low, bright = high, outlined = ultra high</span></div></section>
+  ${outHTML}
+  <section class="cols">
+    <div class="col"><h3>Candle by candle (last hour)</h3><div class="tblwrap"><table><thead><tr><th>Bar</th><th>Close</th><th class="r">Spread</th><th>Volume</th><th>Reading</th></tr></thead><tbody>${tlRows}</tbody></table></div>
+      <p class="note">Spread and volume are relative to the normal for that 5-minute slot. Most recent bar first.</p></div>
+    <div class="col"><h3>What to expect for the rest of the session</h3><ul class="items">${r.expect.map(x => `<li class="t${Math.sign(x.tone)}"><span class="mk">${mark(x.tone)}</span><span>${esc(x.txt)} <span class="src">${esc(x.src)}</span></span></li>`).join('')}</ul>
+      <h3 style="margin-top:16px">Three lanes of the highway</h3><div class="tblwrap"><table><tbody>${mtfRows}</tbody></table></div></div>
+  </section>
+  <section><h3 style="font-size:17px;margin-bottom:8px">Factor checklist</h3><div class="tblwrap"><table><thead><tr><th></th><th>Factor and reading</th><th></th><th class="r">Pts</th></tr></thead><tbody>${factorRows}</tbody></table></div></section>
+  <section class="two-col">
+    <div><h3 style="font-size:17px;margin-bottom:6px">Levels</h3><div class="tblwrap"><table><thead><tr><th>Level</th><th class="r">Price</th><th class="r">From ${lcOn ? 'live' : 'last'}</th><th class="r">% ADR</th></tr></thead><tbody>${lvRows}</tbody></table></div></div>
+    <div><h3 style="font-size:17px;margin-bottom:6px">Engine history for ${r.ticker} <span class="lbl">${D.calib ? D.calib.length + ' replayed calls' : ''}</span></h3>
+      <div class="tblwrap"><table><thead><tr><th>Bucket</th><th class="r">n</th><th class="r">Close in dir.</th><th class="r">±0.2 ADR first</th><th class="r">Close ±¼ ADR</th></tr></thead><tbody>${calibRows}${phaseRows}</tbody></table></div>
+      <p class="note">Replayed every 30 minutes on each loaded session using only bars up to that time. Near 50% means no edge for this ETF. Phase rows show how each part of Coulling's cycle has resolved here; for phases the direction used is the outlook's sign.</p></div>
+  </section>`;
+
+  $('slider').oninput = e => { D.k = +e.target.value; renderTiles(); renderDesk(); const s = $('slider'); if (s) s.focus(); };
+  $('latest').onclick = () => { D.si = D.latestSi; D.k = D.T.sessions[D.si].bars.length - 1; render(); };
+  $('sess').onchange = e => { D.si = +e.target.value; D.k = D.T.sessions[D.si].bars.length - 1; render(); };
+  $('fut').onchange = e => { state.showFuture = e.target.checked; renderDesk(); };
+  const applyLive = () => { const raw = $('livepx').value.trim(); D.livePx = raw ? parsePx(raw) : null; render(); const el = $('livepx'); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } };
+  $('livepx').onkeydown = e => { if (e.key === 'Enter') applyLive(); };
+  $('livepx').onchange = applyLive; $('liveapply').onclick = applyLive;
+  if ($('liveclr')) $('liveclr').onclick = () => { D.livePx = null; render(); };
+}
+function render() { renderTiles(); renderDesk(); }
+
+(function boot() {
+  const k = load('vpr_key') || load('pwo_key') || load('bsr_key'); if (k) $('key').value = k;
+  const h = load('vpr_hist'); if (h) $('hist').value = h;
+  $('scan').onclick = scan; $('demo').onclick = demo;
+  $('key').addEventListener('keydown', e => { if (e.key === 'Enter') scan(); });
+  $('auto').onchange = e => { clearInterval(state.timer); state.timer = null; if (e.target.checked) state.timer = setInterval(() => { if (!state.demo && liveInfo().inRTH && !state.busy) { const s = state.sel; scan().then(() => { state.sel = s; }); } }, 300000); };
+  if (k) scan(); else demo();
+})();
+</script>
+</body>
+</html>
